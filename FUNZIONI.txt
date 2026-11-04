@@ -1,0 +1,434 @@
+LAB GENERATOR KATHARA - COSA FA OGNI FUNZIONE
+(versione portabile modificata, basata sul lavoro di sciro24, GitHub)
+=====================================================================
+Guida di consultazione: per avviare il programma vedi LEGGIMI.txt.
+Le voci sono nell'ordine in cui le trovi nei menu.
+
+INDICE
+  A. Menu principale
+  B. Creazione di un laboratorio (domande del wizard)
+  C. Dopo la creazione: controlli e menu post-creazione
+  D. Menu Opzioni Laboratorio (voci 1-10, con esempi per le policy BGP)
+  E. Opzioni da riga di comando
+  F. GUI nel browser (--gui o voce 6)
+
+
+A. MENU PRINCIPALE
+---------------------------------------------------------------------
+ 1) Crea nuovo Laboratorio
+    Wizard a domande (sezione B). Crea la cartella del lab con lab.conf,
+    i file .startup, etc/frr/ (daemons, frr.conf) per i router, i file
+    di bind per i DNS e un file <nome_lab>.xml con tutti i dati inseriti
+    (serve per reimportare il lab; VA CANCELLATO PRIMA DELLA CONSEGNA).
+
+ 2) Importa file XML/JSON
+    Ricrea un lab da un file XML (salvato da questo programma) o JSON.
+    Se la cartella esiste chiede conferma prima di sovrascriverla.
+    Se trova nomi di dispositivi non validi per Kathara (es. "web-srv")
+    propone la correzione ("web_srv").
+    ATTENZIONE: l'XML contiene i dati della creazione, NON le modifiche
+    fatte dopo con il menu Opzioni (policy, costi, auto-cost...):
+    reimportando si perdono.
+
+ 3) Genera file XML
+    Rigenera l'XML leggendo una cartella di lab esistente.
+
+ 4) Testa Funzionamento (PING)
+    Legge tutti gli IP del lab e stampa un unico comando da incollare
+    nel terminale di un dispositivo (kathara connect <dispositivo>):
+    fa il ping verso tutti gli IP e dice quali rispondono.
+
+ 5) Opzioni Laboratorio
+    Chiede la cartella di un lab gia' creato e apre il menu Opzioni
+    (sezione D). All'apertura controlla i nomi dei dispositivi e, se
+    servono correzioni, le propone (rinomina sul posto, senza rigenerare).
+
+ 6) Interfaccia grafica (browser)
+    Avvia la GUI (sezione F) sui lab della cartella corrente.
+
+ 0) Esci
+
+
+B. CREAZIONE DI UN LABORATORIO (voce 1)
+---------------------------------------------------------------------
+Durante le domande:  "<"  torna alla domanda precedente,
+                     "<<" ricomincia il dispositivo corrente.
+Alla fine di ogni dispositivo compare un riepilogo da confermare:
+i file vengono scritti solo dopo la conferma.
+
+ Nome del lab: diventa il nome della cartella. All'esame usa
+ <cognome><nome> (lettere minuscole, cifre, _ ).
+
+ Numero di dispositivi: router, host/PC, server WWW, host DNS.
+
+ ROUTER, per ognuno:
+  - nome (proposta r1, r2...; solo minuscole, cifre e _: un nome non
+    valido viene corretto con una proposta da confermare)
+  - protocolli: bgp, ospf, rip, statico (anche piu' di uno, con virgola)
+  - con bgp: numero di AS
+  - con ospf: area (il primo router OSPF decide l'area di default;
+    "stub" si chiede per le aree diverse dalla backbone 0.0.0.0)
+  - numero di interfacce, poi per ognuna: LAN (es. A) e IP con /maschera
+    (IP gia' usati vengono rifiutati)
+  - con ospf/rip: network da annunciare nell'IGP (Invio = proposta
+    calcolata dalle interfacce interne dell'AS)
+  - con bgp + ospf/rip: "Iniettare nell'IGP le rotte BGP
+    (redistribute bgp)?" -> Si' solo sui router di confine che il testo
+    indica; No sugli altri.
+  - con statico: numero di rotte, poi destinazione, next-hop e
+    interfaccia (proposta automatica).
+  Cosa scrive: in frr.conf il blocco router bgp (neighbor verso i
+  router BGP sulle stesse LAN, network delle LAN), router ospf/rip con
+  le network e redistribute connected (+ redistribute bgp se scelto);
+  nello startup gli IP e "systemctl start frr".
+
+ HOST/PC, per ognuno: nome, numero di interfacce, IP e LAN di ognuna,
+  gateway di default (deve stare nella subnet di un'interfaccia; con
+  piu' interfacce chiede quale usare).
+
+ SERVER WWW: nome, IP, gateway, LAN. Crea una pagina web di prova e
+  avvia apache2 nello startup.
+
+ HOST DNS: il primo si chiama "root" (server root, master per ".").
+  - root: zone da delegare (es. com) con nameserver e IP -> db.root con
+    SOA, record NS e glue.
+  - altri DNS: nome, IP, gateway, LAN, zone authoritative con i record
+    (A, NS, CNAME, DELEGATION), tipo per "." (hint = punta al root,
+    master, nessuno), allow-recursion (da tutti o da alcune reti),
+    dnssec-validation no.
+  Alla fine: "Vuoi che uno dei DNS sia resolver per gli altri?" ->
+  scrive resolv.conf sugli altri dispositivi.
+
+
+C. DOPO LA CREAZIONE
+---------------------------------------------------------------------
+ Controllo topologia (automatico): LAN con subnet diverse tra i membri,
+  link /30 con un solo estremo, nomi non validi per Kathara.
+
+ Controlli di configurazione (automatici, anche in Opzioni 8):
+  1. reti interne di un AS non annunciate in BGP
+  2. sessioni iBGP mancanti tra router dello stesso AS
+  3. neighbor con IP inesistente o remote-as sbagliato
+  4. route-map / prefix-list / access-list usate ma non definite (o
+     definite ma non usate), con numero di riga e "Forse intendevi...".
+     Una route-map o prefix-list inesistente su un neighbor non da'
+     errori: la sessione e' Established ma non passa nessuna rotta.
+  5. host senza default gateway
+  6. costi OSPF espliciti senza auto-cost (vedi Opzioni 10)
+  Sono suggerimenti: confrontali sempre con il testo.
+
+ Menu post-creazione:
+  1) Genera file XML aggiornato
+  2) Testa Funzionamento (PING)   (come voce 4 del menu principale)
+  3) Opzioni Laboratorio          (sezione D, sul lab appena creato)
+  0) Termina Programma
+
+
+D. MENU OPZIONI LABORATORIO
+---------------------------------------------------------------------
+ 1) Imposta costo OSPF
+    Scegli router e interfaccia: scrive "ip ospf cost N" nel blocco
+    interface di frr.conf. Vedi anche la voce 10.
+
+ 2) Aggiungi Policies BGP (sottomenu)
+    Prima vengono fatte tutte le domande, poi si scrive. Invio a vuoto
+    a una domanda = annulla senza modificare nulla.
+    - Al posto del nome del router puoi scrivere il numero dell'elenco.
+    - Se il neighbor indicato non esiste ancora su quel router compare
+      anche "ASN del neighbor <IP> (per crearlo):" -> scrivi il suo AS.
+
+    Due regole per capire DOVE e IN CHE VERSO applicare una policy:
+     - "in"  = rotte che il router RICEVE da quel neighbor
+       "out" = rotte che il router ANNUNCIA a quel neighbor
+     - si applica sul router dell'AS che "decide" (chi deve preferire,
+       chi non deve accettare, chi non deve annunciare).
+
+    !! GLI ESEMPI SOTTO SONO SOLO ESEMPI: router, IP e reti vengono dai
+    !! lab di prova (butterfly, tennis) o sono inventati. In ogni
+    !! esercizio cambiano: quello che conta e' il ragionamento
+    !! (su quale router, verso quale neighbor, in o out).
+
+    -----------------------------------------------------------------
+    2.1) PREFIX-LIST: scartare una o piu' reti da/verso un neighbor
+    -----------------------------------------------------------------
+    ESEMPIO - caso (lab butterfly): as50r1 (AS50) e' collegato ad AS100
+    con due link: verso as100r3 (IP 50.100.0.1) e verso as100r1
+    (IP 50.100.1.1). Il testo chiede: "AS50 non deve imparare da AS100
+    le reti 100.1.0.0/24 e 100.2.0.0/24".
+    -> si agisce su as50r1, in ingresso (in), una volta per ogni link.
+
+    Sullo schermo                                         Scrivi
+    ----------------------------------------------------  -------------------------
+    Seleziona (numero):                                   1
+    Numero router (o nome, vuoto per annullare):          as50r1
+    IP neighbor (es. 10.0.0.2):                           50.100.0.1
+    Direzione (in/out):                                   in
+    Reti da DENY, separate da virgola (...):              100.1.0.0/24, 100.2.0.0/24
+    (poi di nuovo la voce 1 con IP neighbor 50.100.1.1 per l'altro link)
+
+    Scrive in as50r1/etc/frr/frr.conf:
+      neighbor 50.100.0.1 prefix-list PL_as50r1_50_100_0_1_in in
+      ip prefix-list PL_as50r1_50_100_0_1_in deny 100.1.0.0/24
+      ip prefix-list PL_as50r1_50_100_0_1_in deny 100.2.0.0/24
+      ip prefix-list PL_as50r1_50_100_0_1_in permit any
+    Se il testo dice "non deve ANNUNCIARE ad AS100 la rete X": stesso
+    router, direzione out. Puoi rilanciarla sullo stesso neighbor: i
+    nuovi deny vengono messi prima del "permit any".
+    Attenzione: la prefix-list confronta la rete ESATTA: deny
+    100.0.0.0/8 blocca l'annuncio 100.0.0.0/8, non 100.1.0.0/24.
+
+    -----------------------------------------------------------------
+    2.2) LOCAL-PREFERENCE in ingresso: scegliere da dove USCIRE
+    -----------------------------------------------------------------
+    ESEMPIO - caso (lab butterfly): as10r1 (AS10) ha due vicini, as20r1
+    (AS20, IP 10.20.0.20) e as50r1 (AS50, IP 10.50.0.50), e raggiunge le
+    reti 100.1.0.0/24 e 100.2.0.0/24 da entrambi. Il testo chiede: "per
+    raggiungere 100.1.0.0/24 e 100.2.0.0/24 AS10 deve preferire AS20".
+    -> si agisce su as10r1, sul neighbor da PREFERIRE (as20r1), in
+       ingresso, con un valore piu' alto del predefinito (100).
+
+    Sullo schermo                                         Scrivi
+    ----------------------------------------------------  -------------------------
+    Seleziona (numero):                                   2
+    Numero router (o nome, vuoto per annullare):          as10r1
+    IP neighbor (es. 10.0.0.2):                           10.20.0.20
+    Valore local-preference da impostare (es. 110):       150
+    Solo per alcune reti? Inserisci le reti separate
+    da virgola (Invio = tutte le rotte):                  100.1.0.0/24, 100.2.0.0/24
+
+    Scrive:
+      neighbor 10.20.0.20 route-map PREF_IN_10_20_0_20 in
+      route-map PREF_IN_10_20_0_20 permit 10
+          match ip address prefix-list PREF_IN_10_20_0_20_NETS
+          set local-preference 150
+      route-map PREF_IN_10_20_0_20 permit 20
+      ip prefix-list PREF_IN_10_20_0_20_NETS permit 100.1.0.0/24
+      ip prefix-list PREF_IN_10_20_0_20_NETS permit 100.2.0.0/24
+    (la "permit 20" vuota lascia passare le altre rotte con la
+    preferenza normale: senza, verrebbero scartate)
+    Variante - testo "AS10 deve preferire AS20 per TUTTO il traffico":
+    alla domanda sulle reti premi Invio ->
+      route-map PREF_IN_10_20_0_20 permit 10
+          set local-preference 150
+    Vale per tutto l'AS: gli altri router di AS10 ricevono la preferenza
+    via iBGP (servono le sessioni iBGP, Opzioni 7).
+    Verifica: GUI -> Test -> Rotta verso una rete (motivo "Local Pref").
+
+    -----------------------------------------------------------------
+    2.3) MED in uscita: suggerire agli altri da dove ENTRARE
+    -----------------------------------------------------------------
+    ESEMPIO - caso (lab tennis): AS2 e' collegato ad AS20 con due link:
+    D (as2r2 - as20r1, IP di as20r1 2.20.0.1) ed E (as2r1 - as20r4). Il
+    testo chiede: "il traffico di AS20 verso AS2 deve entrare dal link E
+    e non dal link D".
+    -> si agisce sul router di AS2 del link da EVITARE (as2r2), verso il
+       vicino di AS20 su quel link, in uscita, con un MED piu' alto
+       (sull'altro link resta 0: piu' basso = preferito).
+
+    Sullo schermo                                         Scrivi
+    ----------------------------------------------------  -------------------------
+    Seleziona (numero):                                   3
+    Numero router (o nome, vuoto per annullare):          as2r2
+    IP neighbor (es. 10.0.0.2):                           2.20.0.1
+    Valore metric (MED) da impostare (es. 20):            20
+
+    Scrive:
+      neighbor 2.20.0.1 route-map LOCALMED_OUT_2_20_0_1 out
+      route-map LOCALMED_OUT_2_20_0_1 permit 10
+          set metric 20
+    Il MED viene confrontato solo tra percorsi che arrivano dallo STESSO
+    AS vicino (qui i due link verso AS20) e conta meno della
+    local-preference decisa dall'altro AS.
+    Verifica: GUI -> Verifica percorso, Atteso "E".
+
+    -----------------------------------------------------------------
+    2.4) ACCESS-LIST: scartare una rete in ingresso con una route-map
+    -----------------------------------------------------------------
+    ESEMPIO - caso inventato: as10r1 (AS10) riceve da as20r1 (AS20,
+    IP 10.20.0.20) anche la rete 30.0.0.0/8 di AS30. Il testo chiede:
+    "AS10 non deve accettare da AS20 la rete 30.0.0.0/8" e la soluzione
+    del corso usa access-list + route-map.
+    -> si agisce su as10r1, verso as20r1, in ingresso.
+
+    Sullo schermo                                         Scrivi
+    ----------------------------------------------------  -------------------------
+    Seleziona (numero):                                   4
+    Numero router (o nome, vuoto per annullare):          as10r1
+    IP neighbor (es. 10.0.0.2):                           10.20.0.20
+    Rete da bloccare in ingresso (es. 10.0.1.0/24):       30.0.0.0/8
+
+    Scrive (numero di access-list: il primo libero da 10 in su):
+      access-list 10 deny 30.0.0.0/8
+      access-list 10 permit any
+      route-map FILTER_IN_10_20_0_20 permit 10
+          match ip address 10
+      neighbor 10.20.0.20 route-map FILTER_IN_10_20_0_20 in
+    Stesso effetto della 2.1 in ingresso. Attenzione: un neighbor ha UNA
+    sola route-map per direzione. Se sullo stesso neighbor in ingresso
+    serve anche la local-preference (2.2), usa per il filtro la
+    prefix-list (2.1): prefix-list e route-map possono stare insieme.
+
+    -----------------------------------------------------------------
+    2.5) CUSTOMER-PROVIDER-PEER: cosa annunciare in base alla relazione
+    -----------------------------------------------------------------
+    ESEMPIO - caso inventato: AS10 e' cliente di AS20 (cioe' AS20 e' il
+    PROVIDER di AS10); as10r1 e' collegato ad as20r1 (IP 10.20.0.20);
+    AS10 annuncia la sua rete aggregata 10.0.0.0/8 e non ha clienti.
+    Regola commerciale: a provider e peer si annunciano solo le proprie
+    reti e quelle dei propri clienti.
+    -> si agisce su as10r1, verso il provider as20r1.
+
+    Sullo schermo                                         Scrivi
+    ----------------------------------------------------  -------------------------
+    Seleziona (numero):                                   5
+    Quale router stiamo configurando?
+      Numero router (o nome, vuoto per annullare):        as10r1
+    Router vicino:
+      Numero router (o nome, vuoto per annullare):        as20r1
+    Il router as20r1 ha piu' indirizzi IP. Seleziona
+    quello verso as10r1:
+      Seleziona numero (o premi invio per il primo):      il numero di 10.20.0.20
+    (se il vicino ha un solo IP lo prende da solo:
+     "IP rilevato per as20r1: ...")
+    Qual e' la relazione economica?  Scelta (1-3):        1  (1 provider, 2 customer, 3 peer)
+    Inserisci le TUE reti da annunciare al provider
+    (separate da virgola):  >                             10.0.0.0/8
+    Inserisci le reti dei tuoi CLIENTI ...  >             (Invio = nessuna)
+
+    Scrive:
+      neighbor 10.20.0.20 prefix-list provider_as20r1_in in
+      neighbor 10.20.0.20 prefix-list provider_as20r1_out out
+      ip prefix-list provider_as20r1_in permit any
+      ip prefix-list provider_as20r1_out permit 10.0.0.0/8
+    Le tre relazioni:
+      provider -> in: tutto; out: solo le tue reti + quelle dei clienti
+      customer -> in: tutto; out: tutto (al cliente dai tutta la tabella)
+      peer     -> in: tutto; out: solo le tue reti + quelle dei clienti
+    Ripetila per ogni vicino, ognuno con la sua relazione. Le reti in
+    "out" vanno scritte ESATTAMENTE come vengono annunciate (es.
+    10.0.0.0/8 se annunci l'aggregato, vedi Opzioni 6).
+    Non imposta preferenze: se il testo chiede anche "preferire i
+    clienti", aggiungi la local-preference con la 2.2.
+
+    0) Torna indietro
+
+ 3) Aggiungi interfaccia loopback
+    Aggiunge un IP su "lo" nello startup del dispositivo scelto.
+
+ 4) Ridistribuzione BGP -> IGP (sottomenu):
+    1) togli "redistribute bgp" da un router
+    2) rimettilo
+    3) "redistribute bgp route-map eBGP": inietta solo le rotte
+       imparate via eBGP
+
+ 5) Assegna un resolver ad un dispositivo
+    Scrive /etc/resolv.conf con il nameserver scelto tra i server DNS
+    del lab (o un IP a mano).
+
+ 6) Aggiungi network BGP
+    Annuncia in BGP reti non collegate direttamente: l'aggregato
+    dell'AS (es. 100.0.0.0/8), reti interne, 0.0.0.0/0. Propone
+    l'aggregato e offre di togliere le reti piu' specifiche gia'
+    annunciate.
+
+ 7) Aggiungi sessioni iBGP (full mesh)
+    Crea i neighbor iBGP tra i router BGP dello stesso AS che non li
+    hanno. L'IP usato e' quello dell'interfaccia rivolta verso il router
+    lungo il percorso interno (la sessione sale senza update-source).
+
+ 8) Riepilogo configurazione
+    Per ogni router: AS, network BGP, IGP, costi OSPF, neighbor e
+    policy in chiaro, piu' tutti i controlli della sezione C. Serve a
+    spuntare il testo dell'esercizio frase per frase.
+
+ 9) Aggiungi delega DNS sul root
+    Delega un dominio di primo livello (es. com -> dns.com) nel db.root;
+    aggiunge anche il SOA se manca.
+
+ 10) Costi OSPF predefiniti a 10
+    In kathara/frr il costo predefinito di un'interfaccia e' 10000
+    (non 10): un costo esplicito "alto" come 90 diventa il PIU'
+    conveniente. Questa voce aggiunge "auto-cost reference-bandwidth 100"
+    a tutti i router OSPF di un AS (si sceglie l'AS): il predefinito
+    torna 10 e i costi espliciti mantengono il loro significato.
+    Rilanciata su un AS che lo ha gia', propone di toglierlo.
+
+ 0) Torna indietro
+
+
+E. OPZIONI DA RIGA DI COMANDO
+---------------------------------------------------------------------
+  --out <cartella>     dove creare/leggere i lab (default: cartella corrente)
+  --from-xml <file>    crea il lab da un XML senza domande
+  --from-json <file>   crea il lab da un JSON senza domande
+  --force              con --from-xml/--from-json sovrascrive un lab esistente
+  --regen-xml <lab>    rigenera l'XML di un lab
+  --gui                avvia la GUI
+  --porta <n>          porta della GUI (default 8765)
+  --help               elenco delle opzioni
+
+
+F. GUI NEL BROWSER
+---------------------------------------------------------------------
+Pagina locale su http://127.0.0.1:8765, senza internet. A sinistra
+l'elenco dei lab (pallino verde = acceso). In alto: Avvia (lstart),
+Ferma (lclean), Rileggi i file.
+Avvisi fissi in alto: XML ancora presente nel lab; file modificati
+dopo l'avvio (con "Riavvia ora"); link spento (con "Riaccendi").
+Il riquadro Output in basso mostra in diretta l'ultimo comando lanciato;
+la scheda Registro li elenca tutti con il comando esatto.
+
+ TOPOLOGIA
+  Disegno del lab: router colorati per AS, scritta AS con il protocollo
+  interno, LAN con nome e subnet, interfacce [ethN|ultimo ottetto].
+  Trascina nodi e sfondo, rotellina = zoom, Riordina, Adatta, Scarica
+  SVG. Clic su un dispositivo: pannello laterale con interfacce, file
+  (startup, frr.conf, ...), comandi con un clic (show ip bgp, show ip
+  route, show ip ospf neighbor/interface, show ip rip,
+  show running-config, ip route...), ping/traceroute e
+  "Apri terminale" (kathara connect).
+
+ RIEPILOGO E CONTROLLI
+  Controlli automatici (sezione C), card "Controllo configurazione FRR":
+  nomi di route-map/prefix-list/access-list (sempre) e "Controlla la
+  sintassi" a lab acceso (vtysh --dryrun: righe che FRR scarterebbe,
+  con numero di riga). Poi una scheda per router con IGP, network,
+  neighbor e policy; host, server e LAN.
+
+ INTERFACCE
+  Una riga per interfaccia: IP, LAN, chi c'e' dall'altra parte, IGP e
+  costo, sessioni BGP su quella LAN e policy, avvisi (subnet diversa,
+  /30 senza l'altro estremo, neighbor inesistente, remote-as errato).
+  "Confronta con il lab acceso": stato UP/DOWN e IP reali.
+
+ TEST (servono il lab acceso)
+  - Raggiungibilita': ping da ogni dispositivo verso tutti gli IP,
+    matrice OK/KO.
+  - Sessioni BGP e OSPF: Established / Full per ogni neighbor.
+    "Attendi convergenza" (parte da sola dopo l'avvio) rilegge ogni
+    15 s fino a 5 minuti. Tabella "Ridistribuzione BGP -> IGP": se un
+    router ha "redistribute bgp" ma le rotte non entrano nell'IGP
+    (difetto di FRR 10.5.3 su RIP) -> pulsante Riapplica.
+  - Rotta verso una rete: da quale vicino passa un router per una rete
+    e tutti i percorsi BGP ricevuti (local-pref, MED, AS-path, motivo
+    della scelta); rotte accettate da / inviate a ogni neighbor.
+  - Tabelle di routing: matrice router x reti del lab (presente,
+    coperta da una piu' ampia, solo sottoreti, propria, mancante).
+  - Ping: da un dispositivo verso un IP, con Origine (ping -I); dice
+    chi e' l'IP, da dove e' partito e, se fallisce, perche' (nessuna
+    rotta, origine in una rete non annunciata -> interfaccia da usare).
+  - Verifica percorso: traceroute tradotto in router e LAN, evidenziato
+    sulla topologia; campo "Atteso" (lettere dei link o nomi dei router,
+    "deve passare per" o "sequenza esatta"), anche il ritorno; segnala
+    i routing loop.
+  - Guasto di un link: spegne/riaccende una LAN (ip link set down/up,
+    i file non cambiano) per vedere il percorso di riserva; se un router
+    cambia Router ID OSPF riavvia da solo il suo processo OSPF.
+
+ ARCHIVIO
+  Crea <nome>.tar.gz (o .zip) del lab SENZA l'XML e mostra il comando
+  equivalente. Avvisa se il nome dell'archivio e' diverso da quello
+  della cartella.
+
+ REGISTRO
+  Tutte le operazioni con orario, comando esatto ed esito.

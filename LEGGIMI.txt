@@ -11,6 +11,7 @@ COSA C'E' SULLA CHIAVETTA
   windows/labGenerator.exe    eseguibile Windows
   sorgente/                   labGenerator.py + gui/            -> piano C (serve python3)
   LEGGIMI.txt                 questo file
+  FUNZIONI.txt                cosa fa ogni voce dei menu, con esempi per le policy BGP
 
 Stesso programma ovunque: menu nel terminale; con --gui (o voce 6 del
 menu) apre la GUI nel browser su http://127.0.0.1:8765
