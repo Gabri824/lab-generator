@@ -1,0 +1,111 @@
+LAB GENERATOR KATHARA - versione portabile modificata
+(basata sul lavoro di sciro24, GitHub)
+=====================================================================
+Non serve installare niente e non serve internet.
+(Testo senza accenti apposta: si legge bene in qualsiasi terminale.)
+
+COSA C'E' SULLA CHIAVETTA
+  avvia.sh                    avvio su Linux con un solo comando (vedi sotto)
+  linux/labGenerator          eseguibile Linux, un solo file
+  linux/labGenerator-dir/     eseguibile Linux in una cartella  -> piano B
+  windows/labGenerator.exe    eseguibile Windows
+  sorgente/                   labGenerator.py + gui/            -> piano C (serve python3)
+  LEGGIMI.txt                 questo file
+
+Stesso programma ovunque: menu nel terminale; con --gui (o voce 6 del
+menu) apre la GUI nel browser su http://127.0.0.1:8765
+
+
+1. AVVIO SU LINUX (PC del laboratorio)
+---------------------------------------------------------------------
+Dove e' montata la chiavetta:   ls /media/$USER   (o: df -h)
+
+MODO SEMPLICE (consigliato), non servono permessi di amministratore:
+
+  bash /media/$USER/<CHIAVETTA>/avvia.sh          menu nel terminale
+  bash /media/$USER/<CHIAVETTA>/avvia.sh --gui    GUI nel browser
+
+avvia.sh controlla Docker e Kathara, copia il programma in
+~/.labgenerator, crea i lab in ~/labs e prova da solo, in ordine, i
+piani qui sotto (file unico, TMPDIR, cartella, python3), scrivendo cosa
+fa. Righe "[avvia] ATTENZIONE ...": leggile, dicono cosa manca.
+
+MODO A MANO (se avvia.sh non funziona):
+La chiavetta non conserva il permesso di esecuzione: prima si copia
+nella home.
+
+  cp /media/$USER/<CHIAVETTA>/linux/labGenerator ~/
+  chmod +x ~/labGenerator
+  mkdir -p ~/labs && cd ~/labs
+  ~/labGenerator              menu nel terminale
+  ~/labGenerator --gui        GUI nel browser
+
+I lab vengono creati nella cartella da cui lo lanci (qui ~/labs).
+Se il browser non si apre da solo: apri a mano http://127.0.0.1:8765
+
+SE NON PARTE
+ a) "error while loading shared libraries ... failed to map segment"
+    = /tmp non permette di eseguire programmi. Soluzione:
+      mkdir -p ~/.lg-tmp && TMPDIR=~/.lg-tmp ~/labGenerator
+ b) oppure la versione a cartella:
+      cp -r /media/$USER/<CHIAVETTA>/linux/labGenerator-dir ~/
+      chmod +x ~/labGenerator-dir/labGenerator
+      cd ~/labs && ~/labGenerator-dir/labGenerator
+ c) se c'e' python3 (prova: python3 --version):
+      cp -r /media/$USER/<CHIAVETTA>/sorgente ~/lg
+      cd ~/labs && python3 ~/lg/labGenerator.py
+ d) "GLIBC_2.xx not found" = sistema piu' vecchio di Ubuntu 20.04 /
+    Debian 11: usa c).
+ GUI: "Docker non raggiungibile" -> prova "docker ps" nel terminale.
+    Se dice "permission denied", l'utente non e' nel gruppo docker:
+    chiedi al docente (senza Docker Kathara non funziona comunque).
+
+
+2. AVVIO SU WINDOWS
+---------------------------------------------------------------------
+  Apri un terminale nella cartella dei lab e lancia:
+    <percorso>\windows\labGenerator.exe          (oppure ... --gui)
+  Se l'antivirus lo blocca: e' un falso allarme noto degli eseguibili
+  PyInstaller (aggiungi un'eccezione) oppure usa il piano C con Python.
+
+
+3. PRIMA DELLA CONSEGNA (checklist)
+---------------------------------------------------------------------
+ [ ] Lab creato con il nome <cognome><nome>: la cartella del lab e
+     l'archivio devono chiamarsi cosi'.
+ [ ] Controlli: menu Riepilogo (8) oppure GUI "Riepilogo e controlli":
+     - "Controllo configurazione FRR": nessun X rosso
+       (premi anche "Controlla la sintassi" a lab acceso)
+     - "Dimenticanze tipiche": confronta ogni avviso con il testo
+ [ ] Lab acceso, GUI -> Test -> "Attendi convergenza":
+     BGP tutte Established, OSPF tutte Full.
+     Tabella "Ridistribuzione BGP -> IGP": se "non attiva" -> Riapplica.
+ [ ] Il testo usa costi OSPF (es. cost 90)? -> Opzioni 10
+     (auto-cost reference-bandwidth 100), poi Verifica percorso.
+ [ ] Percorsi e ping richiesti dal testo: Test -> Raggiungibilita' e
+     Verifica percorso (campo "Atteso" con le lettere dei link).
+ [ ] CANCELLA L'XML DEL GENERATORE:
+       rm ~/labs/<cognome><nome>/<cognome><nome>.xml
+ [ ] Archivio:
+       cd ~/labs && tar czvf <cognome><nome>.tar.gz <cognome><nome>
+     (oppure GUI -> Archivio: esclude gia' l'XML)
+ [ ] lclean dei lab ancora accesi.
+
+
+4. PROBLEMI NOTI E RIMEDI
+---------------------------------------------------------------------
+ - RIP: "redistribute bgp" a volte non parte all'avvio (difetto di
+   FRR 10.5.3, circa 1 avvio su 2). GUI: Ridistribuzione -> Riapplica.
+   A mano, sul router:
+     vtysh -c 'conf t' -c 'router rip' -c 'no redistribute bgp' -c 'redistribute bgp'
+ - OSPF: in kathara/frr il costo predefinito di un'interfaccia e' 10000,
+   non 10. Se il testo usa costi espliciti -> Opzioni 10.
+ - Dopo "ip link set ethX down" OSPF puo' bloccarsi se il Router ID
+   era su quel link: "show ip ospf" (Router ID cambiato?) e poi
+   "clear ip ospf process". La GUI ("Guasto di un link") lo fa da sola.
+ - Route-map o prefix-list con il nome scritto diverso: la sessione e'
+   Established ma riceve 0 prefissi. La card FRR lo segnala.
+ - "lstart" su un lab gia' acceso fallisce: prima lclean
+   (la GUI chiede se riavviarlo).
+ - Nomi dei dispositivi: solo lettere minuscole, cifre e _
+   (niente "-" o "."), altrimenti lab.conf non e' valido.

@@ -1,0 +1,893 @@
+"""Comandi Kathará per la GUI: avvio/arresto del lab, comandi sui dispositivi,
+test (raggiungibilità, sessioni BGP/OSPF, percorso), terminale, archivio.
+
+Si eseguono solo i comandi di questo file (lista chiusa, niente shell libera):
+nomi di lab/dispositivi e IP arrivano già validati dal server.
+"""
+import base64
+import concurrent.futures
+import datetime
+import hashlib
+import ipaddress
+import itertools
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tarfile
+import threading
+import time
+import zipfile
+
+from . import dati
+
+ANSI = re.compile(r'\x1b\[[0-9;?]*[A-Za-z]')
+
+# comandi sui dispositivi: chiave -> (etichetta, argomenti); '{ip}' è sostituito dall'IP
+# (già validato) per i comandi che lo richiedono
+COMANDI = {
+    'bgp': ('show ip bgp', ['vtysh', '-c', 'show ip bgp']),
+    'bgp_summary': ('show ip bgp summary', ['vtysh', '-c', 'show ip bgp summary']),
+    'route': ('show ip route', ['vtysh', '-c', 'show ip route']),
+    'ospf_nei': ('show ip ospf neighbor', ['vtysh', '-c', 'show ip ospf neighbor']),
+    'ospf_if': ('show ip ospf interface', ['vtysh', '-c', 'show ip ospf interface']),
+    'rip': ('show ip rip', ['vtysh', '-c', 'show ip rip']),
+    'running': ('show running-config', ['vtysh', '-c', 'show running-config']),
+    'ip_route': ('ip route', ['ip', 'route']),
+    'ip_addr': ('ip -br addr', ['ip', '-br', 'addr']),
+    'ping': ('ping {ip}', ['ping', '-c', '3', '-W', '1', '{ip}']),
+    'traceroute': ('traceroute {ip}', ['traceroute', '-n', '-w', '1', '-q', '1', '-m', '20', '{ip}']),
+    'bgp_ricevute': ('rotte accettate da {ip}', ['vtysh', '-c', 'show ip bgp neighbors {ip} routes']),
+    'bgp_annunciate': ('rotte annunciate a {ip}', ['vtysh', '-c', 'show ip bgp neighbors {ip} advertised-routes']),
+}
+
+
+def comando(chiave, ip=None):
+    """(etichetta, argomenti) di un comando della lista, con l'IP al posto di '{ip}'."""
+    etichetta, args = COMANDI[chiave]
+    return etichetta.replace('{ip}', ip or ''), [a.replace('{ip}', ip or '') for a in args]
+
+
+def serve_ip(chiave):
+    return any('{ip}' in a for a in COMANDI[chiave][1])
+
+
+def trova_kathara():
+    return shutil.which('kathara')
+
+
+def _env(colonne=100):
+    # senza colori: l'output va in una pagina, non in un terminale
+    # (colonne=250 per leggere le tabelle di `kathara list` senza tagli)
+    return dict(os.environ, COLUMNS=str(colonne), TERM='dumb', NO_COLOR='1')
+
+
+def _pulisci(testo):
+    righe = []
+    for r in ANSI.sub('', testo).split('\n'):
+        pezzi = [p for p in r.split('\r') if p.strip()]     # barre di avanzamento
+        righe.append(pezzi[-1] if pezzi else '')
+    return '\n'.join(righe)
+
+
+def testo_comando(args):
+    return ' '.join(a if re.match(r'^[\w@%+=:,./-]+$', a) else "'" + a.replace("'", "'\\''") + "'"
+                    for a in args)
+
+
+# -------------------------
+# Lavori in background e registro operazioni
+# -------------------------
+class Lavoro:
+    def __init__(self, titolo):
+        self.titolo = titolo
+        self.righe = []
+        self.fatto = False
+        self.rc = None
+        self.risultato = None
+        self.lock = threading.Lock()
+
+    def scrivi(self, testo):
+        with self.lock:
+            self.righe.extend(_pulisci(testo).rstrip('\n').split('\n'))
+
+
+class Lavori:
+    def __init__(self):
+        self._lavori = {}
+        self._id = itertools.count(1)
+        self.registro = []
+        self._lock = threading.Lock()
+
+    def avvia(self, titolo, comando, funzione):
+        """Esegue funzione(lavoro) in un thread; ritorna l'id del lavoro."""
+        lav = Lavoro(titolo)
+        lid = str(next(self._id))
+        self._lavori[lid] = lav
+        voce = {'ora': time.strftime('%H:%M:%S'), 'operazione': titolo, 'comando': comando, 'esito': 'in corso'}
+        with self._lock:
+            self.registro.append(voce)
+
+        def corpo():
+            t0 = time.time()
+            try:
+                lav.rc = funzione(lav)
+            except Exception as e:      # l'errore va nella pagina, il server resta su
+                lav.scrivi(f"Errore: {e}")
+                lav.rc = -1
+            voce['esito'] = ('OK' if lav.rc == 0 else f"errore ({lav.rc})") + f" in {time.time() - t0:.0f}s"
+            lav.fatto = True
+        threading.Thread(target=corpo, daemon=True).start()
+        return lid
+
+    def leggi(self, lid, da=0):
+        lav = self._lavori.get(lid)
+        if lav is None:
+            return None
+        with lav.lock:
+            return {'titolo': lav.titolo, 'fatto': lav.fatto, 'rc': lav.rc,
+                    'righe': lav.righe[da:], 'totale': len(lav.righe), 'risultato': lav.risultato}
+
+    def annota(self, operazione, comando, esito):
+        with self._lock:
+            self.registro.append({'ora': time.strftime('%H:%M:%S'), 'operazione': operazione,
+                                  'comando': comando, 'esito': esito})
+
+
+def esegui(args, lav=None, timeout=600):
+    """Esegue un comando; se c'è un lavoro, l'output arriva alla pagina riga per riga.
+    Ritorna (rc, testo)."""
+    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                         stdin=subprocess.DEVNULL, env=_env())
+    timer = threading.Timer(timeout, p.kill)
+    timer.start()
+    out = []
+    try:
+        for riga in iter(p.stdout.readline, b''):
+            s = riga.decode('utf-8', errors='replace')
+            out.append(s)
+            if lav is not None:
+                lav.scrivi(s)
+        p.wait()
+    finally:
+        timer.cancel()
+    return p.returncode, _pulisci(''.join(out))
+
+
+def suggerimento(testo):
+    """Spiegazione in italiano per gli errori di Kathará più comuni (None se non ne riconosce)."""
+    if 'DockerDaemonConnectionError' in testo or 'Cannot connect to Docker' in testo:
+        if sys.platform.startswith('win'):
+            return "-> Docker non è attivo: avvia Docker Desktop, aspetta che sia pronto e riprova."
+        return ("-> Docker non è raggiungibile: il servizio non è attivo oppure il tuo utente non è nel "
+                "gruppo 'docker' (prova 'docker ps' in un terminale).")
+    if 'already exists' in testo:
+        return "-> Alcuni dispositivi di questo lab sono già avviati: premi 'Ferma (lclean)' e riprova."
+    if 'SyntaxError' in testo and 'lab.conf' in testo:
+        return ("-> lab.conf non valido (es. nomi di dispositivo con '-', '.' o maiuscole): guarda "
+                "'Riepilogo e controlli' oppure apri il lab dal menu 5 del generatore per correggerlo.")
+    if 'MachineNotRunningError' in testo or 'is not running' in testo:
+        return "-> Il dispositivo non è avviato: avvia il lab (lstart) e riprova."
+    return None
+
+
+def esegui_spiegato(args, lav, timeout=600):
+    """Come esegui(), ma se il comando fallisce aggiunge la spiegazione dell'errore."""
+    rc, out = esegui(args, lav, timeout)
+    s = suggerimento(out) if rc != 0 else None
+    if s:
+        lav.scrivi('\n' + s)
+    return rc, out
+
+
+def kexec(kathara, lab_path, dev, comando):
+    return [kathara, 'exec', '-d', lab_path, dev, '--'] + comando
+
+
+# -------------------------
+# Stato dei lab (quali dispositivi sono avviati)
+# -------------------------
+def hash_lab(path):
+    """Stesso identificativo che Kathará dà a un lab: md5 del percorso in base64,
+    tenendo solo lettere e cifre."""
+    return re.sub(r'[^0-9a-zA-Z]', '', base64.urlsafe_b64encode(hashlib.md5(path.encode('utf-8')).digest()).decode())
+
+
+def stato_lab(kathara, base, labs):
+    """{lab: [dispositivi avviati]}. Usa `docker ps` (veloce); se docker non è
+    utilizzabile, `kathara list` (più lento)."""
+    per_hash = {}
+    for lab in labs:
+        p = os.path.join(base, lab)
+        for cand in {os.path.abspath(p), os.path.realpath(p)}:
+            per_hash[hash_lab(cand)] = lab
+    stato = {lab: [] for lab in labs}
+    docker = shutil.which('docker')
+    righe = None
+    if docker:
+        try:
+            r = subprocess.run([docker, 'ps', '--filter', 'label=app=kathara', '--format',
+                                '{{.Label "lab_hash"}}|{{.Label "name"}}'],
+                               capture_output=True, timeout=20, env=_env())
+            if r.returncode == 0:
+                righe = [l.split('|', 1) for l in r.stdout.decode('utf-8', 'replace').splitlines() if '|' in l]
+        except (OSError, subprocess.SubprocessError):
+            righe = None
+    if righe is None and kathara:
+        try:
+            r = subprocess.run([kathara, 'list'], capture_output=True, timeout=60, env=_env(250))
+            righe = []
+            for l in _pulisci(r.stdout.decode('utf-8', 'replace')).splitlines():
+                c = [x.strip() for x in l.strip().strip('|').split('|')]
+                if len(c) >= 2 and c[0] in per_hash:
+                    righe.append(c[:2])
+        except (OSError, subprocess.SubprocessError):
+            righe = []
+    for h, nome in righe or []:
+        if h in per_hash:
+            stato[per_hash[h]].append(nome)
+    return stato
+
+
+# -------------------------
+# Test
+# -------------------------
+def _parallelo(funzione, elementi, max_thread=6):
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_thread) as ex:
+        return dict(zip(elementi, ex.map(funzione, elementi)))
+
+
+def raggiungibilita(kathara, lab_path, lab, lav):
+    """Da ogni dispositivo, ping di tutti gli IP degli altri (in parallelo)."""
+    disp = {d['nome']: d for d in lab['dispositivi']}
+    owner = dati.indirizzi(disp)
+    destinazioni = sorted(owner.items(), key=lambda x: (x[1], ipaddress.ip_address(x[0])))
+    sorgenti = [d['nome'] for d in lab['dispositivi'] if d['interfacce']]
+
+    def prova(src):
+        ips = [ip for ip, n in destinazioni if n != src]
+        script = ('for ip in ' + ' '.join(ips) + '; do (ping -c 2 -i 0.3 -W 1 $ip >/dev/null 2>&1 '
+                  '&& echo "OK $ip" || echo "KO $ip") & done; wait')
+        rc, out = esegui(kexec(kathara, lab_path, src, ['bash', '-c', script]), timeout=120)
+        esiti = {}
+        for l in out.splitlines():
+            m = re.match(r'(OK|KO) (\S+)$', l.strip())
+            if m:
+                esiti[m.group(2)] = m.group(1) == 'OK'
+        ok = sum(esiti.values())
+        lav.scrivi(f"{src}: {ok}/{len(ips)} raggiunti" if esiti else f"{src}: errore\n{out.strip()}")
+        return esiti if esiti else {'_errore': out.strip()[-300:]}
+
+    lav.scrivi(f"Ping da {len(sorgenti)} dispositivi verso {len(destinazioni)} indirizzi...")
+    esiti = _parallelo(prova, sorgenti)
+    lav.risultato = {'sorgenti': sorgenti,
+                     'destinazioni': [{'ip': ip, 'dev': n} for ip, n in destinazioni],
+                     'esiti': esiti}
+    ko = sum(1 for e in esiti.values() for k, v in e.items() if k != '_errore' and not v)
+    lav.scrivi(f"Fatto: {ko} ping falliti.")
+    return 0
+
+
+def _json_o_none(testo):
+    """Primo oggetto JSON nel testo (prima possono esserci messaggi come 'ospfd is not running')."""
+    i = testo.find('{')
+    if i < 0:
+        return None
+    try:
+        return json.JSONDecoder().raw_decode(testo[i:])[0]
+    except ValueError:
+        return None
+
+
+def _leggi_sessioni(kathara, lab_path, lab, spenti=()):
+    """Peering BGP e vicini OSPF di ogni router, con quelli attesi dalla configurazione.
+    Le sessioni sui link spenti dalla GUI (guasto simulato) sono segnate 'escluso' e
+    non contano per la convergenza. Ritorna (righe_bgp, righe_ospf)."""
+    disp = {d['nome']: d for d in lab['dispositivi']}
+    owner = dati.indirizzi(disp)
+    router = [d['nome'] for d in lab['dispositivi'] if d['tipo'] == 'router'
+              and ({'bgpd', 'ospfd'} & set(d['demoni']))]
+    sep = '@@SEPARATORE@@'
+
+    def leggi(r):
+        script = (f"vtysh -c 'show ip bgp summary json' 2>&1; echo {sep}; "
+                  f"vtysh -c 'show ip ospf neighbor json' 2>&1")
+        rc, out = esegui(kexec(kathara, lab_path, r, ['bash', '-c', script]), timeout=60)
+        if sep not in out:
+            return {'errore': out.strip()[-300:]}
+        bgp, ospf = out.split(sep, 1)
+        return {'bgp': _json_o_none(bgp), 'ospf': _json_o_none(ospf)}
+
+    letture = _parallelo(leggi, router)
+    righe_bgp, righe_ospf = [], []
+    for r in router:
+        d, l = disp[r], letture[r]
+        if 'errore' in l:
+            righe_bgp.append({'router': r, 'errore': l['errore']})
+            continue
+        if 'bgpd' in d['demoni']:
+            peers = ((l['bgp'] or {}).get('ipv4Unicast') or {}).get('peers') or {}
+            attesi = [n['ip'] for n in (d['riepilogo'] or {}).get('neighbor', [])]
+            for ip in attesi + [p for p in peers if p not in attesi]:
+                p = peers.get(ip)
+                riga = {'router': r, 'neighbor': ip, 'chi': owner.get(ip, '?'),
+                        'as': p.get('remoteAs') if p else None,
+                        'stato': (p.get('state') or p.get('peerState')) if p else 'non trovato',
+                        'prefissi': p.get('pfxRcd') if p else None,
+                        'uptime': p.get('peerUptime') if p else None,
+                        'ok': bool(p) and p.get('state') == 'Established'}
+                lan_n = dati.lan_di_ip(disp, ip)
+                if lan_n in spenti and not riga['ok']:
+                    riga['escluso'] = f"link {lan_n} spento"
+                righe_bgp.append(riga)
+        if 'ospfd' in d['demoni']:
+            trovati = {}
+            for rid, voci in ((l['ospf'] or {}).get('neighbors') or {}).items():
+                for v in voci if isinstance(voci, list) else [voci]:
+                    ip = v.get('ifaceAddress') or v.get('address') or ''
+                    trovati[ip] = {'router_id': rid, 'stato': v.get('nbrState') or v.get('state') or '?',
+                                   'interfaccia': (v.get('ifaceName') or '').split(':')[0]}
+            # attesi: router OSPF dello stesso AS sulle stesse LAN
+            attesi = []
+            for it in d['interfacce']:
+                if it['lan'] in spenti:
+                    continue
+                for altro in disp.values():
+                    if altro['nome'] == r or 'ospfd' not in altro['demoni'] or altro['gruppo'] != d['gruppo']:
+                        continue
+                    attesi += [x['ip'].split('/')[0] for x in altro['interfacce']
+                               if x['lan'] == it['lan'] and x['ip']]
+            for ip in attesi + [ip for ip in trovati if ip not in attesi]:
+                v = trovati.get(ip)
+                righe_ospf.append({'router': r, 'vicino': ip, 'chi': owner.get(ip, '?'),
+                                   'router_id': v['router_id'] if v else None,
+                                   'interfaccia': v['interfaccia'] if v else None,
+                                   'stato': v['stato'] if v else 'non trovato',
+                                   'ok': bool(v) and v['stato'].startswith('Full')})
+    return righe_bgp, righe_ospf
+
+
+def _conta(righe):
+    righe = [x for x in righe if not x.get('escluso')]
+    return sum(1 for x in righe if x.get('ok')), len(righe)
+
+
+def ridistribuzioni(lab):
+    """[(router, 'RIP'|'OSPF', riga)] per ogni 'redistribute bgp ...' scritto nei file del lab."""
+    voci = []
+    for d in lab['dispositivi']:
+        for igp in (d.get('riepilogo') or {}).get('igp', []):
+            for x in igp['redistribute']:
+                if x.split()[0] == 'bgp':
+                    voci.append((d['nome'], igp['protocollo'], 'redistribute ' + x))
+    return voci
+
+
+def _ridistribuzione_router(kathara, lab_path, voce):
+    """Le rotte BGP scelte dal router sono davvero entrate in RIP/OSPF?
+    RIP: righe B(r) di 'show ip rip'; OSPF: LSA esterni generati dal router."""
+    r, proto, riga = voce
+    sep = '@@SEPARATORE@@'
+    cmd = 'show ip rip' if proto == 'RIP' else 'show ip ospf database external self-originate'
+    script = f"vtysh -c 'show ip route bgp json' 2>&1; echo {sep}; vtysh -c '{cmd}' 2>&1"
+    rc, out = esegui(kexec(kathara, lab_path, r, ['bash', '-c', script]), timeout=60)
+    x = {'router': r, 'igp': proto, 'riga': riga}
+    if sep not in out:
+        return dict(x, errore=out.strip()[-300:], ok=False, stato='errore')
+    bgp, igp = out.split(sep, 1)
+    reti = sorted(p for p, voci in (_json_o_none(bgp) or {}).items()
+                  if isinstance(voci, list) and any(v.get('selected') for v in voci))
+    if proto == 'RIP':
+        dentro = set(re.findall(r'^\s*B\(\w\)\s+(\S+)', igp, re.M))
+    else:
+        ids = set(re.findall(r'Link State ID:\s*(\S+)', igp))
+        dentro = {p for p in reti if p.split('/')[0] in ids}
+    iniettate = [p for p in reti if p in dentro]
+    x.update(bgp=len(reti), iniettate=len(iniettate), mancanti=[p for p in reti if p not in dentro],
+             ok=not reti or bool(iniettate))
+    x['stato'] = ('nessuna rotta BGP' if not reti else 'attiva' if iniettate else 'non attiva')
+    return x
+
+
+def _leggi_ridistribuzione(kathara, lab_path, lab):
+    voci = ridistribuzioni(lab)
+    letture = _parallelo(lambda v: _ridistribuzione_router(kathara, lab_path, v), voci)
+    return [letture[v] for v in voci]
+
+
+def _scrivi_ridistribuzione(lav, righe):
+    for x in righe:
+        if not x['ok']:
+            lav.scrivi(f"⚠ {x['router']}: '{x['riga']}' in {x['igp']} non attiva ({x['bgp']} rotte BGP, "
+                       f"nessuna entrata in {x['igp']}). Usa 'Riapplica' nella tabella Ridistribuzione "
+                       f"(con FRR 10.5.3 a volte non parte all'avvio).")
+
+
+def riapplica_ridistribuzione(kathara, lab_path, voce, lav):
+    """Toglie e rimette 'redistribute bgp' a lab acceso (i file non cambiano), poi ricontrolla."""
+    r, proto, riga = voce
+    blocco = 'router rip' if proto == 'RIP' else 'router ospf'
+    rc = esegui_spiegato(kexec(kathara, lab_path, r, ['vtysh', '-c', 'conf t', '-c', blocco,
+                                                      '-c', 'no ' + riga, '-c', riga]), lav, timeout=60)[0]
+    if rc != 0:
+        return rc
+    for _ in range(4):
+        time.sleep(3)
+        x = _ridistribuzione_router(kathara, lab_path, voce)
+        if x['ok']:
+            break
+    lav.risultato = x
+    lav.scrivi(f"{r}: ridistribuzione {x['stato']} ({x.get('iniettate', 0)}/{x.get('bgp', 0)} rotte BGP in {proto}).")
+    return 0
+
+
+def sessioni(kathara, lab_path, lab, lav, spenti=()):
+    lav.scrivi("Lettura delle sessioni BGP e OSPF...")
+    righe_bgp, righe_ospf = _leggi_sessioni(kathara, lab_path, lab, spenti)
+    rid = _leggi_ridistribuzione(kathara, lab_path, lab)
+    lav.risultato = {'bgp': righe_bgp, 'ospf': righe_ospf, 'ridistribuzione': rid}
+    ko = sum(1 for x in righe_bgp + righe_ospf if not x.get('ok') and not x.get('escluso'))
+    lav.scrivi(f"Fatto: {len(righe_bgp)} sessioni BGP, {len(righe_ospf)} vicini OSPF, {ko} non attivi.")
+    _scrivi_ridistribuzione(lav, rid)
+    return 0
+
+
+def convergenza(kathara, lab_path, lab, lav, limite=300, passo=15, spenti=()):
+    """Rilegge le sessioni ogni `passo` secondi finché sono tutte Established/Full
+    (al massimo `limite` secondi: i testi avvisano che possono servire fino a 5 minuti)."""
+    t0 = time.time()
+    while True:
+        righe_bgp, righe_ospf = _leggi_sessioni(kathara, lab_path, lab, spenti)
+        (ob, tb), (oo, to) = _conta(righe_bgp), _conta(righe_ospf)
+        trascorsi = time.time() - t0
+        lav.risultato = {'bgp': righe_bgp, 'ospf': righe_ospf}
+        lav.scrivi(f"{trascorsi:4.0f}s  BGP {ob}/{tb} Established   OSPF {oo}/{to} Full")
+        if ob == tb and oo == to:
+            # le rotte BGP possono arrivare qualche secondo dopo la sessione: fino a 30 s
+            for i in range(4):
+                rid = _leggi_ridistribuzione(kathara, lab_path, lab)
+                if all(x['ok'] for x in rid):
+                    break
+                if i < 3:
+                    time.sleep(10)
+            lav.risultato['ridistribuzione'] = rid
+            if all(x['ok'] for x in rid):
+                lav.scrivi(f"✔ Lab pronto dopo {time.time() - t0:.0f} s: puoi lanciare i test.")
+            else:
+                lav.scrivi(f"Sessioni attive dopo {time.time() - t0:.0f} s, ma:")
+                _scrivi_ridistribuzione(lav, rid)
+            return 0
+        if trascorsi + passo > limite:
+            giu = [f"{x['router']} -> {x.get('neighbor') or x.get('vicino')} ({x.get('chi')}): {x.get('stato') or x.get('errore')}"
+                   for x in righe_bgp + righe_ospf if not x.get('ok') and not x.get('escluso')]
+            lav.scrivi(f"✘ Dopo {trascorsi:.0f} s non sono ancora attive:\n  " + '\n  '.join(giu)
+                       + "\n  Non è più un problema di tempo: controlla neighbor, remote-as, network OSPF e LAN.")
+            return 1
+        time.sleep(passo)
+
+
+def percorso(kathara, lab_path, lab, src, ip, lav):
+    """Traceroute da src a ip; gli hop vengono tradotti in dispositivi e LAN."""
+    disp = {d['nome']: d for d in lab['dispositivi']}
+    owner = dati.indirizzi(disp)
+    args = kexec(kathara, lab_path, src, comando('traceroute', ip)[1])
+    rc, out = esegui(args, lav, timeout=120)
+    hop, prec = [], src
+    for l in out.splitlines():
+        m = re.match(r'\s*(\d+)\s+(\S+)', l)
+        if not m:
+            continue
+        h_ip = m.group(2)
+        dev = owner.get(h_ip)
+        lan = None
+        if dev:
+            # LAN attraversata: quella in comune tra il dispositivo precedente e questo
+            comuni = ({it['lan'] for it in disp[prec]['interfacce']} &
+                      {it['lan'] for it in disp[dev]['interfacce']}) if prec in disp else set()
+            lan_ip = dati.lan_di_ip(disp, h_ip)
+            lan = lan_ip if lan_ip in comuni else (sorted(comuni)[0] if comuni else lan_ip)
+            prec = dev
+        hop.append({'n': int(m.group(1)), 'ip': h_ip, 'dev': dev, 'lan': lan})
+    arrivato = bool(hop) and hop[-1]['ip'] == ip
+    lav.risultato = {'sorgente': src, 'destinazione': ip, 'dev_destinazione': owner.get(ip),
+                     'hop': hop, 'arrivato': arrivato}
+    return rc
+
+
+def ping(kathara, lab_path, lab, src, ip, origine, lav):
+    """Ping da src verso ip (anche fuori dal lab); origine = IP di src da usare (-I) o None.
+    Se fallisce perché la risposta non sa tornare (origine in una rete non annunciata in
+    BGP), suggerisce un'interfaccia di src che sta in una rete annunciata."""
+    disp = {d['nome']: d for d in lab['dispositivi']}
+    owner = dati.indirizzi(disp)
+    # interfaccia e IP da cui parte il ping: la stessa scelta del kernel
+    _, rg = esegui(kexec(kathara, lab_path, src, ['ip', '-j', 'route', 'get', ip]), timeout=30)
+    via = _json_o_none(rg) or {}
+    partenza = origine or via.get('prefsrc')
+    dev_uscita = next((it['dev'] for it in disp[src]['interfacce'] if it['ip'] and it['ip'].split('/')[0] == partenza),
+                      None) if origine else via.get('dev')
+    cmd = comando('ping', ip)[1]
+    if origine:
+        cmd = cmd[:-1] + ['-I', origine, ip]
+    rc, out = esegui(kexec(kathara, lab_path, src, cmd), lav, timeout=60)
+    m = re.search(r'(\d+) packets transmitted, (\d+) received', out)
+    media = re.search(r'= [\d.]+/([\d.]+)/', out)
+    inviati, ricevuti = (int(m.group(1)), int(m.group(2))) if m else (0, 0)
+    ok = ricevuti > 0
+
+    suggerimento = None
+    if not ok:
+        reti = [ipaddress.ip_network(n, strict=False) for d in lab['dispositivi']
+                for n in ((d.get('riepilogo') or {}).get('bgp_networks') or [])]
+
+        def annunciato(a):
+            try:
+                return any(ipaddress.ip_address(a) in n for n in reti)
+            except ValueError:
+                return False
+        stesso_as = owner.get(ip) and disp[owner[ip]].get('gruppo') == disp[src].get('gruppo')
+        if not via.get('dev'):
+            suggerimento = (f"{src} non ha una rotta verso {ip}: controlla con 'Rotta verso una rete' "
+                            f"o 'Tabelle di routing'.")
+        elif reti and not stesso_as and not annunciato(partenza):
+            alt = [f"{it['dev']} ({it['ip'].split('/')[0]})" for it in disp[src]['interfacce']
+                   if it['ip'] and it['ip'].split('/')[0] != partenza and annunciato(it['ip'].split('/')[0])]
+            suggerimento = (f"Il ping parte da {partenza}, in una rete non annunciata in BGP: la risposta "
+                            f"non sa tornare. " + (f"Riprova con origine {', '.join(alt)}." if alt else
+                            f"Nessuna interfaccia di {src} è in una rete annunciata: può essere voluto dal testo."))
+        else:
+            suggerimento = "Usa 'Verifica percorso' per vedere dove si ferma (o una policy del testo che lo blocca)."
+    lav.risultato = {'sorgente': src, 'destinazione': ip, 'origine': origine, 'rotta': bool(via.get('dev')),
+                     'partenza': partenza, 'dev_uscita': dev_uscita,
+                     'dev_destinazione': owner.get(ip), 'lan_destinazione': dati.lan_di_ip(disp, ip),
+                     'inviati': inviati, 'ricevuti': ricevuti, 'media': media.group(1) if media else None,
+                     'ok': ok, 'suggerimento': suggerimento}
+    return 0 if m else rc
+
+
+def rotta(kathara, lab_path, lab, dev, rete, lav):
+    """Come un router raggiunge una rete (o un IP): rotta scelta con il next-hop e tutti
+    i percorsi BGP ricevuti con local-pref, MED, AS-path e il motivo della scelta."""
+    disp = {d['nome']: d for d in lab['dispositivi']}
+    owner = dati.indirizzi(disp)
+    sep = '@@SEPARATORE@@'
+    script = (f"vtysh -c 'show ip route {rete} json' 2>&1; echo {sep}; "
+              f"vtysh -c 'show ip bgp {rete} json' 2>&1")
+    lav.scrivi(f"{dev}: show ip route {rete} / show ip bgp {rete}")
+    rc, out = esegui(kexec(kathara, lab_path, dev, ['bash', '-c', script]), timeout=60)
+    if sep not in out:
+        lav.scrivi(out.strip())
+        s = suggerimento(out)
+        if s:
+            lav.scrivi(s)
+        return 1
+    parte_route, parte_bgp = out.split(sep, 1)
+    instradamento = None
+    for prefisso, voci in (_json_o_none(parte_route) or {}).items():
+        for v in voci if isinstance(voci, list) else []:
+            if not v.get('selected'):
+                continue
+            hops = [{'ip': h.get('ip'), 'dev': h.get('interfaceName'), 'chi': owner.get(h.get('ip') or ''),
+                     'lan': dati.lan_di_ip(disp, h.get('ip')) if h.get('ip') else
+                     next((it['lan'] for it in disp[dev]['interfacce'] if it['dev'] == h.get('interfaceName')), None),
+                     'connessa': bool(h.get('directlyConnected'))}
+                    for h in v.get('nexthops', []) if h.get('active', True)]
+            instradamento = {'prefisso': prefisso, 'protocollo': v.get('protocol'),
+                             'distanza': v.get('distance'), 'metrica': v.get('metric'), 'hop': hops}
+    bgp = _json_o_none(parte_bgp) or {}
+    percorsi = []
+    for p in bgp.get('paths', []):
+        peer = p.get('peer') or {}
+        nh = (p.get('nexthops') or [{}])[0].get('ip')
+        da = peer.get('peerId') or nh
+        percorsi.append({'da': da, 'chi': owner.get(da or '') or peer.get('hostname') or '?',
+                         'tipo': {'external': 'eBGP', 'internal': 'iBGP'}.get(peer.get('type'), peer.get('type') or ''),
+                         'aspath': (p.get('aspath') or {}).get('string', ''), 'locpref': p.get('locPrf'),
+                         'med': p.get('metric'), 'weight': p.get('weight'), 'origine': p.get('origin'),
+                         'nexthop': nh, 'valido': p.get('valid', False),
+                         'best': bool((p.get('bestpath') or {}).get('overall')),
+                         'motivo': (p.get('bestpath') or {}).get('selectionReason', '')})
+    lav.risultato = {'dev': dev, 'rete': rete, 'prefisso_bgp': bgp.get('prefix'),
+                     'instradamento': instradamento, 'bgp': percorsi,
+                     'neighbor': [n['ip'] for n in (disp[dev]['riepilogo'] or {}).get('neighbor', [])]}
+    if instradamento:
+        h = instradamento['hop'][0] if instradamento['hop'] else {}
+        lav.scrivi(f"Rotta scelta: {instradamento['prefisso']} via {h.get('ip') or 'connessa'} "
+                   f"({h.get('chi') or h.get('dev') or ''}) [{instradamento['protocollo']}]; {len(percorsi)} percorsi BGP.")
+    else:
+        lav.scrivi(f"Nessuna rotta verso {rete} nella tabella di {dev}.")
+    return 0
+
+
+def reti_del_lab(lab):
+    """Reti da cercare nelle tabelle: subnet delle LAN e network annunciate in BGP."""
+    reti = {l['subnet'] for l in lab['lan'] if l['subnet']}
+    for d in lab['dispositivi']:
+        reti.update((d['riepilogo'] or {}).get('bgp_networks', []))
+    out = []
+    for r in reti:
+        try:
+            out.append(ipaddress.ip_network(r, strict=False))
+        except ValueError:
+            pass
+    return [str(r) for r in sorted(out, key=lambda n: (int(n.network_address), n.prefixlen))]
+
+
+def tabelle(kathara, lab_path, lab, lav):
+    """Per ogni router: quali reti del lab sono nella tabella di routing (rotta esatta,
+    coperta da una rotta più ampia o mancante) e verso chi. È il controllo 'kernel_routes'
+    della correzione automatica."""
+    disp = {d['nome']: d for d in lab['dispositivi']}
+    owner = dati.indirizzi(disp)
+    router = [d['nome'] for d in lab['dispositivi'] if d['tipo'] == 'router']
+    reti = reti_del_lab(lab)
+
+    def leggi(r):
+        # tabella di FRR: a differenza di 'ip -j route' elenca i next-hop anche per il multipath
+        rc, out = esegui(kexec(kathara, lab_path, r, ['vtysh', '-c', 'show ip route json']), timeout=60)
+        tab = _json_o_none(out)
+        return tab if tab is not None else {'_errore': out.strip()[-300:]}
+    lav.scrivi(f"Lettura delle tabelle di {len(router)} router ({len(reti)} reti del lab)...")
+    lette = _parallelo(leggi, router)
+    celle, errori = {}, {}
+    for r in router:
+        tab = lette[r]
+        if '_errore' in tab:
+            errori[r] = tab['_errore']
+            continue
+        rotte = []
+        for prefisso, voci in tab.items():
+            for v in voci if isinstance(voci, list) else []:
+                if not v.get('selected') or v.get('protocol') == 'local':
+                    continue
+                hop = [h for h in v.get('nexthops', []) if h.get('active', True)]
+                x = {'dst': prefisso, 'protocol': v.get('protocol'),
+                     'nexthops': [{'gateway': h.get('ip'), 'dev': h.get('interfaceName', '')} for h in hop]}
+                try:
+                    rotte.append((ipaddress.ip_network(prefisso, strict=False), x))
+                except ValueError:
+                    pass
+        celle[r] = {}
+        for rete in reti:
+            n = ipaddress.ip_network(rete)
+            esatta = next((x for net, x in rotte if net == n), None)
+            coprenti = sorted(((net, x) for net, x in rotte if net != n and n.subnet_of(net)),
+                              key=lambda t: -t[0].prefixlen)
+            x, tipo = (esatta, 'esatta') if esatta else ((coprenti[0][1], 'coperta') if coprenti else (None, 'mancante'))
+            if x is None:
+                # l'aggregato che il router annuncia lui stesso (network X/8) non è nella sua tabella
+                if rete in (disp[r]['riepilogo'] or {}).get('bgp_networks', []):
+                    celle[r][rete] = {'tipo': 'propria'}
+                    continue
+                # aggregato assente ma con le sue sottoreti presenti (es. 40.0.0.0/8 e 40.40.1.0/24)
+                dentro = [(net, y) for net, y in rotte if net != n and net.subnet_of(n)]
+                if dentro:
+                    celle[r][rete] = {'tipo': 'specifiche', 'protocollo': dentro[0][1]['protocol'],
+                                      'da': ', '.join(str(net) for net, _ in dentro[:4]) + ('…' if len(dentro) > 4 else '')}
+                else:
+                    celle[r][rete] = {'tipo': 'mancante'}
+                continue
+            # multipath: i next-hop sono nella lista 'nexthops' invece che in 'gateway'
+            gws = [x['gateway']] if x.get('gateway') else [h.get('gateway') for h in x.get('nexthops', []) if h.get('gateway')]
+            celle[r][rete] = {'tipo': tipo, 'da': x.get('dst'), 'protocollo': x.get('protocol'),
+                              'via': ', '.join(gws), 'chi': ', '.join(owner.get(g, g) for g in gws),
+                              'dev': x.get('dev') or ', '.join(h.get('dev', '') for h in x.get('nexthops', [])),
+                              'connessa': not gws}
+    lav.risultato = {'router': router, 'reti': reti, 'celle': celle, 'errori': errori}
+    mancanti = sum(1 for c in celle.values() for v in c.values() if v['tipo'] == 'mancante')
+    lav.scrivi(f"Fatto: {mancanti} reti mancanti in totale.")
+    return 0
+
+
+def interfacce_reali(kathara, lab_path, lab, lav):
+    """Stato reale delle interfacce nei container (up/down e IP assegnati)."""
+    nomi = [d['nome'] for d in lab['dispositivi']]
+
+    def leggi(n):
+        rc, out = esegui(kexec(kathara, lab_path, n, ['ip', '-j', 'addr']), timeout=60)
+        try:
+            dati_ip = json.loads(out[out.index('['):])
+        except ValueError:
+            return {'_errore': out.strip()[-200:]}
+        return {x.get('ifname'): {'stato': x.get('operstate'),
+                                  'ip': [f"{a['local']}/{a['prefixlen']}" for a in x.get('addr_info', [])
+                                         if a.get('family') == 'inet']}
+                for x in dati_ip}
+    lav.scrivi(f"Lettura delle interfacce di {len(nomi)} dispositivi...")
+    lav.risultato = _parallelo(leggi, nomi)
+    lav.scrivi("Fatto.")
+    return 0
+
+
+TRADUZIONI_VTYSH = {
+    'Unknown command': "FRR non capisce questa riga e la ignora (errore di battitura, valore non valido o comando nel blocco sbagliato)",
+    'Ambiguous command': "comando ambiguo (abbreviato troppo): FRR lo ignora",
+    'Command incomplete': "comando incompleto: manca una parte, FRR lo ignora",
+}
+
+
+def sintassi_frr(kathara, lab_path, lab, lav):
+    """'vtysh --dryrun' sul frr.conf attuale di ogni router: rilegge il file senza applicarlo
+    e riporta le righe che FRR scarterebbe, con il numero di riga. Il file arriva nel
+    container in base64 (nessun carattere del file può diventare un comando)."""
+    router = [d['nome'] for d in lab['dispositivi'] if d['tipo'] == 'router'
+              and os.path.exists(os.path.join(lab_path, d['nome'], 'etc', 'frr', 'frr.conf'))]
+
+    def leggi(r):
+        with open(os.path.join(lab_path, r, 'etc', 'frr', 'frr.conf'), 'rb') as f:
+            b64 = base64.b64encode(f.read()).decode('ascii')
+        script = (f"echo {b64} | base64 -d > /tmp/controllo_frr.conf && "
+                  f"vtysh --dryrun -f /tmp/controllo_frr.conf 2>&1; echo @@RC=$?")
+        rc, out = esegui(kexec(kathara, lab_path, r, ['bash', '-c', script]), timeout=60)
+        if '@@RC=' not in out:
+            return {'errore': out.strip()[-300:]}
+        righe = []
+        for m in re.finditer(r'^line (\d+): % ([^\[:\n]+)(?:\[\d+\])?:\s*(.*)$', out, re.M):
+            tipo = m.group(2).strip()
+            righe.append({'riga': int(m.group(1)), 'testo': ' '.join(m.group(3).split()), 'gravita': 'errore',
+                          'messaggio': TRADUZIONI_VTYSH.get(tipo, tipo)})
+        return {'righe': righe}
+
+    lav.scrivi(f"Controllo della sintassi di frr.conf su {len(router)} router (vtysh --dryrun)...")
+    lav.risultato = _parallelo(leggi, router)
+    n = sum(len(x.get('righe', [])) for x in lav.risultato.values())
+    for r in router:
+        x = lav.risultato[r]
+        if x.get('errore'):
+            lav.scrivi(f"  {r}: non controllato ({x['errore'][-120:]})")
+        for e in x.get('righe', []):
+            lav.scrivi(f"  {r} riga {e['riga']}: {e['testo']}  ->  {e['messaggio']}")
+    lav.scrivi(f"Fatto: {n} righe che FRR scarterebbe." if n else "✔ Nessuna riga scartata da FRR.")
+    return 0
+
+
+def membri_lan(lab, lan):
+    """[(dispositivo, interfaccia)] collegati a una LAN."""
+    return [(d['nome'], it['dev']) for d in lab['dispositivi'] for it in d['interfacce'] if it['lan'] == lan]
+
+
+def _router_id_ospf(kathara, lab_path, router):
+    return (_json_o_none(esegui(kexec(kathara, lab_path, router, ['vtysh', '-c', 'show ip ospf json']),
+                                timeout=30)[1]) or {}).get('routerId')
+
+
+def imposta_link(kathara, lab_path, lab, lan, acceso, lav):
+    """Guasto simulato: 'ip link set <eth> down' (o up) su tutti i dispositivi della LAN.
+    Vale solo a lab acceso, i file non cambiano; con up gli IP e le rotte connesse tornano.
+    Se un router usava come Router ID OSPF un IP di quel link, FRR gli cambia identità e
+    OSPF resta bloccato (visto su tennis: percorsi rotti per minuti, ok dopo un clear):
+    in quel caso si riavvia il processo OSPF di quel router."""
+    verso = 'up' if acceso else 'down'
+    membri = membri_lan(lab, lan)
+    disp = {d['nome']: d for d in lab['dispositivi']}
+    ospf = sorted({m[0] for m in membri if 'ospfd' in disp[m[0]]['demoni']})
+    rid_prima = _parallelo(lambda r: _router_id_ospf(kathara, lab_path, r), ospf)
+    esiti = _parallelo(lambda m: esegui(kexec(kathara, lab_path, m[0], ['ip', 'link', 'set', m[1], verso]), timeout=60),
+                       membri)
+    rc = 0
+    for m in membri:
+        r, out = esiti[m]
+        lav.scrivi(f"{m[0]} {m[1]} {verso}: " + ('ok' if r == 0 else 'errore ' + out.strip()[-200:]))
+        rc = rc or r
+    if ospf:
+        time.sleep(5)
+        rid_dopo = _parallelo(lambda r: _router_id_ospf(kathara, lab_path, r), ospf)
+        for r in ospf:
+            if rid_prima[r] and rid_dopo[r] and rid_prima[r] != rid_dopo[r]:
+                lav.scrivi(f"{r}: il Router ID OSPF è cambiato ({rid_prima[r]} -> {rid_dopo[r]}) perché usava un IP di "
+                           f"questo link. Così OSPF si blocca (informazioni vecchie e nuove mescolate): riavvio il "
+                           f"processo OSPF di {r} (clear ip ospf process). Un router con 'ospf router-id' fisso non ne soffre.")
+                esegui(kexec(kathara, lab_path, r, ['vtysh', '-c', 'clear ip ospf process']), lav, timeout=60)
+    lav.scrivi(f"Link {lan} {'riacceso' if acceso else 'spento'}." + ('' if acceso else
+               " Usa 'Attendi convergenza' e poi 'Verifica percorso' per vedere il percorso di riserva."))
+    lav.risultato = {'lan': lan, 'acceso': acceso, 'membri': [f"{a} {b}" for a, b in membri]}
+    return rc
+
+
+def avvio_lab(base, lab):
+    """Ora (epoch) in cui è stato avviato il lab, dal container più vecchio; None se
+    spento o se docker non è utilizzabile."""
+    docker = shutil.which('docker')
+    if not docker:
+        return None
+    p = os.path.join(base, lab)
+    hash_ok = {hash_lab(c) for c in {os.path.abspath(p), os.path.realpath(p)}}
+    try:
+        r = subprocess.run([docker, 'ps', '--filter', 'label=app=kathara', '--format',
+                            '{{.Label "lab_hash"}}|{{.CreatedAt}}'], capture_output=True, timeout=20, env=_env())
+    except (OSError, subprocess.SubprocessError):
+        return None
+    tempi = []
+    for l in r.stdout.decode('utf-8', 'replace').splitlines():
+        h, _, quando = l.partition('|')
+        if h in hash_ok:
+            try:
+                tempi.append(datetime.datetime.strptime(quando[:25], '%Y-%m-%d %H:%M:%S %z').timestamp())
+            except ValueError:
+                pass
+    return min(tempi) if tempi else None
+
+
+def file_modificati(base, lab):
+    """File del lab cambiati dopo l'avvio (es. modifiche dal menu Opzioni a lab acceso):
+    non sono attivi finché il lab non viene riavviato."""
+    avvio = avvio_lab(base, lab)
+    if avvio is None:
+        return {'avviato': False, 'file': []}
+    lab_dir = os.path.join(base, lab)
+    cambiati = []
+    for radice, cartelle, nomi in os.walk(lab_dir):
+        cartelle[:] = [c for c in cartelle if not (radice == lab_dir and c == 'shared') and c != '__pycache__']
+        for n in nomi:
+            f = os.path.join(radice, n)
+            rel = os.path.relpath(f, lab_dir).replace(os.sep, '/')
+            if rel == f"{lab}.xml":
+                continue
+            if os.path.getmtime(f) > avvio + 5:
+                cambiati.append(rel)
+    return {'avviato': True, 'avvio': time.strftime('%H:%M:%S', time.localtime(avvio)), 'file': sorted(cambiati)}
+
+
+# -------------------------
+# Terminale e archivio
+# -------------------------
+def apri_terminale(kathara, lab_path, dev):
+    """Apre `kathara connect` in una nuova finestra. Ritorna (ok, messaggio, comando)."""
+    args = [kathara or 'kathara', 'connect', '-d', lab_path, dev]
+    comando = testo_comando(['kathara', 'connect', '-d', lab_path, dev])
+    if sys.platform.startswith('win'):
+        subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
+        return True, 'Terminale aperto in una nuova finestra.', comando
+    candidati = [('gnome-terminal', ['--']), ('konsole', ['-e']), ('xfce4-terminal', ['-x']),
+                 ('mate-terminal', ['-x']), ('x-terminal-emulator', ['-e']), ('xterm', ['-e'])]
+    for prog, opz in candidati:
+        exe = shutil.which(prog)
+        if exe:
+            try:
+                subprocess.Popen([exe] + opz + args, stdin=subprocess.DEVNULL,
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                 start_new_session=True)
+                return True, f"Terminale aperto con {prog}.", comando
+            except OSError:
+                continue
+    return False, 'Nessun terminale grafico trovato: copia il comando in un terminale.', comando
+
+
+def crea_archivio(base, lab, nome, formato):
+    """Archivio del lab senza l'XML del generatore (e senza la cartella shared/ vuota
+    che Kathará crea a ogni lstart), salvato nella cartella dei lab.
+    Ritorna (percorso, elenco dei file, comando equivalente, esclusi)."""
+    lab_dir = os.path.join(base, lab)
+    esclusi = [f"{lab}/{lab}.xml"]
+    shared = os.path.join(lab_dir, 'shared')
+    if os.path.isdir(shared) and not os.listdir(shared):
+        esclusi.append(f"{lab}/shared")
+    file = []
+    for radice, cartelle, nomi in os.walk(lab_dir):
+        cartelle[:] = sorted(c for c in cartelle if c != '__pycache__')
+        for n in sorted(nomi):
+            rel = os.path.relpath(os.path.join(radice, n), base).replace(os.sep, '/')
+            if rel not in esclusi:
+                file.append(rel)
+    if formato == 'zip':
+        dest = os.path.join(base, f"{nome}.zip")
+        with zipfile.ZipFile(dest, 'w', zipfile.ZIP_DEFLATED) as z:
+            for rel in file:
+                z.write(os.path.join(base, rel), rel)
+        comando = f"zip -r {nome}.zip {lab} -x " + ' '.join(
+            f"'{e}/'" if e.endswith('/shared') else f"'{e}'" for e in esclusi)
+    else:
+        dest = os.path.join(base, f"{nome}.tar.gz")
+
+        def filtro(info):
+            if info.name in esclusi or '__pycache__' in info.name.split('/'):
+                return None
+            info.uid = info.gid = 0
+            info.uname = info.gname = ''
+            return info
+        with tarfile.open(dest, 'w:gz') as t:
+            t.add(lab_dir, arcname=lab, filter=filtro)
+        comando = ' '.join(['tar'] + [f"--exclude='{e}'" for e in esclusi] + [f"-czvf {nome}.tar.gz {lab}"])
+    return dest, file, comando, esclusi
