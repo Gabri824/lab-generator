@@ -1,0 +1,13 @@
+# Ignora i binari e gli eseguibili generati (PyInstaller)
+linux/
+windows/
+build/
+dist/
+*.spec
+
+# Ignora file temporanei e cache di Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
