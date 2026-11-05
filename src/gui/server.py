@@ -18,6 +18,28 @@ from . import dati, kathara
 from .pagina import PAGINA
 
 
+def apri_browser(url):
+    """Apre il browser ripulendo LD_LIBRARY_PATH dall'ambiente PyInstaller."""
+    lp_key = "LD_LIBRARY_PATH"
+    orig_val = os.environ.get(lp_key)
+    pyinstaller_orig = os.environ.get(f"{lp_key}_ORIG")
+
+    try:
+        if getattr(sys, "frozen", False):
+            if pyinstaller_orig is not None:
+                os.environ[lp_key] = pyinstaller_orig
+            elif lp_key in os.environ:
+                del os.environ[lp_key]
+
+        webbrowser.open(url)
+    finally:
+        if orig_val is not None:
+            os.environ[lp_key] = orig_val
+        else:
+            os.environ.pop(lp_key, None)
+
+
+
 class Errore(Exception):
     pass
 
@@ -381,7 +403,7 @@ def avvia(base, gen, porta=8765, apri_browser=True):
         print("   ⚠️ 'kathara' non trovato nel PATH: si vedono topologia e riepilogo, ma non si avvia nulla.")
     print("   Per chiuderla: pulsante 'Chiudi GUI' nella pagina oppure Ctrl+C qui.\n")
     if apri_browser:
-        threading.Timer(0.5, lambda: webbrowser.open(url)).start()
+        threading.Timer(0.5, lambda: apri_browser(url)).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
