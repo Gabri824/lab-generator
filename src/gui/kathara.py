@@ -13,6 +13,7 @@ import itertools
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -168,7 +169,8 @@ def suggerimento(testo):
     if 'SyntaxError' in testo and 'lab.conf' in testo:
         return ("-> lab.conf non valido (es. nomi di dispositivo con '-', '.' o maiuscole): guarda "
                 "'Riepilogo e controlli' oppure apri il lab dal menu 5 del generatore per correggerlo.")
-    if 'MachineNotRunningError' in testo or 'is not running' in testo:
+    # non basta 'is not running': lo scrive anche vtysh ('ospfd is not running') a router acceso
+    if 'MachineNotRunningError' in testo or re.search(r'Device \S+ is not running', testo):
         return "-> Il dispositivo non è avviato: avvia il lab (lstart) e riprova."
     return None
 
@@ -183,7 +185,17 @@ def esegui_spiegato(args, lav, timeout=600):
 
 
 def kexec(kathara, lab_path, dev, comando):
-    return [kathara, 'exec', '-d', lab_path, dev, '--'] + comando
+    """Argomenti di `kathara exec`, con il comando in un'unica stringa.
+    Il pacchetto ufficiale di Kathará (compilato con Nuitka) si rifiuta di partire se tra i suoi
+    argomenti c'è esattamente '-c' o '-m', anche dopo '--': così 'vtysh -c ...' e 'ping -c ...'
+    fallirebbero e la GUI leggerebbe 0 sessioni. Una stringa sola passa il controllo e Kathará la
+    divide con shlex.split (POSIX su ogni sistema), l'operazione inversa di shlex.join."""
+    return [kathara, 'exec', '-d', lab_path, dev, shlex.join(comando)]
+
+
+def testo_exec(lab_path, dev, comando):
+    """Il comando di kexec come va scritto in un terminale, per il registro delle operazioni."""
+    return testo_comando(['kathara', 'exec', '-d', lab_path, dev]) + ' "' + shlex.join(comando) + '"'
 
 
 # -------------------------
@@ -434,16 +446,34 @@ def sessioni(kathara, lab_path, lab, lav, spenti=()):
     return 0
 
 
+def _motivo_attesa(righe):
+    """Perché il lab non è ancora pronto, dalla prima riga non attiva (None se sono tutte attive)."""
+    for x in righe:
+        if x.get('ok') or x.get('escluso'):
+            continue
+        if x.get('errore'):
+            ultima = [l for l in x['errore'].splitlines() if l.strip()][-1:] or ['nessuna risposta']
+            return f"{x['router']}: lettura non riuscita: {ultima[0].strip()[:200]}"
+        return f"{x['router']} -> {x.get('neighbor') or x.get('vicino')}: {x.get('stato')}"
+    return None
+
+
 def convergenza(kathara, lab_path, lab, lav, limite=300, passo=15, spenti=()):
     """Rilegge le sessioni ogni `passo` secondi finché sono tutte Established/Full
-    (al massimo `limite` secondi: i testi avvisano che possono servire fino a 5 minuti)."""
+    (al massimo `limite` secondi: i testi avvisano che possono servire fino a 5 minuti).
+    Il motivo dell'attesa va nell'Output subito, e di nuovo solo quando cambia."""
     t0 = time.time()
+    motivo_scritto = None
     while True:
         righe_bgp, righe_ospf = _leggi_sessioni(kathara, lab_path, lab, spenti)
         (ob, tb), (oo, to) = _conta(righe_bgp), _conta(righe_ospf)
         trascorsi = time.time() - t0
         lav.risultato = {'bgp': righe_bgp, 'ospf': righe_ospf}
         lav.scrivi(f"{trascorsi:4.0f}s  BGP {ob}/{tb} Established   OSPF {oo}/{to} Full")
+        motivo = _motivo_attesa(righe_bgp + righe_ospf)
+        if motivo and motivo != motivo_scritto:
+            lav.scrivi(f"       {motivo}")
+            motivo_scritto = motivo
         if ob == tb and oo == to:
             # le rotte BGP possono arrivare qualche secondo dopo la sessione: fino a 30 s
             for i in range(4):
@@ -462,8 +492,12 @@ def convergenza(kathara, lab_path, lab, lav, limite=300, passo=15, spenti=()):
         if trascorsi + passo > limite:
             giu = [f"{x['router']} -> {x.get('neighbor') or x.get('vicino')} ({x.get('chi')}): {x.get('stato') or x.get('errore')}"
                    for x in righe_bgp + righe_ospf if not x.get('ok') and not x.get('escluso')]
+            consiglio = ("La GUI non riesce a leggere questi router con 'kathara exec': il problema non è la "
+                         "configurazione del lab. Controlla da 'Terminale' con 'show ip bgp summary'."
+                         if any(x.get('errore') for x in righe_bgp) else
+                         "Non è più un problema di tempo: controlla neighbor, remote-as, network OSPF e LAN.")
             lav.scrivi(f"✘ Dopo {trascorsi:.0f} s non sono ancora attive:\n  " + '\n  '.join(giu)
-                       + "\n  Non è più un problema di tempo: controlla neighbor, remote-as, network OSPF e LAN.")
+                       + "\n  " + consiglio)
             return 1
         time.sleep(passo)
 

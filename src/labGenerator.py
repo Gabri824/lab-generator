@@ -117,6 +117,58 @@ def valida_ip_senza_cidr(prompt):
         except Exception:
             print("❌ IP non valido. Inserisci un IPv4 (es. 10.0.0.2)")
 
+def asn_valido(s):
+    return s.isdigit() and 1 <= int(s) <= 4294967295
+
+
+def input_asn(prompt):
+    """Numero AS: solo cifre (FRR scarterebbe 'router bgp abc' o 'remote-as abc')."""
+    while True:
+        s = input_non_vuoto(prompt).strip()
+        if asn_valido(s):
+            return s
+        print("❌ Numero AS non valido: solo cifre (es. 20).")
+
+
+def area_valida(s):
+    """Area OSPF: un numero (0) o il formato x.x.x.x (0.0.0.0)."""
+    if s.isdigit():
+        return int(s) <= 4294967295
+    try:
+        ipaddress.IPv4Address(s)
+        return True
+    except ValueError:
+        return False
+
+
+def input_area(prompt, default=None):
+    """Area OSPF valida; con un default, Invio a vuoto ritorna il default."""
+    while True:
+        s = input(prompt).strip()
+        if not s and default is not None:
+            return default
+        if s and area_valida(s):
+            return s
+        if s:
+            print("❌ Area OSPF non valida: un numero (es. 0) o x.x.x.x (es. 1.1.1.1).")
+
+
+def input_destinazione(prompt):
+    """Destinazione di una rotta statica: una rete con maschera oppure 'default'."""
+    while True:
+        s = input_non_vuoto(prompt).strip()
+        if s.lower() == 'default':
+            return 'default'
+        try:
+            reti = parse_reti(s)
+        except ValueError as e:
+            print(f"❌ Rete non valida: {e}")
+            continue
+        if len(reti) == 1:
+            return reti[0]
+        print("❌ Inserisci una sola rete.")
+
+
 def valida_protocols(prompt):
     allowed = {"bgp", "ospf", "rip", "statico"}
     while True:
@@ -1603,7 +1655,7 @@ def ensure_neighbor_exists(fpath, neigh_ip):
     if f"neighbor {neigh_ip_stripped} remote-as" in content:
         return True
     # chiedi ASN all'utente
-    asn = input_non_vuoto(f"ASN del neighbor {neigh_ip_stripped} (necessario per creare il neighbor): ")
+    asn = input_asn(f"ASN del neighbor {neigh_ip_stripped} (necessario per creare il neighbor): ")
     # inserisci il neighbor dentro il blocco router bgp
     lines = [f"neighbor {neigh_ip_stripped} remote-as {asn}"]
     insert_lines_into_protocol_block(fpath, proto='bgp', asn=None, lines=lines)
@@ -1891,6 +1943,14 @@ def _chiedi_ip(prompt):
             print("❌ IP non valido (es. 10.0.0.2). Invio a vuoto per annullare.")
 
 
+def _chiedi_asn(prompt):
+    while True:
+        s = _chiedi(prompt)
+        if asn_valido(s):
+            return s
+        print("❌ Numero AS non valido: solo cifre (es. 20). Invio a vuoto per annullare.")
+
+
 def _chiedi_int(prompt, min_val=0):
     while True:
         s = _chiedi(prompt)
@@ -1988,7 +2048,7 @@ def policies_menu(base_path, routers):
             nuovo_asn = None
             if not _neighbor_presente(fpath, neigh_ip):
                 print(f"Il neighbor {neigh_ip} non è configurato su {src}.")
-                nuovo_asn = _chiedi(f"ASN del neighbor {neigh_ip} (per crearlo): ")
+                nuovo_asn = _chiedi_asn(f"ASN del neighbor {neigh_ip} (per crearlo): ")
             if c == '1':
                 direz = _chiedi_direzione()
                 reti = _chiedi_reti('Reti da DENY, separate da virgola (es. 100.0.0.0/8, 100.1.0.0/24): ')
@@ -2242,6 +2302,44 @@ def stampa_controllo_topologia(lab_path):
     return avvisi
 
 
+def _voce_prefix_list(resto):
+    """'permit 1.0.0.0/8 le 24' -> (azione, rete, ge, le); None se FRR scarterebbe la riga."""
+    m = re.fullmatch(r'(?:seq \d+ )?(permit|deny) (any|\S+/\d+)(?: ge (\d+))?(?: le (\d+))?', resto)
+    if not m:
+        return None
+    if m.group(2) != 'any':
+        try:
+            ipaddress.ip_network(m.group(2), strict=False)
+        except ValueError:
+            return None
+    return m.group(1), m.group(2), int(m.group(3) or 0), int(m.group(4) or 0)
+
+
+def _contiene(rete, ip):
+    try:
+        return ipaddress.ip_address(ip.split('/')[0]) in ipaddress.ip_network(rete, strict=False)
+    except ValueError:
+        return False
+
+
+def _esito_prefix_list(voci, rete):
+    """Azione della prima voce che corrisponde alla rete; None = nessuna (viene scartata)."""
+    try:
+        r = ipaddress.ip_network(rete, strict=False)
+    except ValueError:
+        return 'deny'       # network malformata: FRR l'ha già scartata, non è un problema della lista
+    for azione, p, ge, le in voci:
+        if p == 'any':
+            return azione
+        n = ipaddress.ip_network(p, strict=False)
+        if ge or le:
+            if r.subnet_of(n) and (ge or n.prefixlen) <= r.prefixlen <= (le or 32):
+                return azione
+        elif r == n:
+            return azione
+    return None
+
+
 def riferimenti_frr(righe):
     """Route-map, prefix-list e access-list di un frr.conf: usate ma non definite (errore)
     o definite ma non usate (avviso, spesso è lo stesso nome scritto in due modi).
@@ -2250,21 +2348,40 @@ def riferimenti_frr(righe):
     (in o out) FRR non dà errori e la sessione è Established, ma non passa nessuna rotta."""
     definiti = {'route-map': {}, 'prefix-list': {}, 'access-list': {}}      # nome -> prima riga
     usi = []                                                              # (riga, testo, tipo, nome, contesto)
+    voci_pl, scartate, reti_bgp, blocco = {}, [], [], None      # voci valide, righe non valide, network BGP
+    vicini = set()
     for n, raw in enumerate(righe, 1):
         s = ' '.join(raw.split())
         if not s or s.startswith('!'):
             continue
+        m = re.match(r'(router|interface|route-map)\b', s)
+        if m:
+            blocco = 'bgp' if s.startswith('router bgp') else m.group(1)
+        m = re.match(r'network (\S+)$', s)
+        if m and blocco == 'bgp':
+            reti_bgp.append((n, m.group(1)))
         m = re.match(r'route-map (\S+) (permit|deny) \d+$', s)
         if m:
             definiti['route-map'].setdefault(m.group(1), n)
             continue
-        m = re.match(r'ip prefix-list (\S+) ', s)
+        m = re.match(r'ip prefix-list (\S+) (.*)', s)
         if m:
-            definiti['prefix-list'].setdefault(m.group(1), n)
+            nome, resto = m.groups()
+            if not resto.startswith('description'):
+                voce = _voce_prefix_list(resto)
+                if voce:
+                    definiti['prefix-list'].setdefault(nome, n)
+                    voci_pl.setdefault(nome, []).append(voce)
+                else:
+                    scartate.append((n, s, nome, resto.split()[-1]))
             continue
         m = re.match(r'(?:ip )?access-list (\S+) ', s)
         if m:
             definiti['access-list'].setdefault(m.group(1), n)
+            continue
+        m = re.match(r'neighbor (\S+) remote-as ', s)
+        if m:
+            vicini.add(m.group(1))
             continue
         m = re.match(r'neighbor (\S+) (route-map|prefix-list) (\S+) (in|out)\b', s)
         if m:
@@ -2292,6 +2409,11 @@ def riferimenti_frr(righe):
     usati = {(tipo, nome) for _, _, tipo, nome, _ in usi}
     art = {'route-map': 'la ', 'prefix-list': 'la ', 'access-list': "l'"}
     out = []
+    for n, s, nome, valore in scartate:
+        proposta = next((r for _, r in reti_bgp if _contiene(r, valore)), None)
+        out.append({'riga': n, 'testo': s, 'gravita': 'errore',
+                    'messaggio': f"'{valore}' non è valido in una prefix-list (serve una rete con la maschera): "
+                                 f"FRR scarta la riga." + (f" Forse intendevi {proposta}?" if proposta else '')})
     for n, s, tipo, nome, ctx in usi:
         if nome in definiti[tipo]:
             continue
@@ -2304,8 +2426,31 @@ def riferimenti_frr(righe):
             effetto = "il riferimento non porta a niente."
         simili = difflib.get_close_matches(nome, list(definiti[tipo]), n=1, cutoff=0.6)
         forse = f" Forse intendevi {simili[0]} (riga {definiti[tipo][simili[0]]})?" if simili else ''
+        if any(x[2] == nome for x in scartate):
+            forse = ' Tutte le sue righe sono scartate: correggile.'
         out.append({'riga': n, 'testo': s, 'gravita': 'errore',
                     'messaggio': f"{art[tipo]}{tipo} {nome} non è definita: {effetto}{forse}"})
+    # una rete annunciata dal router che la sua prefix-list in uscita non nomina. Non si segnalano
+    # un 'deny' esplicito (è una scelta) e i link verso provider e peer: nelle soluzioni del corso
+    # (red-baron, pear-to-pear) non si annunciano. Un vicino senza filtri in uscita è un customer.
+    liste_out = {c[1]: nome for _, _, tipo, nome, c in usi
+                 if tipo == 'prefix-list' and c[0] == 'neighbor' and c[2] == 'out'}
+
+    def verso_cliente(ip):
+        voci = voci_pl.get(liste_out[ip]) if ip in liste_out else [('permit', 'any', 0, 0)]
+        return bool(voci) and all(v[:2] == ('permit', 'any') for v in voci)
+
+    for n, s, tipo, nome, ctx in usi:
+        if tipo == 'prefix-list' and ctx[0] == 'neighbor' and ctx[2] == 'out' and nome in voci_pl:
+            for riga, rete in reti_bgp:
+                capi = [ip for ip in vicini if _contiene(rete, ip)]
+                if capi and not any(verso_cliente(ip) for ip in capi):
+                    continue
+                if _esito_prefix_list(voci_pl[nome], rete) is None:
+                    out.append({'riga': n, 'testo': s, 'gravita': 'avviso',
+                                'messaggio': f"questo router annuncia {rete} (riga {riga}), ma la prefix-list {nome} "
+                                             f"non la lascia passare verso {ctx[1]}: se il testo vuole annunciarla, "
+                                             f"aggiungila."})
     for tipo, nomi in definiti.items():
         for nome, n in nomi.items():
             if (tipo, nome) not in usati:
@@ -2796,7 +2941,7 @@ def aggiungi_loopback_menu(base_path, routers):
             # IMPORTANT: non annunciare mai la loopback in BGP
             # (anche se il router ha BGP abilitato non tocchiamo il blocco bgp)
             if 'ospf' in protos:
-                area = routers.get(target, {}).get('ospf_area') or input('Area OSPF per annuncio della loopback (es. 0.0.0.0): ').strip() or '0.0.0.0'
+                area = routers.get(target, {}).get('ospf_area') or input_area('Area OSPF per annuncio della loopback (es. 0.0.0.0): ', default='0.0.0.0')
                 insert_lines_into_protocol_block(fpath, proto='ospf', asn=None, lines=[f"network {ipcidr} area {area}"])
             if 'rip' in protos:
                 insert_lines_into_protocol_block(fpath, proto='rip', asn=None, lines=[f"network {ipcidr}"])
@@ -2870,6 +3015,62 @@ def aggiungi_loopback_menu(base_path, routers):
 
 
 
+def _rete_di_ip(ip, routers):
+    """Rete del lab (dalle interfacce dei router) che contiene un IP scritto senza maschera."""
+    for r in routers.values():
+        for it in r.get('interfaces', []):
+            try:
+                i = ipaddress.ip_interface(it.get('ip') or '')
+            except ValueError:
+                continue
+            if ipaddress.ip_address(ip) in i.network:
+                return str(i.network)
+    return None
+
+
+def _reti_del_router(target, routers, reti):
+    """Le network del router, ognuna con il router all'altro capo se e' un link."""
+    out = []
+    for rete in reti:
+        altri = [n for n, r in routers.items() if n != target and any(
+            _contiene(rete, it.get('ip') or '') for it in r.get('interfaces', []))]
+        out.append(f"{rete}" + (f" (link con {', '.join(altri)})" if altri else " (rete propria)"))
+    return out
+
+
+def _chiedi_reti_cpp(routers):
+    """Reti per la prefix-list in uscita: vanno scritte come reti con maschera. 'permit 20.0.0.1'
+    verrebbe scartata da FRR e la lista inesistente bloccherebbe tutti gli annunci (provato).
+    Un indirizzo di router viene corretto con la sua rete, dopo conferma."""
+    while True:
+        s = input('> ').strip()
+        if not s:
+            return []
+        reti = []
+        for tok in s.replace(',', ' ').split():
+            try:
+                if '/' in tok:
+                    i = ipaddress.ip_interface(tok)
+                    rete, indirizzo = str(i.network), i.ip != i.network.network_address
+                else:
+                    ipaddress.ip_address(tok)
+                    rete, indirizzo = _rete_di_ip(tok, routers), True
+            except ValueError:
+                print(f"❌ '{tok}' non è una rete valida (es. 20.0.0.0/24). Riscrivi la risposta.")
+                break
+            if rete is None:
+                print(f"❌ Manca la maschera in '{tok}' (es. 20.0.0.0/24). Riscrivi la risposta.")
+                break
+            if indirizzo and input(f"{tok} è l'indirizzo di un router, non una rete. "
+                                   f"Intendevi {rete}? (S/n): ").strip().lower().startswith('n'):
+                print("Riscrivi la risposta.")
+                break
+            if rete not in reti:
+                reti.append(rete)
+        else:
+            return reti
+
+
 def aggiungi_customer_provider_wizard(base_path, routers):
     print("\n=== Configurazione Customer-Provider ===")
     
@@ -2895,7 +3096,7 @@ def aggiungi_customer_provider_wizard(base_path, routers):
         if not neigh_name:
             return
         neigh_ip = valida_ip_senza_cidr("Inserisci IP del vicino: ")
-        neigh_asn = input_non_vuoto("ASN del vicino: ")
+        neigh_asn = input_asn("ASN del vicino: ")
     else:
         # Neighbor conosciuto: recuperiamo gli IP
         neigh_asn = routers[neigh_name].get('asn')
@@ -2974,25 +3175,29 @@ def aggiungi_customer_provider_wizard(base_path, routers):
     lines_to_append = []
 
 
-    if rel_type == "provider":
-        # Provider (Il vicino è il mio provider):
-        # IN: permit any (accetto tutto dal provider)
+    if rel_type in ("provider", "peer"):
+        # Provider (il vicino è il mio provider) e Peer (siamo alla pari):
+        # IN: permit any (accetto tutto dal vicino)
         # OUT: permit solo le mie reti e quelle dei miei clienti
         lines_to_append.append(f"ip prefix-list {pl_in} permit any")
-        
-        print("\nInserisci le TUE reti da annunciare al provider (separate da virgola):")
-        print("⚠️  ATTENZIONE: NON inserire le reti DEI tuoi PEER!")
-        my_nets = input("> ").strip()
-        if my_nets:
-            for net in my_nets.replace(',', ' ').split():
-                lines_to_append.append(f"ip prefix-list {pl_out} permit {net}")
-        
-        print("\nInserisci le reti dei tuoi CLIENTI da annunciare al provider (separate da virgola, o invio per nessuna):")
-        print("⚠️  ATTENZIONE: NON inserire le reti DEI tuoi PEER!")
-        cust_nets = input("> ").strip()
-        if cust_nets:
-            for net in cust_nets.replace(',', ' ').split():
-                lines_to_append.append(f"ip prefix-list {pl_out} permit {net}")
+        vietate = "DEI tuoi PEER" if rel_type == "provider" else "DEL tuo PROVIDER"
+        proprie = _analizza_frr(_leggi_righe(fpath))['bgp_networks']
+
+        if proprie:
+            print(f"\nReti annunciate da {target}: {', '.join(_reti_del_router(target, routers, proprie))}")
+            print("(nelle soluzioni del corso i link verso provider e peer non si annunciano a provider e peer;")
+            print(" le reti proprie e i link verso i clienti si')")
+        print(f"\nInserisci le TUE reti da annunciare al {rel_type} (separate da virgola):")
+        print(f"⚠️  ATTENZIONE: NON inserire le reti {vietate}!")
+        reti_out = _chiedi_reti_cpp(routers)
+
+        print(f"\nInserisci le reti dei tuoi CLIENTI da annunciare al {rel_type} (separate da virgola, o invio per nessuna):")
+        print(f"⚠️  ATTENZIONE: NON inserire le reti {vietate}!")
+        reti_out += [r for r in _chiedi_reti_cpp(routers) if r not in reti_out]
+
+        lines_to_append += [f"ip prefix-list {pl_out} permit {r}" for r in reti_out]
+        if not reti_out:
+            print(f"⚠️  Nessuna rete: {target} non annuncerà niente a {neigh_name}.")
 
     elif rel_type == "customer":
         # Customer (Il vicino è il mio cliente):
@@ -3000,26 +3205,6 @@ def aggiungi_customer_provider_wizard(base_path, routers):
         # OUT: permit any (invio la full table al cliente)
         lines_to_append.append(f"ip prefix-list {pl_in} permit any")
         lines_to_append.append(f"ip prefix-list {pl_out} permit any")
-
-    elif rel_type == "peer":
-        # Peer (Siamo alla pari):
-        # IN: permit any (accetto tutto dal peer)
-        # OUT: permit solo le mie reti e quelle dei miei clienti (NON le reti del provider)
-        lines_to_append.append(f"ip prefix-list {pl_in} permit any")
-        
-        print("\nInserisci le TUE reti da annunciare al peer (separate da virgola):")
-        print("⚠️  ATTENZIONE: NON inserire le reti DEL tuo PROVIDER!")
-        my_nets = input("> ").strip()
-        if my_nets:
-            for net in my_nets.replace(',', ' ').split():
-                lines_to_append.append(f"ip prefix-list {pl_out} permit {net}")
-        
-        print("\nInserisci le reti dei tuoi CLIENTI da annunciare al peer (separate da virgola, o invio per nessuna):")
-        print("⚠️  ATTENZIONE: NON inserire le reti DEL tuo PROVIDER!")
-        cust_nets = input("> ").strip()
-        if cust_nets:
-            for net in cust_nets.replace(',', ' ').split():
-                lines_to_append.append(f"ip prefix-list {pl_out} permit {net}")
 
     # Collega le prefix-list al neighbor (con riga vuota prima per separazione)
     neigh_lines = [
@@ -4301,7 +4486,7 @@ def wizard_router(i, ctx):
         st['protocols'] = valida_protocols(f"Protocolli attivi su {st['nome']} (bgp/ospf/rip/statico, separati da virgola): ")
 
     def p_asn(st):
-        st['asn'] = input_non_vuoto("Numero AS BGP: ")
+        st['asn'] = input_asn("Numero AS BGP: ")
 
     def p_area(st):
         first = ctx['first_ospf_area']
@@ -4310,11 +4495,11 @@ def wizard_router(i, ctx):
             if ans.startswith('s'):
                 st['ospf_area'], st['ospf_stub'] = '0.0.0.0', False
             else:
-                st['ospf_area'] = input_non_vuoto("Inserisci l'area OSPF di questo router (es. 1.1.1.1): ")
+                st['ospf_area'] = input_area("Inserisci l'area OSPF di questo router (es. 1.1.1.1): ")
                 st['ospf_stub'] = True
         else:
             first_stub = ctx['first_ospf_stub']
-            ans = input(f"Area OSPF per {st['nome']} (vuoto -> default {first}{' stub' if first_stub else ''}): ").strip()
+            ans = input_area(f"Area OSPF per {st['nome']} (vuoto -> default {first}{' stub' if first_stub else ''}): ", default='')
             if ans:
                 st['ospf_area'] = ans
                 st['ospf_stub'] = input_non_vuoto("Marcare quest'area come stub? (s/N): ").strip().lower().startswith('s')
@@ -4344,8 +4529,8 @@ def wizard_router(i, ctx):
     def p_static(si):
         def f(st):
             print(f"Rotta statica #{si+1}:")
-            net = input_non_vuoto("  Destinazione (es. 30.0.0.0/24): ")
-            via = input_non_vuoto("  Via / next-hop (es. 10.0.0.13): ").split('/')[0]
+            net = input_destinazione("  Destinazione (es. 30.0.0.0/24, oppure default): ")
+            via = valida_gateway("  Via / next-hop (es. 10.0.0.13): ")
             ifaces = _ifaces_stato(st)
             auto_dev = iface_for_nexthop(ifaces, via) or ifaces[0]['name']
             dev = input(f"  Interfaccia (vuoto -> {auto_dev}): ").strip()
@@ -4529,7 +4714,7 @@ def _chiedi_zone():
             elif rtype == 'NS':
                 h = input_non_vuoto("      Nome delegato (es. @ per la zona): ")
                 nsname = input_non_vuoto("      Nome del nameserver (es. dns.example.local.): ")
-                glue = input("      Glue IP per il nameserver (opzionale, invio per saltare): ").strip()
+                glue = valida_gateway("      Glue IP per il nameserver (opzionale, invio per saltare): ", opzionale=True)
                 rec = {'type': 'NS', 'ns': nsname}
                 if glue:
                     rec['glue'] = glue
@@ -4541,7 +4726,7 @@ def _chiedi_zone():
             elif rtype == 'DELEGATION':
                 child = input_non_vuoto("      Nome sottodominio da delegare (es. sub): ")
                 nsname = input_non_vuoto("      Nameserver per la delega (es. ns.sub.example.local.): ")
-                ns_ip = input("      Glue IP per il nameserver (opzionale): ").strip()
+                ns_ip = valida_gateway("      Glue IP per il nameserver (opzionale): ", opzionale=True)
                 rec = {'type': 'DELEGATION', 'zone': child, 'ns': nsname}
                 if ns_ip:
                     rec['ns_ip'] = ns_ip

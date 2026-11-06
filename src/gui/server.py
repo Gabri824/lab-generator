@@ -18,28 +18,6 @@ from . import dati, kathara
 from .pagina import PAGINA
 
 
-def lancia_browser(url):
-    """Apre il browser ripulendo LD_LIBRARY_PATH dall'ambiente PyInstaller."""
-    lp_key = "LD_LIBRARY_PATH"
-    orig_val = os.environ.get(lp_key)
-    pyinstaller_orig = os.environ.get(f"{lp_key}_ORIG")
-
-    try:
-        if getattr(sys, "frozen", False):
-            if pyinstaller_orig is not None:
-                os.environ[lp_key] = pyinstaller_orig
-            elif lp_key in os.environ:
-                del os.environ[lp_key]
-
-        webbrowser.open(url)
-    finally:
-        if orig_val is not None:
-            os.environ[lp_key] = orig_val
-        else:
-            os.environ.pop(lp_key, None)
-
-
-
 class Errore(Exception):
     pass
 
@@ -160,7 +138,7 @@ def azione(st, dati_rich):
         ip = _ip(dati_rich.get('ip')) if kathara.serve_ip(chiave) else None
         etichetta, cmd = kathara.comando(chiave, ip)
         args = kathara.kexec(k, lab_path, dev, cmd)
-        testo = kathara.testo_comando(['kathara'] + args[1:])
+        testo = kathara.testo_exec(lab_path, dev, cmd)
         lid = st.lavori.avvia(f"{dev}: {etichetta}", testo, lambda lav: kathara.esegui_spiegato(args, lav, timeout=120)[0])
         return {'lavoro': lid}
 
@@ -184,8 +162,7 @@ def azione(st, dati_rich):
     if tipo == 'percorso':
         dev = _dispositivo(lab, dati_rich.get('dev'))['nome']
         ip = _ip(dati_rich.get('ip'))
-        testo = kathara.testo_comando(['kathara', 'exec', '-d', lab_path, dev, '--']
-                                      + kathara.comando('traceroute', ip)[1])
+        testo = kathara.testo_exec(lab_path, dev, kathara.comando('traceroute', ip)[1])
         lid = st.lavori.avvia(f"percorso {dev} -> {ip}", testo,
                               lambda lav: kathara.percorso(k, lab_path, lab, dev, ip, lav))
         return {'lavoro': lid}
@@ -203,7 +180,7 @@ def azione(st, dati_rich):
         cmd = kathara.comando('ping', ip)[1]
         if origine:
             cmd = cmd[:-1] + ['-I', origine, ip]
-        testo = kathara.testo_comando(['kathara', 'exec', '-d', lab_path, dev, '--'] + cmd)
+        testo = kathara.testo_exec(lab_path, dev, cmd)
         lid = st.lavori.avvia(f"ping {dev} -> {ip}" + (f" (da {origine})" if origine else ''), testo,
                               lambda lav: kathara.ping(k, lab_path, lab, dev, ip, origine, lav))
         return {'lavoro': lid}
@@ -403,7 +380,7 @@ def avvia(base, gen, porta=8765, apri_browser=True):
         print("   ⚠️ 'kathara' non trovato nel PATH: si vedono topologia e riepilogo, ma non si avvia nulla.")
     print("   Per chiuderla: pulsante 'Chiudi GUI' nella pagina oppure Ctrl+C qui.\n")
     if apri_browser:
-        threading.Timer(0.5, lambda: lancia_browser(url)).start()
+        threading.Timer(0.5, lambda: webbrowser.open(url)).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
