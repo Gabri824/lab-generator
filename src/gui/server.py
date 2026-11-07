@@ -388,3 +388,4 @@ def avvia(base, gen, porta=8765, apri_browser=True):
     finally:
         server.server_close()
     print("GUI chiusa. (I lab avviati restano accesi: chiudili con lclean se non ti servono.)")
+
