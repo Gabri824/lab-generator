@@ -2016,18 +2016,22 @@ def policies_menu(base_path, routers):
             'Local-preference in ingresso (su tutte le rotte o solo su alcune reti)',
             'MED (metric) in uscita',
             'Access-list: scarta una rete in ingresso (via route-map)',
-            'Configurazione Customer-Provider-Peer'
+            'Configurazione Customer-Provider-Peer',
+            'Default route verso uno o più neighbor (default-originate, anche "solo la default")'
         ]
         print_menu('=== Policies BGP (scegli) ===', items, extra_options=[('0', 'Torna indietro')])
         c = input('Seleziona (numero): ').strip()
         if c == '0':
             break
-        if c not in ('1', '2', '3', '4', '5'):
+        if c not in ('1', '2', '3', '4', '5', '6'):
             print('Scelta non valida.')
             continue
 
         if c == '5':
             aggiungi_customer_provider_wizard(base_path, routers)
+            continue
+        if c == '6':
+            aggiungi_default_originate(base_path, routers)
             continue
 
         print("(Invio senza scrivere nulla a una domanda = annulla e torna al menu)")
@@ -2123,6 +2127,232 @@ def policies_menu(base_path, routers):
                   f"(neighbor {neigh_ip}, in).")
 
 
+def aggiungi_default_originate(base_path, routers):
+    """Policies 6: 'neighbor X default-originate' su uno o più vicini di un router BGP (slide 044:
+    manda la default solo a quel vicino, senza bisogno di 'network 0.0.0.0/0'). Se il vicino deve
+    ricevere SOLO la default (più eventuali reti indicate, es. Galaxy: 'just the default route and
+    1.0.0.0/8'), aggiunge la prefix-list in uscita SOLO_DEFAULT_<ip> come lo stub della slide 044.
+    Anteprima, conferma e copia di sicurezza come in Opzioni 11."""
+    print('\n--- Default route verso un neighbor (default-originate) ---')
+    print("(Invio senza scrivere nulla a una domanda = annulla e torna al menu)")
+    bgp_routers = {k: v for k, v in routers.items() if 'bgp' in v.get('protocols', [])}
+    src = select_router(bgp_routers, prompt='Router che manda la default:')
+    if not src:
+        print('Annullato: nessuna modifica.')
+        return
+    rel = os.path.join(src, 'etc', 'frr', 'frr.conf')
+    fpath = os.path.join(base_path, rel)
+    if not os.path.exists(fpath):
+        print(f"frr.conf non trovato per {src}: {fpath}")
+        return
+    vecchie = _righe_file(fpath)
+    cfg = _analizza_frr(vecchie)
+    if not cfg['asn'] or not cfg['neighbors']:
+        print(f"{src} non ha neighbor BGP in frr.conf: crea prima le sessioni.")
+        return
+    owner = {}
+    for rn, rd in routers.items():
+        for it in rd.get('interfaces', []):
+            if it.get('ip'):
+                owner[it['ip'].split('/')[0]] = rn
+    vicini = list(cfg['neighbors'].items())
+    ebgp = [ip for ip, a in vicini if a != cfg['asn']]
+    voci = []
+    for ip, a in vicini:
+        chi = owner.get(ip) or cfg['descr'].get(ip, '?')
+        gia = '  (ha già default-originate)' if ip in cfg['default_orig'] else ''
+        voci.append(f"{ip:<15} {chi:<10} AS{a:<5} {'iBGP' if a == cfg['asn'] else 'eBGP'}{gia}")
+    print_menu(f"Neighbor di {src} (AS{cfg['asn']}):", voci)
+    while True:
+        s = input("A chi mandare la default? Numeri separati da virgola, T = tutti gli eBGP "
+                  "(Invio = annulla): ").strip().lower()
+        if not s:
+            print('Annullato: nessuna modifica.')
+            return
+        if s == 't':
+            scelti = ebgp
+        else:
+            scelti, ok = [], True
+            for x in s.replace(',', ' ').split():
+                if x.isdigit() and 1 <= int(x) <= len(vicini):
+                    scelti.append(vicini[int(x) - 1][0])
+                elif x in cfg['neighbors']:
+                    scelti.append(x)
+                else:
+                    ok = False
+            if not ok:
+                print("❌ Scrivi i numeri della lista (es. 1,2) oppure T.")
+                continue
+        scelti = list(dict.fromkeys(scelti))
+        if scelti:
+            break
+        print("❌ Nessun neighbor eBGP: scegli dai numeri della lista.")
+    solo = _si("Questi neighbor devono ricevere SOLO la default (e al massimo poche reti che indichi)? "
+               "Es. 'announces just the default route'. (s/N): ")
+    extra = []
+    if solo:
+        while True:
+            t = input("Reti da annunciare oltre alla default (es. 1.0.0.0/8; Invio = solo la default): ").strip()
+            if not t:
+                break
+            try:
+                extra = parse_reti(t)
+                break
+            except ValueError as e:
+                print(f"❌ Rete non valida: {e}")
+
+    nuove, note = list(vecchie), []
+    righe_bgp = []
+    for ip in scelti:
+        if ip not in cfg['default_orig']:
+            righe_bgp.append(f"neighbor {ip} default-originate")
+        if solo:
+            pl = f"SOLO_DEFAULT_{ip.replace('.', '_')}"
+            for t_, nome, direz in cfg['link'].get(ip, []):
+                if t_ == 'prefix-list' and direz == 'out' and nome != pl:
+                    note.append(f"{ip} aveva già 'prefix-list {nome} out': FRR ne usa una sola per direzione, "
+                                f"la sostituisco con {pl}.")
+                    nuove = [l for l in nuove if ' '.join(l.split()) != f"neighbor {ip} prefix-list {nome} out"]
+            nuove = [l for l in nuove if not l.strip().startswith(f"ip prefix-list {pl} ")]
+            if f"neighbor {ip} prefix-list {pl} out" not in (' '.join(l.split()) for l in nuove):
+                righe_bgp.append(f"neighbor {ip} prefix-list {pl} out")
+            nuove += [''] + [f"ip prefix-list {pl} permit {r}" for r in ['0.0.0.0/0'] + extra]
+    if righe_bgp:
+        ins = _inserisci_nel_blocco(nuove, r'router bgp\b', righe_bgp)
+        if ins is None:
+            print(f"{src}: manca il blocco 'router bgp' in frr.conf.")
+            return
+        nuove = ins
+    # al massimo una riga vuota consecutiva, come le altre policy
+    pulite = []
+    for l in nuove:
+        if not l.strip() and pulite and not pulite[-1].strip():
+            continue
+        pulite.append(l)
+    while pulite and not pulite[-1].strip():
+        pulite.pop()
+    annunciate = {_norm_net(n) for n in cfg['bgp_networks']}
+    for r in extra:
+        if _norm_net(r) not in annunciate:
+            note.append(f"{r} non è tra le network BGP di {src}: la prefix-list la lascia passare, ma per "
+                        f"annunciarla serve anche Opzioni 6 (network {r}).")
+    note.append("default-originate da solo basta: 'network 0.0.0.0/0' non serve (slide 044). "
+                "Se il testo o la soluzione lo vogliono comunque: Opzioni 6.")
+    if not solo:
+        note.append("I neighbor ricevono la default IN PIÙ alle altre rotte. Se il testo dice 'just the "
+                    "default route', rispondi s alla domanda 'SOLO la default'.")
+    _applica_modifiche(base_path, {rel: (vecchie, pulite)},
+                       f"Default route da {src} verso {', '.join(owner.get(i, i) for i in scelti)}", note)
+
+
+def _comandi_nodo(righe, inizio):
+    """Comandi (spazi normalizzati) del blocco che comincia a `inizio`, letti come FRR: i commenti '!'
+    NON chiudono il blocco (nella soluzione di up-arrow 'route 0.0.0.0/0' viene dopo due righe
+    '!    redistribute static'), lo chiude il primo comando globale o 'exit'. Solo per leggere:
+    per inserire si usa _fine_blocco, che si ferma prima del commento (sempre dentro il blocco)."""
+    return [' '.join(righe[k].split()) for k in _indici_nodo(righe, inizio)]
+
+
+def _indici_nodo(righe, inizio):
+    out = []
+    for k in range(inizio + 1, len(righe)):
+        s = ' '.join(righe[k].split())
+        if not s or s.startswith('!'):
+            continue
+        if s == 'exit' or _FRR_GLOBALI.match(s):
+            break
+        out.append(k)
+    return out
+
+
+def default_route_menu(base_path, routers):
+    """Opzioni 12: tutte le default route in un posto solo (BGP = Policies 6, RIP, OSPF)."""
+    while True:
+        print_menu('=== Default route ===', [
+            'BGP: manda la default a uno o più neighbor (default-originate, come Policies 6)',
+            "RIP: annuncia la default (route 0.0.0.0/0) o un'altra rete (route <rete>)",
+            'OSPF: annuncia la default (default-information originate)'],
+            extra_options=[('0', 'Torna indietro')])
+        c = input('Seleziona (numero): ').strip()
+        if c == '0' or not c:
+            return
+        if c == '1':
+            aggiungi_default_originate(base_path, routers)
+        elif c in ('2', '3'):
+            aggiungi_default_igp(base_path, 'rip' if c == '2' else 'ospf')
+        else:
+            print('Scelta non valida.')
+
+
+def aggiungi_default_igp(base_path, proto):
+    """Default route in RIP o OSPF, dentro il blocco 'router rip/ospf' del router scelto.
+    RIP:  'route 0.0.0.0/0' (guida 009, up-arrow) oppure 'default-information originate': provato in
+          Kathara (FRR 10.5.3), tutte e due annunciano la default anche se il router non ne ha una;
+          con 'route' si può iniettare anche un'altra rete (up-arrow: route 20.0.0.0/24 su br1).
+    OSPF: 'default-information originate' annuncia la default solo se il router ne ha una (provato:
+          center1 senza default non genera l'LSA); con 'always' sempre (provato: br2 la riceve)."""
+    nome_p = proto.upper()
+    print(f"\n--- Default route in {nome_p} ---")
+    rx = rf'router {proto}\b'
+    cand = []
+    for d in sorted(os.listdir(base_path)):
+        f = os.path.join(base_path, d, 'etc', 'frr', 'frr.conf')
+        if os.path.isfile(f) and _inizio_blocco(_righe_file(f), rx) is not None:
+            cand.append(d)
+    if not cand:
+        print(f"Nessun router del lab ha il blocco 'router {proto}' in frr.conf.")
+        return
+    print_menu(f"Router con {nome_p}:", cand)
+    s = input("Router (numero o nome, Invio = annulla): ").strip()
+    src = cand[int(s) - 1] if s.isdigit() and 1 <= int(s) <= len(cand) else (s if s in cand else None)
+    if not src:
+        print('Annullato: nessuna modifica.' if not s else 'Router non valido: nessuna modifica.')
+        return
+    rel = os.path.join(src, 'etc', 'frr', 'frr.conf')
+    vecchie = _righe_file(os.path.join(base_path, rel))
+    blocco = _comandi_nodo(vecchie, _inizio_blocco(vecchie, rx))
+    note = []
+    if proto == 'rip':
+        print("  1) route <rete>: annuncia la rete (Invio = 0.0.0.0/0, la default), anche se il router non ha "
+              "una rotta: come la guida 009 e up-arrow; serve anche per iniettare un'altra rete")
+        print("  2) default-information originate: annuncia la default (in FRR la annuncia sempre, come "
+              "route 0.0.0.0/0; in 'show ip rip' compare come R(d) invece di R(s))")
+        modo = input("Scelta (1/2, Invio = 1): ").strip() or '1'
+        if modo == '1':
+            while True:
+                t = input("Rete da annunciare (Invio = 0.0.0.0/0, la default): ").strip() or '0.0.0.0/0'
+                try:
+                    reti = parse_reti(t)
+                    break
+                except ValueError as e:
+                    print(f"❌ Rete non valida: {e}")
+            nuove = [f"route {r}" for r in reti if f"route {r}" not in blocco]
+        elif modo == '2':
+            nuove = [] if 'default-information originate' in blocco else ['default-information originate']
+        else:
+            print('Scelta non valida: nessuna modifica.')
+            return
+    else:
+        ha = _si("Il router ha già una default sua (statica nello startup o imparata da BGP)? (s/N): ")
+        riga = 'default-information originate' + ('' if ha else ' always')
+        if riga in blocco:
+            nuove = []
+        else:
+            # un'altra forma già presente (con o senza always): la sostituisco, solo dentro router ospf
+            togli = {k for k in _indici_nodo(vecchie, _inizio_blocco(vecchie, rx))
+                     if vecchie[k].strip().startswith('default-information originate')}
+            vecchie = [l for k, l in enumerate(vecchie) if k not in togli]
+            nuove = [riga]
+        if not ha:
+            note.append("'always' = OSPF annuncia la default anche se il router non ne ha una.")
+    if not nuove:
+        print(f"{src}: è già tutto presente in router {proto}, niente da fare.")
+        return
+    righe = _inserisci_nel_blocco(vecchie, rx, nuove)
+    _applica_modifiche(base_path, {rel: (_righe_file(os.path.join(base_path, rel)), righe)},
+                       f"Default route in {nome_p} su {src}", note)
+
+
 # -------------------------
 # Riepilogo configurazione (controllo del testo durante la prova)
 # -------------------------
@@ -2130,7 +2360,7 @@ def _analizza_frr(righe):
     """Estrae da frr.conf ciò che serve al riepilogo, indipendentemente dall'indentazione."""
     cfg = {'asn': None, 'bgp_networks': [], 'neighbors': {}, 'descr': {}, 'link': {},
            'igp': {}, 'redistribute': {}, 'costi': [], 'prefix_lists': {}, 'access_lists': {},
-           'route_maps': {}, 'auto_cost': None}
+           'route_maps': {}, 'auto_cost': None, 'default_orig': {}, 'default_igp': [], 'rip_route': []}
     blocco, rm, iface = None, None, None
     for raw in righe:
         s = ' '.join(raw.split())
@@ -2174,6 +2404,8 @@ def _analizza_frr(righe):
                 cfg['neighbors'][ip] = t[1]
             elif t[0] == 'description':
                 cfg['descr'][ip] = ' '.join(t[1:])
+            elif t[0] == 'default-originate':
+                cfg['default_orig'][ip] = t[2] if len(t) >= 3 and t[1] == 'route-map' else ''
             elif t[0] in ('prefix-list', 'route-map', 'filter-list', 'distribute-list') and len(t) >= 3:
                 cfg['link'].setdefault(ip, []).append((t[0], t[1], t[2]))
             continue
@@ -2191,6 +2423,13 @@ def _analizza_frr(righe):
         m = re.match(r'area (\S+) stub', s)
         if m and blocco == 'ospf':
             cfg['igp']['ospf'].append(f"area {m.group(1)} stub")
+            continue
+        if blocco in ('ospf', 'rip') and (s.startswith('default-information originate')
+                                          or (blocco == 'rip' and s == 'route 0.0.0.0/0')):
+            cfg['default_igp'].append(f"{blocco.upper()} {s}")
+            continue
+        if blocco == 'rip' and re.match(r'route \S+$', s):
+            cfg['rip_route'].append(s.split()[1])
             continue
         if s.startswith('redistribute ') and blocco in ('ospf', 'rip', 'bgp'):
             cfg['redistribute'].setdefault(blocco, []).append(s.split(' ', 1)[1])
@@ -2472,9 +2711,11 @@ def controlli_configurazione(lab_path):
       5. host senza default gateway
       6. costi OSPF espliciti senza 'auto-cost reference-bandwidth 100' (Opzioni 10)
       7. pc, www e dns: gateway, resolver, apache2, deleghe DNS e record A (controlli_host)
+      8. router che generano la default route (default-originate, network 0.0.0.0/0,
+         default-information originate, statica nello startup): da tenere solo se il testo la chiede
     """
     nodes, _ = parse_lab_conf_for_nodes(lab_path)
-    ips, rotte = {}, {}          # (nodo, dev) -> interfaccia ; nodo -> ha rotte
+    ips, rotte, default_statica = {}, {}, {}   # (nodo, dev) -> interfaccia ; nodo -> ha rotte / default
     for node in nodes:
         for l in _leggi_righe(os.path.join(lab_path, f"{node}.startup")):
             m = re.match(r'\s*ip\s+a(?:ddr(?:ess)?)?\s+add\s+(\S+)\s+dev\s+(\S+)', l)
@@ -2485,6 +2726,8 @@ def controlli_configurazione(lab_path):
                     pass
             if re.match(r'\s*(ip\s+route\s+add|route\s+add)\b', l):
                 rotte[node] = True
+                if re.match(r'\s*(ip\s+route\s+add|route\s+add)\s+(-net\s+)?(default|0\.0\.0\.0/0)\b', l):
+                    default_statica[node] = True
     cfg = {}
     for node in nodes:
         f = os.path.join(lab_path, node, 'etc', 'frr', 'frr.conf')
@@ -2603,6 +2846,21 @@ def controlli_configurazione(lab_path):
     # 7. pc, www e dns
     for n, msg in controlli_host(lab_path):
         avvisi.append(f"{n}: {msg}")
+
+    # 8. router che generano la default route: quasi 20 testi la vietano ("No router announces
+    #    the default route"), pochi la chiedono (Galaxy, stub della slide 044)
+    for n in sorted(cfg):
+        c, cosa = cfg[n], []
+        if c['default_orig']:
+            cosa.append('default-originate verso ' + ', '.join(f"{ip} ({owner.get(ip, '?')})" for ip in c['default_orig']))
+        if any(_norm_net(x) == '0.0.0.0/0' for x in c['bgp_networks'] if '/' in x):
+            cosa.append('network 0.0.0.0/0 in BGP')
+        cosa += c['default_igp']
+        if default_statica.get(n):
+            cosa.append('default statica nello startup')
+        if cosa:
+            avvisi.append(f"{n}: genera la default route ({'; '.join(cosa)}). Tienila solo se il testo la chiede: "
+                          f"molti testi dicono 'No router announces the default route'.")
     return avvisi
 
 
@@ -2642,12 +2900,18 @@ def riepilogo_configurazione(base_path, routers):
                       + (f"   auto-cost {cfg['auto_cost']}" if igp == 'ospf' and cfg['auto_cost'] else ''))
         if cfg['costi']:
             print(f"  costo OSPF: {', '.join(cfg['costi'])}")
+        if cfg['default_igp']:
+            print(f"  default route nell'IGP: {', '.join(cfg['default_igp'])}")
+        if cfg['rip_route']:
+            print(f"  RIP route (reti iniettate): {', '.join(cfg['rip_route'])}")
         if cfg['asn']:
             print(f"  network BGP: {', '.join(cfg['bgp_networks']) or '-'}")
             for ip, asn in cfg['neighbors'].items():
                 chi = owner.get(ip) or cfg['descr'].get(ip, '?')
                 tipo = 'iBGP' if asn == cfg['asn'] else 'eBGP'
-                link = cfg['link'].get(ip, [])
+                link = list(cfg['link'].get(ip, []))
+                if ip in cfg['default_orig']:
+                    link.insert(0, ('default-originate', cfg['default_orig'][ip], 'out'))
                 if not link:
                     print(f"  {ip:<15} {chi:<10} AS{asn:<5} {tipo}  nessuna policy")
                     continue
@@ -2657,6 +2921,9 @@ def riepilogo_configurazione(base_path, routers):
                                 if nome in cfg['prefix_lists'] else f"prefix-list {nome} (non definita!)")
                     elif t == 'route-map':
                         cosa = f"route-map {_descrivi_route_map(cfg, nome)}"
+                    elif t == 'default-originate':
+                        cosa = "manda la default route (default-originate)" + (
+                            f" se la route-map {nome} lo permette" if nome else '')
                     else:
                         cosa = f"{t} {nome}"
                     testa = f"  {ip:<15} {chi:<10} AS{asn:<5} {tipo}" if i == 0 else ' ' * 37
@@ -4796,7 +5063,8 @@ def menu_opzioni_laboratorio(base_path, routers):
             "Riepilogo configurazione (per controllare il testo dell'esercizio)",
             'Aggiungi delega DNS sul root (es. com -> dns.com)',
             'Costi OSPF predefiniti a 10 (auto-cost reference-bandwidth 100 su un AS)',
-            'Modifica un dispositivo (IP, LAN, gateway, protocolli, AS, righe dei file)'
+            'Modifica un dispositivo (IP, LAN, gateway, protocolli, AS, righe dei file)',
+            'Default route (BGP verso un neighbor, RIP, OSPF)'
         ]
         print_menu(f'=== Opzioni Laboratorio ({os.path.basename(os.path.normpath(base_path))}) ===',
                    items, extra_options=[('0', 'Torna indietro')])
@@ -4825,6 +5093,8 @@ def menu_opzioni_laboratorio(base_path, routers):
             imposta_auto_cost(base_path)
         elif choice == '11':
             modifica_dispositivo_menu(base_path, routers)
+        elif choice == '12':
+            default_route_menu(base_path, routers)
         else:
             print('Scelta non valida, riprova.')
 
