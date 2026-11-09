@@ -18,28 +18,6 @@ from . import dati, kathara
 from .pagina import PAGINA
 
 
-def open_browser(url):
-    """Apre il browser ripulendo LD_LIBRARY_PATH dall'ambiente PyInstaller."""
-    lp_key = "LD_LIBRARY_PATH"
-    orig_val = os.environ.get(lp_key)
-    pyinstaller_orig = os.environ.get(f"{lp_key}_ORIG")
-
-    try:
-        if getattr(sys, "frozen", False):
-            if pyinstaller_orig is not None:
-                os.environ[lp_key] = pyinstaller_orig
-            elif lp_key in os.environ:
-                del os.environ[lp_key]
-
-        webbrowser.open(url)
-    finally:
-        if orig_val is not None:
-            os.environ[lp_key] = orig_val
-        else:
-            os.environ.pop(lp_key, None)
-
-
-
 class Errore(Exception):
     pass
 
@@ -246,13 +224,15 @@ def azione(st, dati_rich):
     if tipo == 'riapplica':
         # la riga viene dai file del lab, non dal browser
         dev = _dispositivo(lab, dati_rich.get('dev'))['nome']
-        voce = next((v for v in kathara.ridistribuzioni(lab) if v[0] == dev and v[1] == dati_rich.get('igp')), None)
-        if not voce:
-            raise Errore(f"{dev} non ha 'redistribute bgp' in {dati_rich.get('igp')}")
-        blocco = 'router rip' if voce[1] == 'RIP' else 'router ospf'
-        lid = st.lavori.avvia(f"riapplica ridistribuzione {dev}",
-                              f"vtysh -c 'conf t' -c '{blocco}' -c 'no {voce[2]}' -c '{voce[2]}'",
-                              lambda lav: kathara.riapplica_ridistribuzione(k, lab_path, voce, lav))
+        proto = dati_rich.get('igp')
+        righe = kathara.righe_redistribute(lab, dev, proto) if proto in ('RIP', 'OSPF') else []
+        if not righe:
+            raise Errore(f"{dev} non ha righe 'redistribute' in {proto}")
+        blocco = 'router rip' if proto == 'RIP' else 'router ospf'
+        comando = (f"vtysh -c 'conf t' -c '{blocco}' " + ' '.join(f"-c 'no {x}'" for x in righe)
+                   + ' ' + ' '.join(f"-c '{x}'" for x in righe))
+        lid = st.lavori.avvia(f"riapplica ridistribuzione {dev}", comando,
+                              lambda lav: kathara.riapplica_ridistribuzione(k, lab_path, lab, dev, proto, lav))
         return {'lavoro': lid}
 
     if tipo == 'rotta':
@@ -402,7 +382,7 @@ def avvia(base, gen, porta=8765, apri_browser=True):
         print("   ⚠️ 'kathara' non trovato nel PATH: si vedono topologia e riepilogo, ma non si avvia nulla.")
     print("   Per chiuderla: pulsante 'Chiudi GUI' nella pagina oppure Ctrl+C qui.\n")
     if apri_browser:
-        threading.Timer(0.5, lambda: open_browser(url)).start()
+        threading.Timer(0.5, lambda: webbrowser.open(url)).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
@@ -410,4 +390,3 @@ def avvia(base, gen, porta=8765, apri_browser=True):
     finally:
         server.server_close()
     print("GUI chiusa. (I lab avviati restano accesi: chiudili con lclean se non ti servono.)")
-

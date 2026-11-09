@@ -366,40 +366,87 @@ def _conta(righe):
     return sum(1 for x in righe if x.get('ok')), len(righe)
 
 
+TIPI_CONTROLLATI = ('bgp', 'connected')
+
+
+def righe_redistribute(lab, router, proto):
+    """Tutte le righe 'redistribute ...' del blocco RIP/OSPF di un router, come sono nei file."""
+    for d in lab['dispositivi']:
+        if d['nome'] == router:
+            for igp in (d.get('riepilogo') or {}).get('igp', []):
+                if igp['protocollo'] == proto:
+                    return ['redistribute ' + x for x in igp['redistribute']]
+    return []
+
+
 def ridistribuzioni(lab):
-    """[(router, 'RIP'|'OSPF', riga)] per ogni 'redistribute bgp ...' scritto nei file del lab."""
+    """[(router, 'RIP'|'OSPF', riga)] per ogni 'redistribute bgp|connected ...' scritto nei file del lab."""
     voci = []
     for d in lab['dispositivi']:
         for igp in (d.get('riepilogo') or {}).get('igp', []):
             for x in igp['redistribute']:
-                if x.split()[0] == 'bgp':
+                if x.split()[0] in TIPI_CONTROLLATI:
                     voci.append((d['nome'], igp['protocollo'], 'redistribute ' + x))
     return voci
 
 
+def _rotte_passate_da_zebra(testo, client):
+    """Dal 'show zebra client': quante rotte ridistribuite zebra ha mandato al demone
+    (riga Redist:v4, colonna Add, contata dalla connessione). None se non si legge."""
+    for blocco in re.split(r'^Client: ', testo, flags=re.M)[1:]:
+        if blocco.split(None, 1)[0] == client:
+            m = re.search(r'^Redist:v4\s+(\d+)', blocco, re.M)
+            return int(m.group(1)) if m else None
+    return None
+
+
 def _ridistribuzione_router(kathara, lab_path, voce):
-    """Le rotte BGP scelte dal router sono davvero entrate in RIP/OSPF?
-    RIP: righe B(r) di 'show ip rip'; OSPF: LSA esterni generati dal router."""
+    """Le rotte da ridistribuire sono davvero entrate in RIP/OSPF?
+    bgp: rotte BGP scelte → RIP: righe B(r); OSPF: LSA esterni generati dal router.
+    connected: reti connesse non già coperte dall'IGP (RIP: C(i); OSPF: interfacce OSPF)
+               → RIP: righe C(r); OSPF: LSA esterni generati dal router.
+    In più legge da 'show zebra client' quante rotte zebra ha passato al demone: 0 vuol dire
+    che la richiesta di ridistribuzione non è mai arrivata a zebra (difetto di avvio)."""
     r, proto, riga = voce
+    tipo = riga.split()[1]
     sep = '@@SEPARATORE@@'
     cmd = 'show ip rip' if proto == 'RIP' else 'show ip ospf database external self-originate'
-    script = f"vtysh -c 'show ip route bgp json' 2>&1; echo {sep}; vtysh -c '{cmd}' 2>&1"
+    extra = f"; echo {sep}; vtysh -c 'show ip ospf interface' 2>&1" if proto == 'OSPF' and tipo == 'connected' else ''
+    script = (f"vtysh -c 'show ip route {tipo} json' 2>&1; echo {sep}; vtysh -c '{cmd}' 2>&1; "
+              f"echo {sep}; vtysh -c 'show zebra client' 2>&1{extra}")
     rc, out = esegui(kexec(kathara, lab_path, r, ['bash', '-c', script]), timeout=60)
-    x = {'router': r, 'igp': proto, 'riga': riga}
-    if sep not in out:
+    x = {'router': r, 'igp': proto, 'riga': riga, 'tipo': tipo}
+    parti = out.split(sep)
+    if len(parti) < 3:
         return dict(x, errore=out.strip()[-300:], ok=False, stato='errore')
-    bgp, igp = out.split(sep, 1)
-    reti = sorted(p for p, voci in (_json_o_none(bgp) or {}).items()
+    rotte, igp, zebra = parti[0], parti[1], parti[2]
+    reti = sorted(p for p, voci in (_json_o_none(rotte) or {}).items()
                   if isinstance(voci, list) and any(v.get('selected') for v in voci))
+    if tipo == 'connected':
+        # le reti già dentro l'IGP con 'network' non vengono ridistribuite: si tolgono
+        if proto == 'RIP':
+            coperte = set(re.findall(r'^\s*C\(i\)\s+(\S+)', igp, re.M))
+        else:
+            coperte = {str(ipaddress.ip_network(a, strict=False))
+                       for a in re.findall(r'Internet Address (\d+\.\d+\.\d+\.\d+/\d+)', parti[3] if len(parti) > 3 else '')}
+        reti = [p for p in reti if p not in coperte]
     if proto == 'RIP':
-        dentro = set(re.findall(r'^\s*B\(\w\)\s+(\S+)', igp, re.M))
+        codice = 'B' if tipo == 'bgp' else 'C'
+        dentro = set(re.findall(rf'^\s*{codice}\(r\)\s+(\S+)', igp, re.M))
     else:
         ids = set(re.findall(r'Link State ID:\s*(\S+)', igp))
         dentro = {p for p in reti if p.split('/')[0] in ids}
     iniettate = [p for p in reti if p in dentro]
-    x.update(bgp=len(reti), iniettate=len(iniettate), mancanti=[p for p in reti if p not in dentro],
-             ok=not reti or bool(iniettate))
-    x['stato'] = ('nessuna rotta BGP' if not reti else 'attiva' if iniettate else 'non attiva')
+    passate = _rotte_passate_da_zebra(zebra, 'rip' if proto == 'RIP' else 'ospf')
+    x.update(totale=len(reti), iniettate=len(iniettate), mancanti=[p for p in reti if p not in dentro],
+             zebra=passate, ok=not reti or bool(iniettate))
+    x['stato'] = (('nessuna rotta BGP' if tipo == 'bgp' else 'niente da ridistribuire') if not reti
+                  else 'attiva' if iniettate else 'non attiva')
+    if not x['ok']:
+        x['causa'] = ("zebra non ha mai passato rotte a " + ('ripd' if proto == 'RIP' else 'ospfd')
+                      + ": richiesta persa all'avvio, usa Riapplica" if passate == 0 else
+                      "zebra passa rotte ma queste non entrano: controlla route-map/filtri sulla riga"
+                      if passate else '')
     return x
 
 
@@ -412,26 +459,37 @@ def _leggi_ridistribuzione(kathara, lab_path, lab):
 def _scrivi_ridistribuzione(lav, righe):
     for x in righe:
         if not x['ok']:
-            lav.scrivi(f"⚠ {x['router']}: '{x['riga']}' in {x['igp']} non attiva ({x['bgp']} rotte BGP, "
-                       f"nessuna entrata in {x['igp']}). Usa 'Riapplica' nella tabella Ridistribuzione "
+            cosa = 'rotte BGP' if x.get('tipo') == 'bgp' else 'reti connesse da ridistribuire'
+            zebra = '' if x.get('zebra') is None else f", zebra ne ha passate {x['zebra']} al demone"
+            lav.scrivi(f"⚠ {x['router']}: '{x['riga']}' in {x['igp']} non attiva ({x.get('totale', '?')} {cosa}, "
+                       f"nessuna entrata in {x['igp']}{zebra}). Usa 'Riapplica' nella tabella Ridistribuzione "
                        f"(con FRR 10.5.3 a volte non parte all'avvio).")
 
 
-def riapplica_ridistribuzione(kathara, lab_path, voce, lav):
-    """Toglie e rimette 'redistribute bgp' a lab acceso (i file non cambiano), poi ricontrolla."""
-    r, proto, riga = voce
+def riapplica_ridistribuzione(kathara, lab_path, lab, router, proto, lav):
+    """Toglie e rimette TUTTE le righe 'redistribute' del blocco RIP/OSPF a lab acceso (i file non
+    cambiano): se la richiesta a zebra si è persa all'avvio, di solito si sono perse tutte insieme.
+    Riscrivere una riga già presente non basta: il demone non vede modifiche e non rimanda niente."""
+    righe = righe_redistribute(lab, router, proto)
     blocco = 'router rip' if proto == 'RIP' else 'router ospf'
-    rc = esegui_spiegato(kexec(kathara, lab_path, r, ['vtysh', '-c', 'conf t', '-c', blocco,
-                                                      '-c', 'no ' + riga, '-c', riga]), lav, timeout=60)[0]
+    args = ['vtysh', '-c', 'conf t', '-c', blocco]
+    for riga in righe:
+        args += ['-c', 'no ' + riga]
+    for riga in righe:
+        args += ['-c', riga]
+    rc = esegui_spiegato(kexec(kathara, lab_path, router, args), lav, timeout=60)[0]
     if rc != 0:
         return rc
+    voci = [v for v in ridistribuzioni(lab) if v[0] == router and v[1] == proto]
     for _ in range(4):
         time.sleep(3)
-        x = _ridistribuzione_router(kathara, lab_path, voce)
-        if x['ok']:
+        esiti = [_ridistribuzione_router(kathara, lab_path, v) for v in voci]
+        if all(x['ok'] for x in esiti):
             break
-    lav.risultato = x
-    lav.scrivi(f"{r}: ridistribuzione {x['stato']} ({x.get('iniettate', 0)}/{x.get('bgp', 0)} rotte BGP in {proto}).")
+    lav.risultato = esiti
+    for x in esiti:
+        lav.scrivi(f"{router}: '{x['riga']}' {x['stato']} ({x.get('iniettate', 0)}/{x.get('totale', 0)} in {proto}"
+                   + ('' if x.get('zebra') is None else f"; zebra ha passato {x['zebra']} rotte") + ").")
     return 0
 
 
