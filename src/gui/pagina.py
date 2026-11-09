@@ -877,14 +877,16 @@ function mostraSessioni(r) {
     <div class="muted small">"non trovato" = router OSPF dello stesso AS sulla stessa LAN che non è diventato vicino (interfaccia non coperta dalle network OSPF, area diversa, lab non ancora convergente).</div>` : '<div class="muted">Nessun router OSPF.</div>';
   const rid = r.ridistribuzione || [];
   if (rid.length) {
-    h += '<h3 style="margin-top:14px">Ridistribuzione BGP → IGP</h3>';
-    h += `<table><tr><th>Router</th><th>IGP</th><th>Riga nel frr.conf</th><th>Rotte BGP</th><th>Entrate nell'IGP</th><th>Stato</th><th></th></tr>${rid.map(x =>
-      `<tr class="${x.ok ? '' : 'sosp'}"><td>${esc(x.router)}</td><td>${esc(x.igp)}</td><td><code>${esc(x.riga)}</code></td><td>${x.errore ? '' : esc(x.bgp)}</td>
-       <td title="${esc((x.mancanti || []).length ? 'mancanti: ' + x.mancanti.join(', ') : '')}">${x.errore ? `<span class="koline">${esc(x.errore)}</span>` : esc(x.iniettate)}</td><td>${stato(x)}</td>
+    h += '<h3 style="margin-top:14px">Ridistribuzione nell\'IGP (redistribute bgp / connected)</h3>';
+    h += `<table><tr><th>Router</th><th>IGP</th><th>Riga nel frr.conf</th><th>Da ridistribuire</th><th>Entrate nell'IGP</th><th title="show zebra client: rotte ridistribuite che zebra ha passato a ripd/ospfd dall'avvio (tutte le righe redistribute insieme)">Passate da zebra</th><th>Stato</th><th></th></tr>${rid.map(x =>
+      `<tr class="${x.ok ? '' : 'sosp'}"><td>${esc(x.router)}</td><td>${esc(x.igp)}</td><td><code>${esc(x.riga)}</code></td><td>${x.errore ? '' : esc(x.totale)}</td>
+       <td title="${esc((x.mancanti || []).length ? 'mancanti: ' + x.mancanti.join(', ') : '')}">${x.errore ? `<span class="koline">${esc(x.errore)}</span>` : esc(x.iniettate)}</td>
+       <td>${x.zebra == null ? '' : esc(x.zebra)}</td><td>${stato(x)}${x.causa ? `<div class="small muted">${esc(x.causa)}</div>` : ''}</td>
        <td>${x.ok ? '' : `<button class="small" data-riapplica="${esc(x.router)}" data-igp="${esc(x.igp)}">Riapplica</button>`}</td></tr>`).join('')}</table>
-      <div class="muted small">Controlla che le rotte BGP del router siano davvero entrate in RIP/OSPF. Con FRR 10.5.3 a volte la ridistribuzione
-      non parte all'avvio anche se il file è giusto: "Riapplica" toglie e rimette la riga a lab acceso (i file non cambiano).
-      Se resta "non attiva" con una route-map, può essere la route-map a filtrare tutto.</div>`;
+      <div class="muted small">Controlla che le rotte BGP e le reti connesse (quelle non già coperte dalle network dell'IGP) siano davvero entrate in RIP/OSPF.
+      Con FRR 10.5.3 a volte la ridistribuzione non parte all'avvio anche se il file è giusto: zebra non riceve la richiesta del demone
+      e "Passate da zebra" resta 0. "Riapplica" toglie e rimette tutte le righe redistribute del blocco a lab acceso (i file non cambiano).
+      Se "Passate da zebra" è più di 0 ma la riga resta "non attiva", la causa è un'altra (es. una route-map che filtra tutto).</div>`;
   }
   S.sessioni = r;
   $('#rSessioni').innerHTML = h;
@@ -892,8 +894,9 @@ function mostraSessioni(r) {
 $('#rSessioni').addEventListener('click', async e => {
   const b = e.target.closest('[data-riapplica]'); if (!b) return;
   const res = await esegui({azione: 'riapplica', dev: b.dataset.riapplica, igp: b.dataset.igp}, 'Riapplica ridistribuzione ' + b.dataset.riapplica, b);
-  if (res && res.risultato && S.sessioni) {
-    S.sessioni.ridistribuzione = S.sessioni.ridistribuzione.map(x => x.router === res.risultato.router && x.igp === res.risultato.igp ? res.risultato : x);
+  if (res && Array.isArray(res.risultato) && S.sessioni) {
+    const nuove = res.risultato;
+    S.sessioni.ridistribuzione = S.sessioni.ridistribuzione.map(x => nuove.find(n => n.router === x.router && n.igp === x.igp && n.riga === x.riga) || x);
     mostraSessioni(S.sessioni);
   }
 });
