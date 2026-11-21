@@ -29,6 +29,16 @@ from core import (
 )
 
 
+def _default_labs_dir():
+    """Cartella predefinita dei lab: <radice_progetto>/labs (mai dentro src/)."""
+    if getattr(sys, 'frozen', False):
+        root = os.path.dirname(os.path.abspath(sys.executable))
+    else:
+        src_dir = os.path.dirname(os.path.abspath(__file__))
+        root = os.path.dirname(src_dir) if os.path.basename(src_dir).lower() == 'src' else src_dir
+    return os.path.join(root, 'labs')
+
+
 def avvia_gui(base, porta=8765):
     """GUI web locale (gui/): topologia, riepilogo, comandi Kathará e test nel browser."""
     from gui import server
@@ -48,13 +58,13 @@ def main():
     parser.add_argument('--from-xml', help='Percorso file XML da importare per creare il lab')
     parser.add_argument('--from-json', help='Percorso file JSON da importare per creare il lab')
     parser.add_argument('--regen-xml', help='Percorso della directory del lab per rigenerare il file XML')
-    parser.add_argument('--out', help='Cartella in cui creare i lab (default: cartella corrente)')
+    parser.add_argument('--out', help='Cartella in cui creare i lab (default: <radice>/labs)')
     parser.add_argument('--force', action='store_true', help='Con --from-xml/--from-json: sovrascrive un lab già esistente')
     parser.add_argument('--gui', action='store_true', help='Apre la GUI nel browser (topologia, riepilogo, comandi Kathará, test)')
     parser.add_argument('--porta', type=int, default=8765, help='Porta della GUI su 127.0.0.1 (default 8765)')
     args, _ = parser.parse_known_args()
 
-    base = os.path.abspath(os.path.expanduser(args.out)) if args.out else os.getcwd()
+    base = os.path.abspath(os.path.expanduser(args.out)) if args.out else _default_labs_dir()
     os.makedirs(base, exist_ok=True)
 
     if args.gui:

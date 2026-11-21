@@ -84,7 +84,7 @@ def leggi_lab(gen, lab_path):
     dispositivi = {}
     for nome, meta in sorted(nodi.items()):
         startup = _leggi(os.path.join(lab_path, f"{nome}.startup")) or ''
-        ips, gw = {}, None
+        ips, gw, static_routes = {}, None, []
         for riga in startup.splitlines():
             m = RE_IP.match(riga)
             if m:
@@ -92,6 +92,10 @@ def leggi_lab(gen, lab_path):
             m = RE_GW.match(riga)
             if m:
                 gw = m.group(1) or m.group(2)
+            else:
+                ms = re.match(r'^\s*ip\s+route\s+add\s+(\S+)\s+via\s+(\S+)(?:\s+dev\s+(\S+))?', riga)
+                if ms:
+                    static_routes.append({'dest': ms.group(1), 'via': ms.group(2), 'dev': ms.group(3) or ''})
         cfg, riferimenti = None, []
         frr = os.path.join(lab_path, nome, 'etc', 'frr', 'frr.conf')
         if os.path.exists(frr):
@@ -101,7 +105,7 @@ def leggi_lab(gen, lab_path):
         interfacce = []
         for idx, lan in sorted((k, v) for k, v in meta.get('interfaces', {}).items() if isinstance(k, int)):
             dev = f"eth{idx}"
-            interfacce.append({'dev': dev, 'lan': lan, 'ip': (ips.get(dev) or [''])[0]})
+            interfacce.append({'idx': idx, 'dev': dev, 'lan': lan, 'ip': (ips.get(dev) or [''])[0]})
         asn = (cfg or {}).get('asn')
         if not asn:
             m = re.match(r'as(\d+)r', nome, re.I)
@@ -117,6 +121,7 @@ def leggi_lab(gen, lab_path):
             'interfacce': interfacce,
             'loopback': ips.get('lo', []),
             'gateway': gw,
+            'static_routes': static_routes,
             'demoni': _demoni(lab_path, nome),
             'nameserver': re.findall(r'^\s*nameserver\s+(\S+)', resolv, re.M),
             'zone': zone,

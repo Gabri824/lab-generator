@@ -82,6 +82,7 @@ from .net_frr import (
     mk_bgp_stanza,
     mk_ospf_stanza,
     mk_rip_stanza,
+    static_route_lines,
 )
 from .persistence import (
     correggi_nomi_importati,
@@ -93,7 +94,7 @@ from .persistence import (
     rebuild_lab_metadata_and_export,
     recreate_lab_from_data,
 )
-from .templates import _RE_GW, _RE_IP_ADD
+from .templates import DAEMONS_TMPL, FRR_HEADER, VTYSH_TMPL, _RE_GW, _RE_IP_ADD, _RE_TOKEN_IP
 
 
 class OpError(ValueError):
@@ -295,6 +296,339 @@ def _avvisi_set(lab_path):
     if not os.path.isfile(os.path.join(lab_path, 'lab.conf')):
         return set()
     return set(controlla_topologia(lab_path)) | set(controlli_configurazione(lab_path))
+
+
+
+def _policy_refs_in_line(line):
+    """Estrae eventuali (tipo, nome) di policy referenziati su una riga neighbor."""
+    s = ' '.join(line.split())
+    m = re.match(r'neighbor\s+\S+\s+(prefix-list|route-map|distribute-list)\s+(\S+)\s+(in|out)\b', s)
+    if m:
+        tipo = 'access-list' if m.group(1) == 'distribute-list' else m.group(1)
+        return [(tipo, m.group(2))]
+    m2 = re.match(r'neighbor\s+\S+\s+default-originate\s+route-map\s+(\S+)\b', s)
+    if m2:
+        return [('route-map', m2.group(1))]
+    return []
+
+
+def _pulisci_policy_orfane_frr(righe, candidati):
+    """Rimuove route-map/prefix-list/access-list candidate che non risultano più usate in frr.conf."""
+    if not candidati:
+        return righe, []
+    out = list(righe)
+    rimossi = []
+    coda = list(dict.fromkeys(candidati))
+
+    while coda:
+        tipo, nome = coda.pop(0)
+        if (tipo, nome) in rimossi:
+            continue
+        # Controlla se è ancora usata altrove nel file
+        usata = False
+        for l in out:
+            s = ' '.join(l.split())
+            if tipo == 'route-map':
+                if re.search(rf'\broute-map\s+{re.escape(nome)}\b', s) and not s.startswith(f'route-map {nome} '):
+                    usata = True
+                    break
+            elif tipo == 'prefix-list':
+                if (
+                    re.search(rf'\bprefix-list\s+{re.escape(nome)}\b', s)
+                    and not s.startswith(f'ip prefix-list {nome} ')
+                    and not s.startswith(f'ipv6 prefix-list {nome} ')
+                ):
+                    usata = True
+                    break
+            elif tipo == 'access-list':
+                if (
+                    (re.search(rf'\bdistribute-list\s+{re.escape(nome)}\b', s)
+                     or re.search(rf'\bmatch\s+ip\s+address\s+{re.escape(nome)}\b', s))
+                    and not re.match(rf'(?:ip\s+)?access-list\s+{re.escape(nome)}\b', s)
+                ):
+                    usata = True
+                    break
+        if usata:
+            continue
+
+        nuove = []
+        if tipo == 'route-map':
+            dentro = False
+            for l in out:
+                s = ' '.join(l.split())
+                if s.startswith(f'route-map {nome} '):
+                    dentro = True
+                    continue
+                if dentro and re.match(r'(match|set|on-match|call|continue)\b', s):
+                    mp = re.match(r'match\s+ip\s+address\s+prefix-list\s+(\S+)', s)
+                    if mp:
+                        coda.append(('prefix-list', mp.group(1)))
+                    ma = re.match(r'match\s+ip\s+address\s+(?!prefix-list\b)(\S+)', s)
+                    if ma:
+                        coda.append(('access-list', ma.group(1)))
+                    continue
+                dentro = False
+                nuove.append(l)
+        elif tipo == 'prefix-list':
+            rx_pl = re.compile(rf'^\s*ip(?:v6)?\s+prefix-list\s+{re.escape(nome)}\b')
+            nuove = [l for l in out if not rx_pl.match(l)]
+        elif tipo == 'access-list':
+            rx_al = re.compile(rf'^\s*(?:ip\s+)?access-list\s+{re.escape(nome)}\b')
+            nuove = [l for l in out if not rx_al.match(l)]
+        else:
+            nuove = out
+
+        if nuove != out:
+            out = nuove
+            rimossi.append((tipo, nome))
+
+    return out, rimossi
+
+
+def _pulisci_riferimenti_ip(lab_path, ips_rimossi, note, escludi_dev=None, descrizione=''):
+    """Rimuove riferimenti a IP eliminati in tutto il lab: neighbor BGP + policy orfane,
+    rotte statiche/gateway in .startup e frr.conf, nameserver in resolv.conf e record A DNS."""
+    ips = {str(ip).split('/')[0].strip() for ip in (ips_rimossi or []) if str(ip).strip()}
+    if not ips:
+        return
+    disp = leggi_dispositivi(lab_path)
+    tag = f" ({descrizione})" if descrizione else ""
+
+    for n2, d2 in sorted(disp.items()):
+        if n2 == escludi_dev:
+            continue
+
+        # 1. frr.conf: neighbor <ip>, ip route ... <ip>, e policy orfane collegate
+        if d2['frr']:
+            f2 = os.path.join(lab_path, n2, 'etc', 'frr', 'frr.conf')
+            if os.path.exists(f2):
+                v = _righe_file(f2)
+                nu = []
+                cand_pol = []
+                rm_nb = False
+                for l in v:
+                    s = ' '.join(l.split())
+                    mnb = re.match(r'neighbor\s+(\S+)\s', s)
+                    if mnb and mnb.group(1) in ips:
+                        cand_pol.extend(_policy_refs_in_line(l))
+                        rm_nb = True
+                        continue
+                    msr = re.match(r'ip\s+route\s+\S+\s+(\S+)', s)
+                    if msr and msr.group(1) in ips:
+                        continue
+                    nu.append(l)
+                if cand_pol:
+                    nu, pol_rm = _pulisci_policy_orfane_frr(nu, cand_pol)
+                else:
+                    pol_rm = []
+                if nu != v:
+                    _scrivi_righe(f2, nu)
+                    extra = f" + policy orfane ({', '.join(x[1] for x in pol_rm)})" if pol_rm else ""
+                    if rm_nb:
+                        note.append(f"Rimossi riferimenti neighbor{tag} da {n2}/etc/frr/frr.conf{extra}.")
+                    else:
+                        note.append(f"Rimosse rotte statiche verso IP eliminati{tag} in {n2}/etc/frr/frr.conf.")
+
+        # 2. .startup: default gateway e rotte statiche verso IP eliminati
+        st2 = os.path.join(lab_path, f"{n2}.startup")
+        if os.path.exists(st2):
+            v = _righe_file(st2)
+            nu = []
+            for l in v:
+                mgw = _RE_GW.match(l)
+                if mgw and (mgw.group(1) or mgw.group(2)).split('/')[0] in ips:
+                    continue
+                msr = re.match(r'^\s*ip\s+route\s+add\s+\S+\s+via\s+(\S+)', l)
+                if msr and msr.group(1).split('/')[0] in ips:
+                    continue
+                nu.append(l)
+            if nu != v:
+                _scrivi_esatte(st2, nu)
+                note.append(f"Rimosso gateway/rotta statica verso IP eliminato{tag} in {n2}.startup.")
+
+        # 3. resolv.conf: nameserver <ip>
+        res2 = os.path.join(lab_path, n2, 'etc', 'resolv.conf')
+        if os.path.exists(res2):
+            v = _righe_file(res2)
+            nu = [l for l in v if not (re.match(r'^\s*nameserver\s+(\S+)', l) and l.split()[1] in ips)]
+            if nu != v:
+                if any(x.strip() for x in nu):
+                    _scrivi_esatte(res2, nu)
+                else:
+                    os.remove(res2)
+                note.append(f"Rimosso nameserver eliminato{tag} da {n2}/etc/resolv.conf.")
+
+        # 4. DNS zone files: record A verso IP eliminati
+        bind_dir = os.path.join(lab_path, n2, 'etc', 'bind')
+        if os.path.isdir(bind_dir):
+            for fn in sorted(os.listdir(bind_dir)):
+                if not fn.startswith('db.'):
+                    continue
+                fp = os.path.join(bind_dir, fn)
+                v = _righe_file(fp)
+                nu = []
+                for l in v:
+                    code_part = l.split(';', 1)[0].strip()
+                    toks = code_part.split()
+                    if len(toks) >= 2 and 'A' in [t.upper() for t in toks[:-1]] and toks[-1] in ips:
+                        continue
+                    nu.append(l)
+                if nu != v:
+                    _scrivi_esatte(fp, nu)
+                    note.append(f"Rimossi record A verso IP eliminato{tag} in {n2}/etc/bind/{fn}.")
+
+
+def _rimuovi_blocco_interfaccia_frr(righe, dev):
+    """Rimuove un blocco 'interface <dev>' da frr.conf (es. costi OSPF)."""
+    out, i = [], 0
+    rx = re.compile(rf'^\s*interface\s+{re.escape(dev)}\s*$')
+    while i < len(righe):
+        if rx.match(righe[i]):
+            i = _fine_blocco(righe, i)
+            continue
+        out.append(righe[i])
+        i += 1
+    return out
+
+
+def _rimuovi_network_frr(righe, nets, protos=('bgp', 'ospf', 'rip')):
+    """Rimuove 'network <net>' dai blocchi router specificati in frr.conf."""
+    bersagli = {_norm_net(x) for x in nets if x}
+    if not bersagli:
+        return righe
+    out, cur = [], None
+    for l in righe:
+        s = ' '.join(l.split())
+        m = re.match(r'router\s+(bgp|ospf|rip)\b', s)
+        if m:
+            cur = m.group(1)
+        elif l and not l[0].isspace() and not s.startswith('!'):
+            cur = None
+        elif cur in protos and s.startswith('network '):
+            toks = s.split()
+            if len(toks) >= 2 and _norm_net(toks[1]) in bersagli:
+                continue
+        out.append(l)
+    return out
+
+
+def _rinomina_interfacce_dispositivo(lab_path, nome, old_to_new, note):
+    """Rinomina in sicurezza (due passaggi) le interfacce ethX -> ethY di `nome`
+    su lab.conf, <nome>.startup e <nome>/etc/frr/frr.conf."""
+    mappa = {k: v for k, v in old_to_new.items() if k != v}
+    if not mappa:
+        return
+
+    # 1. lab.conf: riscrive le righe nome[idx]=LAN secondo i nuovi indici
+    lc = os.path.join(lab_path, 'lab.conf')
+    righe_lc = _righe_file(lc)
+    rx_if = re.compile(rf'^(\s*{re.escape(nome)}\s*\[\s*)(\d+)(\s*\]\s*=\s*.+)$')
+    rx_any = re.compile(rf'^\s*{re.escape(nome)}\s*\[')
+
+    idx_map = {int(k[3:]): int(v[3:]) for k, v in old_to_new.items() if k.startswith('eth') and v.startswith('eth')}
+    righe_if = []
+    altre_dev = []
+    prima_pos = None
+    resto = []
+    for l in righe_lc:
+        mif = rx_if.match(l)
+        if mif:
+            if prima_pos is None:
+                prima_pos = len(resto)
+            old_i = int(mif.group(2))
+            new_i = idx_map.get(old_i, old_i)
+            righe_if.append((new_i, f"{mif.group(1)}{new_i}{mif.group(3)}"))
+        elif rx_any.match(l):
+            if prima_pos is None:
+                prima_pos = len(resto)
+            altre_dev.append(l)
+        else:
+            resto.append(l)
+    righe_if.sort(key=lambda x: x[0])
+    blocco_dev = [x[1] for x in righe_if] + altre_dev
+    if prima_pos is None:
+        nuove_lc = resto + blocco_dev
+    else:
+        nuove_lc = resto[:prima_pos] + blocco_dev + resto[prima_pos:]
+    if nuove_lc != righe_lc:
+        _scrivi_esatte(lc, nuove_lc)
+
+    # Helper sostituzione a 2 passaggi per evitare collisioni durante gli swap (es. eth1 <-> eth2)
+    def _sub_two_pass(text):
+        tmp_map = {k: f"__TMP_IFACE_{i}__" for i, k in enumerate(mappa)}
+        t = text
+        for old_d, tok in tmp_map.items():
+            t = re.sub(rf'(?<![A-Za-z0-9_]){re.escape(old_d)}(?![A-Za-z0-9_])', tok, t)
+        for old_d, tok in tmp_map.items():
+            t = t.replace(tok, mappa[old_d])
+        return t
+
+    # 2. <nome>.startup
+    st = os.path.join(lab_path, f"{nome}.startup")
+    if os.path.exists(st):
+        v = _righe_file(st)
+        nu = [_sub_two_pass(l) for l in v]
+        # Riordina le righe 'ip address add ... dev ethN' per indice crescente
+        ip_rows, other_rows, first_ip = [], [], None
+        for l in nu:
+            mip = _RE_IP_ADD.match(l)
+            if mip and mip.group(2).startswith('eth') and mip.group(2)[3:].isdigit():
+                if first_ip is None:
+                    first_ip = len(other_rows)
+                ip_rows.append((int(mip.group(2)[3:]), l))
+            else:
+                other_rows.append(l)
+        if ip_rows:
+            ip_rows.sort(key=lambda x: x[0])
+            nu = other_rows[:first_ip] + [x[1] for x in ip_rows] + other_rows[first_ip:]
+        if nu != v:
+            _scrivi_esatte(st, nu)
+
+    # 3. <nome>/etc/frr/frr.conf
+    frr = os.path.join(lab_path, nome, 'etc', 'frr', 'frr.conf')
+    if os.path.exists(frr):
+        v = _righe_file(frr)
+        nu = [_sub_two_pass(l) for l in v]
+        if nu != v:
+            _scrivi_esatte(frr, nu)
+
+
+def _propaga_rete_in_policy(lab_path, old_net, new_net, note, origine_router=None):
+    """Aggiorna riferimenti a old_net -> new_net in prefix-list/access-list dei router del lab."""
+    if not old_net or not new_net or old_net == new_net:
+        return
+    disp = leggi_dispositivi(lab_path)
+    # Verifica se old_net è ancora una subnet di qualche interfaccia o annunciata altrove
+    ancora_usata = False
+    for n, d in disp.items():
+        if n == origine_router:
+            continue
+        for it in d['interfacce']:
+            if it['ip'] and _norm_net(it['ip']) == old_net:
+                ancora_usata = True
+                break
+        if d['frr']:
+            cfg = _analizza_frr(_leggi_righe(os.path.join(lab_path, n, 'etc', 'frr', 'frr.conf')))
+            if any(_norm_net(x) == old_net for x in cfg.get('bgp_networks', [])):
+                ancora_usata = True
+    f = _sostituzione_ip({}, {}, {old_net: new_net})
+    for n, d in sorted(disp.items()):
+        if not d['frr']:
+            continue
+        if ancora_usata and n != origine_router:
+            continue
+        fp = os.path.join(lab_path, n, 'etc', 'frr', 'frr.conf')
+        v = _righe_file(fp)
+        nu = []
+        for l in v:
+            s = ' '.join(l.split())
+            if re.match(r'(ip(?:v6)?\s+prefix-list|(?:ip\s+)?access-list)\s+', s):
+                nu.append(f(l))
+            else:
+                nu.append(l)
+        if nu != v:
+            _scrivi_esatte(fp, nu)
+            note.append(f"Aggiornati riferimenti policy ({old_net} → {new_net}) in {n}/etc/frr/frr.conf.")
 
 
 def _op_add_router(lab_path, p, note):
@@ -574,16 +908,7 @@ def _op_delete_device(lab_path, p, note):
 
     if p.get('clean_neighbors', True):
         miei = _ip_del_router(d)
-        if miei:
-            for n2, d2 in disp.items():
-                if n2 == nome or not d2['frr']:
-                    continue
-                f2 = os.path.join(lab_path, n2, 'etc', 'frr', 'frr.conf')
-                v = _righe_file(f2)
-                nu = [l for l in v if not (re.match(r'\s*neighbor\s+(\S+)\s', l) and l.split()[1] in miei)]
-                if nu != v:
-                    _scrivi_esatte(f2, nu)
-                    note.append(f"Rimosse le righe neighbor verso {nome} da {n2}/etc/frr/frr.conf.")
+        _pulisci_riferimenti_ip(lab_path, miei, note, escludi_dev=nome, descrizione=f"dispositivo {nome} eliminato")
 
     return f"Elimina dispositivo {nome}"
 
@@ -648,7 +973,8 @@ def _op_remove_interface(lab_path, p, note):
     dev = str(p.get('dev') or '').strip()
     if nome not in disp:
         raise OpError(f"Dispositivo '{nome}' non trovato.")
-    it = next((x for x in disp[nome]['interfacce'] if x['dev'] == dev), None)
+    d = disp[nome]
+    it = next((x for x in d['interfacce'] if x['dev'] == dev), None)
     if not it:
         raise OpError(f"Interfaccia '{dev}' non trovata su {nome}.")
 
@@ -659,7 +985,51 @@ def _op_remove_interface(lab_path, p, note):
     st = os.path.join(lab_path, f"{nome}.startup")
     if os.path.exists(st):
         rx_st = re.compile(rf'^\s*ip\s+a(?:ddr(?:ess)?)?\s+add\s+\S+\s+dev\s+{re.escape(dev)}\b')
-        _scrivi_esatte(st, [l for l in _righe_file(st) if not rx_st.match(l)])
+        rx_rt = re.compile(rf'^\s*ip\s+route\s+add\s+.*\bdev\s+{re.escape(dev)}\b')
+        _scrivi_esatte(st, [l for l in _righe_file(st) if not rx_st.match(l) and not rx_rt.match(l)])
+
+    old_ip_str = it['ip']
+    old_ip_only = old_ip_str.split('/')[0] if old_ip_str else ''
+    old_net = _norm_net(old_ip_str) if old_ip_str else ''
+
+    # Pulisce frr.conf locale: stanza interface <dev>, network orfana e neighbor verso peer solo su quella LAN
+    if d['frr']:
+        frr = os.path.join(lab_path, nome, 'etc', 'frr', 'frr.conf')
+        if os.path.exists(frr):
+            v = _righe_file(frr)
+            nu = _rimuovi_blocco_interfaccia_frr(v, dev)
+            altre_mie_stessa_net = any(
+                x['dev'] != dev and x['ip'] and _norm_net(x['ip']) == old_net
+                for x in d['interfacce']
+            )
+            if old_net and not altre_mie_stessa_net:
+                nu = _rimuovi_network_frr(nu, [old_net])
+            # Rimuovi neighbor locali verso IP su questa LAN se non condividono altre LAN con nome
+            if old_net:
+                try:
+                    net_obj = ipaddress.ip_network(old_net, strict=False)
+                except ValueError:
+                    net_obj = None
+                if net_obj:
+                    cand_pol = []
+                    nu2 = []
+                    for l in nu:
+                        s = ' '.join(l.split())
+                        mnb = re.match(r'neighbor\s+(\S+)\s', s)
+                        if mnb:
+                            try:
+                                if ipaddress.ip_address(mnb.group(1)) in net_obj:
+                                    cand_pol.extend(_policy_refs_in_line(l))
+                                    continue
+                            except ValueError:
+                                pass
+                        nu2.append(l)
+                    nu, _ = _pulisci_policy_orfane_frr(nu2, cand_pol)
+            if nu != v:
+                _scrivi_righe(frr, nu)
+
+    if old_ip_only:
+        _pulisci_riferimenti_ip(lab_path, [old_ip_only], note, escludi_dev=nome, descrizione=f"{nome} {dev} rimossa")
 
     return f"Rimuovi interfaccia {dev} da {nome}"
 
@@ -706,10 +1076,26 @@ def _op_edit_interface_ip(lab_path, p, note):
             note,
         )
 
-    net_map = {str(vecchio.network): str(nuovo.network)} if (nuovo.network != vecchio.network and not altri) else {}
+    altri_stessa_net_lab = any(
+        not (n == nome and x['dev'] == dev) and x['ip'] and _norm_net(x['ip']) == str(vecchio.network)
+        for n, dd in disp.items() for x in dd['interfacce']
+    )
+    altri_miei_stessa_net = any(
+        x['dev'] != dev and x['ip'] and _norm_net(x['ip']) == str(vecchio.network)
+        for x in disp[nome]['interfacce']
+    )
+    net_map = {str(vecchio.network): str(nuovo.network)} if (nuovo.network != vecchio.network and not altri_stessa_net_lab) else {}
     f = _sostituzione_ip({str(vecchio.ip): str(nuovo.ip)}, {str(vecchio): str(nuovo)}, net_map)
     modifiche = _piano_sostituzioni(lab_path, f)
-    coppie = [(ipaddress.ip_network(a), ipaddress.ip_network(b)) for a, b in net_map.items()]
+    # Se la subnet cambia solo su questo nodo (altri nodi restano sulla vecchia), aggiorna comunque il frr.conf locale
+    if nuovo.network != vecchio.network and not net_map and not altri_miei_stessa_net and disp[nome]['frr']:
+        rel_frr = os.path.join(nome, 'etc', 'frr', 'frr.conf')
+        f_loc = _sostituzione_ip({str(vecchio.ip): str(nuovo.ip)}, {str(vecchio): str(nuovo)}, {str(vecchio.network): str(nuovo.network)})
+        v_frr = _righe_file(os.path.join(lab_path, rel_frr))
+        n_frr = [f_loc(l) for l in v_frr]
+        if n_frr != v_frr:
+            modifiche[rel_frr] = (v_frr, n_frr)
+    coppie = [(vecchio.network, nuovo.network)] if nuovo.network != vecchio.network else []
     if coppie:
         note.extend(_reti_da_controllare(lab_path, modifiche, coppie))
     for rel, (_, nuove) in modifiche.items():
@@ -821,25 +1207,102 @@ def _op_move_interface(lab_path, p, note):
     if not trovata:
         raise OpError(f"Riga {nome}[{it['idx']}]=... non trovata in lab.conf.")
 
-    ip_map, iface_map = {}, {}
+    ip_map, iface_map, net_map = {}, {}, {}
+    old_lan = it['lan']
+    old_iface = ipaddress.ip_interface(it['ip']) if it['ip'] else None
+    new_iface = None
     new_ip_raw = str(p.get('new_ip') or '').strip()
-    if new_ip_raw and it['ip']:
-        v = ipaddress.ip_interface(it['ip'])
+    if new_ip_raw:
         rete = _rete_lan(disp, nuova)
         if '/' not in new_ip_raw and rete:
             new_ip_raw = f"{new_ip_raw}/{rete.prefixlen}"
-        n_ip = _valida_ip_cidr(new_ip_raw, own=own, propri=(str(v.ip),))
-        ip_map, iface_map = {str(v.ip): str(n_ip.ip)}, {str(v): str(n_ip)}
+        elif '/' not in new_ip_raw and old_iface:
+            new_ip_raw = f"{new_ip_raw}/{old_iface.network.prefixlen}"
+        propri_ok = (str(old_iface.ip),) if old_iface else ()
+        new_iface = _valida_ip_cidr(new_ip_raw, own=own, propri=propri_ok)
+        if old_iface:
+            ip_map, iface_map = {str(old_iface.ip): str(new_iface.ip)}, {str(old_iface): str(new_iface)}
+            altri_old_net = any(
+                not (n == nome and x['dev'] == dev) and x['ip'] and _norm_net(x['ip']) == str(old_iface.network)
+                for n, dd in disp.items() for x in dd['interfacce']
+            )
+            if new_iface.network != old_iface.network and not altri_old_net:
+                net_map = {str(old_iface.network): str(new_iface.network)}
 
-    f = _sostituzione_ip(ip_map, iface_map, {})
-    modifiche = _piano_sostituzioni(lab_path, f) if ip_map else {}
-    modifiche['lab.conf'] = (vecchie, [f(x) for x in nuove] if ip_map else nuove)
-    for rel, (_, n_lines) in modifiche.items():
-        _scrivi_esatte(os.path.join(lab_path, rel), n_lines)
+    # Prima aggiorna lab.conf
+    _scrivi_esatte(lc, nuove)
 
-    if len(_membri_lan(disp, it['lan'])) == 1:
-        note.append(f"La LAN {it['lan']} è rimasta senza dispositivi.")
-    return f"Sposta {nome} {dev}: LAN {it['lan']} → {nuova}"
+    # Se il dispositivo cambia LAN, pulisci vecchi neighbor BGP diretti sulla vecchia LAN
+    if old_iface and disp[nome]['tipo'] == 'router' and 'bgpd' in disp[nome]['demoni']:
+        old_peers_ips = {
+            x['ip'].split('/')[0] for n, x in _membri_lan(disp, old_lan)
+            if n != nome and x['ip']
+        }
+        # Rimuovi neighbor verso i vecchi peer su old_lan dal router spostato
+        frr_loc = os.path.join(lab_path, nome, 'etc', 'frr', 'frr.conf')
+        if old_peers_ips and os.path.exists(frr_loc):
+            vf = _righe_file(frr_loc)
+            nf, cp = [], []
+            for l in vf:
+                s = ' '.join(l.split())
+                mnb = re.match(r'neighbor\s+(\S+)\s', s)
+                if mnb and mnb.group(1) in old_peers_ips:
+                    cp.extend(_policy_refs_in_line(l))
+                    continue
+                nf.append(l)
+            nf, _ = _pulisci_policy_orfane_frr(nf, cp)
+            if nf != vf:
+                _scrivi_righe(frr_loc, nf)
+        # Rimuovi neighbor verso il vecchio IP dai router rimasti su old_lan
+        for n_peer, _ in _membri_lan(disp, old_lan):
+            if n_peer == nome or not disp[n_peer]['frr']:
+                continue
+            fp = os.path.join(lab_path, n_peer, 'etc', 'frr', 'frr.conf')
+            if os.path.exists(fp):
+                vf = _righe_file(fp)
+                nf, cp = [], []
+                for l in vf:
+                    s = ' '.join(l.split())
+                    mnb = re.match(r'neighbor\s+(\S+)\s', s)
+                    if mnb and mnb.group(1) == str(old_iface.ip):
+                        cp.extend(_policy_refs_in_line(l))
+                        continue
+                    nf.append(l)
+                nf, _ = _pulisci_policy_orfane_frr(nf, cp)
+                if nf != vf:
+                    _scrivi_righe(fp, nf)
+                    note.append(f"Rimosso neighbor verso {nome} ({old_iface.ip}) da {n_peer}/etc/frr/frr.conf.")
+
+    if ip_map:
+        f = _sostituzione_ip(ip_map, iface_map, net_map)
+        modifiche = _piano_sostituzioni(lab_path, f)
+        if old_iface and new_iface and new_iface.network != old_iface.network and not net_map and disp[nome]['frr']:
+            altri_miei_old = any(
+                x['dev'] != dev and x['ip'] and _norm_net(x['ip']) == str(old_iface.network)
+                for x in disp[nome]['interfacce']
+            )
+            if not altri_miei_old:
+                rel_frr = os.path.join(nome, 'etc', 'frr', 'frr.conf')
+                f_loc = _sostituzione_ip(ip_map, iface_map, {str(old_iface.network): str(new_iface.network)})
+                v_frr = _righe_file(os.path.join(lab_path, rel_frr))
+                n_frr = [f_loc(l) for l in v_frr]
+                if n_frr != v_frr:
+                    modifiche[rel_frr] = (v_frr, n_frr)
+        for rel, (_, n_lines) in modifiche.items():
+            _scrivi_esatte(os.path.join(lab_path, rel), n_lines)
+    elif new_iface and not old_iface:
+        st = os.path.join(lab_path, f"{nome}.startup")
+        sr = _righe_file(st) if os.path.exists(st) else []
+        ins = next((k for k, l in enumerate(sr) if re.match(r'^\s*(systemctl|ip\s+route|route\s+add)\b', l)), len(sr))
+        sr.insert(ins, f"ip address add {new_iface} dev {dev}")
+        _scrivi_esatte(st, sr)
+
+    if disp[nome]['tipo'] == 'router' and 'bgpd' in disp[nome]['demoni']:
+        auto_generate_bgp_neighbors(lab_path, _routers_from_disk(lab_path))
+
+    if len(_membri_lan(disp, old_lan)) == 1:
+        note.append(f"La LAN {old_lan} è rimasta senza dispositivi.")
+    return f"Sposta {nome} {dev}: LAN {old_lan} → {nuova}"
 
 
 def _op_change_gateway(lab_path, p, note):
@@ -900,7 +1363,12 @@ def _op_change_as(lab_path, p, note):
 
     rel = os.path.join(nome, 'etc', 'frr', 'frr.conf')
     righe = _righe_file(os.path.join(lab_path, rel))
-    nuove_r = [re.sub(rf'^(\s*router\s+bgp\s+){vecchio}\b', rf'\g<1>{nuovo}', l) for l in righe]
+    nuove_r = []
+    for l in righe:
+        l2 = re.sub(rf'^(\s*router\s+bgp\s+){vecchio}\b', rf'\g<1>{nuovo}', l)
+        if re.match(r'^\s*set\s+as-path\s+prepend\b', l2):
+            l2 = re.sub(rf'(?<=\s){vecchio}(?=\s|$)', nuovo, l2)
+        nuove_r.append(l2)
     _scrivi_esatte(os.path.join(lab_path, rel), nuove_r)
 
     miei = _ip_del_router(d)
@@ -1343,6 +1811,33 @@ def _op_bgp_network(lab_path, p, note):
         raise OpError(f"{nome} non ha BGP abilitato.")
     fpath = os.path.join(lab_path, nome, 'etc', 'frr', 'frr.conf')
     action = str(p.get('action') or 'add').strip().lower()
+
+    if action == 'edit':
+        old_raw = str(p.get('old_network') or '').strip()
+        new_raw = str(p.get('new_network') or '').strip()
+        old_n = _parse_lista_reti(old_raw)[0]
+        new_n = _parse_lista_reti(new_raw)[0]
+        if old_n == new_n:
+            raise OpError("La nuova network BGP coincide con quella attuale.")
+        out, in_bgp, trovata = [], False, False
+        for l in _leggi_righe(fpath):
+            s = l.strip()
+            if s.startswith('router '):
+                in_bgp = s.startswith('router bgp')
+            elif l and not l[0].isspace():
+                in_bgp = False
+            elif in_bgp and s.startswith('network ') and len(s.split()) == 2 and _norm_net(s.split()[1]) == old_n:
+                indent = l[:len(l) - len(l.lstrip())]
+                out.append(f"{indent}network {new_n}")
+                trovata = True
+                continue
+            out.append(l)
+        if not trovata:
+            raise OpError(f"Network BGP '{old_n}' non trovata su {nome}.")
+        _scrivi_righe(fpath, out)
+        _propaga_rete_in_policy(lab_path, old_n, new_n, note, origine_router=nome)
+        return f"Modifica network BGP su {nome}: {old_n} → {new_n}"
+
     reti = _parse_lista_reti(p.get('networks'))
 
     if action == 'remove':
@@ -1571,6 +2066,511 @@ def _op_delete_xml(lab_path, p, note):
     return f"Rimuovi {nome}.xml"
 
 
+
+def _op_reorder_interfaces(lab_path, p, note):
+    disp = leggi_dispositivi(lab_path)
+    nome = str(p.get('nome') or '').strip()
+    if nome not in disp:
+        raise OpError(f"Dispositivo '{nome}' non trovato.")
+    d = disp[nome]
+    order = [str(x).strip() for x in (p.get('order') or []) if str(x).strip()]
+    cur_devs = [it['dev'] for it in d['interfacce']]
+    if sorted(order) != sorted(cur_devs) or len(order) != len(cur_devs):
+        raise OpError("Ordine interfacce non valido: devono essere presenti tutte e sole le interfacce del dispositivo.")
+    old_to_new = {old_dev: f"eth{i}" for i, old_dev in enumerate(order)}
+    if all(k == v for k, v in old_to_new.items()):
+        raise OpError("L'ordine delle interfacce non è cambiato.")
+    _rinomina_interfacce_dispositivo(lab_path, nome, old_to_new, note)
+    mappa_txt = ', '.join(f"{k}→{v}" for k, v in old_to_new.items() if k != v)
+    return f"Riordina interfacce di {nome} ({mappa_txt})"
+
+
+def _op_edit_router(lab_path, p, note):
+    """Modifica completa di un router (simile a Aggiungi Router) con propagazione dei riferimenti."""
+    disp = leggi_dispositivi(lab_path)
+    nome = str(p.get('nome') or '').strip()
+    if nome not in disp or disp[nome]['tipo'] != 'router':
+        raise OpError(f"Router '{nome}' non trovato.")
+    d = disp[nome]
+
+    protos = [str(x).strip().lower() for x in (p.get('protocols') or []) if str(x).strip()]
+    valid_p = {'bgp', 'ospf', 'rip', 'statico'}
+    if not protos or any(x not in valid_p for x in protos):
+        raise OpError("Seleziona almeno un protocollo valido (bgp, ospf, rip, statico).")
+
+    asn = ''
+    if 'bgp' in protos:
+        asn = str(p.get('asn') or '').strip()
+        if not asn_valido(asn):
+            raise OpError("Numero AS non valido (solo cifre, es. 10).")
+
+    ospf_area = '0.0.0.0'
+    ospf_stub = False
+    if 'ospf' in protos:
+        ospf_area = str(p.get('ospf_area') or '0.0.0.0').strip()
+        if not area_valida(ospf_area):
+            raise OpError(f"Area OSPF non valida: '{ospf_area}'.")
+        ospf_stub = bool(p.get('ospf_area_stub')) and ospf_area not in ('0', '0.0.0.0')
+
+    raw_ifaces = p.get('interfaces') or []
+    if not raw_ifaces:
+        raise OpError("Un router deve avere almeno una interfaccia.")
+
+    own = _proprietari(disp)
+    miei_vecchi_ip = {it['ip'].split('/')[0] for it in d['interfacce'] if it['ip']} | {lb.split('/')[0] for lb in d['loopback']}
+
+    # Validazione nuove interfacce
+    parsed_ifaces = []
+    local_ips = set()
+    for idx, it in enumerate(raw_ifaces):
+        lan = _valida_lan(it.get('lan'))
+        ip_obj = _valida_ip_cidr(it.get('ip'), own=own, propri=miei_vecchi_ip)
+        if str(ip_obj.ip) in local_ips:
+            raise OpError(f"IP duplicato {ip_obj.ip} sullo stesso router.")
+        local_ips.add(str(ip_obj.ip))
+        parsed_ifaces.append({
+            'new_idx': idx,
+            'new_dev': f"eth{idx}",
+            'orig_dev': str(it.get('orig_dev') or '').strip(),
+            'lan': lan,
+            'ip_obj': ip_obj,
+        })
+
+    # Validazione loopback
+    loopbacks = []
+    for lb in (p.get('loopbacks') or []):
+        s = str(lb).strip()
+        if not s:
+            continue
+        if '/' not in s:
+            s = s + '/32'
+        ip_obj = _valida_ip_cidr(s, own=own, propri=miei_vecchi_ip)
+        if str(ip_obj.ip) in local_ips:
+            raise OpError(f"Loopback {ip_obj.ip} duplicata.")
+        local_ips.add(str(ip_obj.ip))
+        loopbacks.append(str(ip_obj))
+
+    # Validazione rotte statiche
+    static_routes = []
+    for sr in (p.get('static_routes') or []):
+        dest = str(sr.get('dest') or '').strip()
+        via = str(sr.get('via') or '').strip()
+        if not dest and not via:
+            continue
+        if dest != 'default':
+            try:
+                dest = str(ipaddress.ip_network(dest, strict=False))
+            except ValueError:
+                raise OpError(f"Destinazione rotta statica non valida: '{dest}'.")
+        via = _valida_ip_solo(via)
+        dev_sr = str(sr.get('dev') or '').strip()
+        static_routes.append({'dest': dest, 'via': via, 'dev': dev_sr})
+
+    old_by_dev = {it['dev']: it for it in d['interfacce']}
+    kept_orig_devs = {x['orig_dev'] for x in parsed_ifaces if x['orig_dev'] in old_by_dev}
+    removed_ifaces = [it for it in d['interfacce'] if it['dev'] not in kept_orig_devs]
+
+    # 1. Rinomina interfacce riordinate (per preservare eventuali blocchi 'interface ethX' in frr.conf)
+    rename_map = {x['orig_dev']: x['new_dev'] for x in parsed_ifaces if x['orig_dev'] in old_by_dev}
+    if any(k != v for k, v in rename_map.items()):
+        # Solo righe interface ethX in frr.conf (lab.conf e startup vengono riscritti sotto)
+        frr_p = os.path.join(lab_path, nome, 'etc', 'frr', 'frr.conf')
+        if os.path.exists(frr_p):
+            v_frr = _righe_file(frr_p)
+            tmp_m = {k: f"__TMP_RENAME_IF_{i}__" for i, k in enumerate(rename_map)}
+            nu_frr = []
+            for l in v_frr:
+                t = l
+                for ok, tk in tmp_m.items():
+                    t = re.sub(rf'(?<![A-Za-z0-9_]){re.escape(ok)}(?![A-Za-z0-9_])', tk, t)
+                for ok, tk in tmp_m.items():
+                    t = t.replace(tk, rename_map[ok])
+                nu_frr.append(t)
+            if nu_frr != v_frr:
+                _scrivi_esatte(frr_p, nu_frr)
+
+    # 2. Propagazione IP / subnet per le interfacce modificate e pulizia per quelle rimosse
+    ip_map, iface_map, net_map_global, net_map_local = {}, {}, {}, {}
+    removed_ips = []
+    for it in removed_ifaces:
+        if it['ip']:
+            removed_ips.append(it['ip'].split('/')[0])
+    old_lb_ips = {lb.split('/')[0] for lb in d['loopback']}
+    new_lb_ips = {lb.split('/')[0] for lb in loopbacks}
+    removed_ips.extend(sorted(old_lb_ips - new_lb_ips))
+
+    for x in parsed_ifaces:
+        orig = old_by_dev.get(x['orig_dev'])
+        if not orig or not orig['ip']:
+            continue
+        v_if = ipaddress.ip_interface(orig['ip'])
+        n_if = x['ip_obj']
+        if v_if != n_if:
+            ip_map[str(v_if.ip)] = str(n_if.ip)
+            iface_map[str(v_if)] = str(n_if)
+            if v_if.network != n_if.network:
+                altri_lab_old = any(
+                    not (n == nome and y['dev'] == orig['dev']) and y['ip'] and _norm_net(y['ip']) == str(v_if.network)
+                    for n, dd in disp.items() for y in dd['interfacce']
+                )
+                altri_miei_old = any(
+                    y['orig_dev'] != x['orig_dev'] and str(y['ip_obj'].network) == str(v_if.network)
+                    for y in parsed_ifaces
+                )
+                if not altri_lab_old:
+                    net_map_global[str(v_if.network)] = str(n_if.network)
+                elif not altri_miei_old:
+                    net_map_local[str(v_if.network)] = str(n_if.network)
+
+    if ip_map or net_map_global:
+        f_sub = _sostituzione_ip(ip_map, iface_map, net_map_global)
+        mods = _piano_sostituzioni(lab_path, f_sub)
+        for rel, (_, n_lines) in mods.items():
+            _scrivi_esatte(os.path.join(lab_path, rel), n_lines)
+        if net_map_local and d['frr']:
+            fp = os.path.join(lab_path, nome, 'etc', 'frr', 'frr.conf')
+            if os.path.exists(fp):
+                f_loc = _sostituzione_ip({}, {}, net_map_local)
+                vf = _righe_file(fp)
+                nf = [f_loc(l) for l in vf]
+                if nf != vf:
+                    _scrivi_esatte(fp, nf)
+
+    # 3. Aggiorna lab.conf per questo router
+    uses_frr = any(x in protos for x in ('bgp', 'ospf', 'rip'))
+    img_line = f'{nome}[image]="kathara/frr"' if uses_frr else f'{nome}[image]="kathara/base"'
+    lc = os.path.join(lab_path, 'lab.conf')
+    righe_lc = _righe_file(lc)
+    rx_dev = re.compile(rf'^\s*{re.escape(nome)}\s*\[')
+    first_pos = None
+    resto = []
+    for l in righe_lc:
+        if rx_dev.match(l):
+            if first_pos is None:
+                first_pos = len(resto)
+            continue
+        resto.append(l)
+    nuovo_blocco_lc = [f"{nome}[{x['new_idx']}]={x['lan']}" for x in parsed_ifaces] + [img_line]
+    if first_pos is None:
+        if resto and resto[-1].strip():
+            resto.append('')
+        nuove_lc = resto + nuovo_blocco_lc
+    else:
+        nuove_lc = resto[:first_pos] + nuovo_blocco_lc + resto[first_pos:]
+    _scrivi_esatte(lc, nuove_lc)
+
+    # 4. Aggiorna <nome>.startup
+    startup_lines = [f"ip address add {x['ip_obj']} dev {x['new_dev']}" for x in parsed_ifaces]
+    for lb in loopbacks:
+        startup_lines.append(f"ip address add {lb} dev lo")
+    iface_dicts = [{'name': x['new_dev'], 'lan': x['lan'], 'ip': str(x['ip_obj'])} for x in parsed_ifaces]
+    startup_lines.extend(static_route_lines({'interfaces': iface_dicts, 'static_routes': static_routes}))
+    if uses_frr:
+        startup_lines.extend(['', 'systemctl start frr'])
+    st_path = os.path.join(lab_path, f"{nome}.startup")
+    _scrivi_esatte(st_path, startup_lines)
+    try:
+        os.chmod(st_path, 0o755)
+    except Exception:
+        pass
+
+    # 5. Gestione FRR (daemons + frr.conf)
+    etc_frr = os.path.join(lab_path, nome, 'etc', 'frr')
+    frr_path = os.path.join(etc_frr, 'frr.conf')
+    daemons_path = os.path.join(etc_frr, 'daemons')
+    old_asn = d['asn']
+    had_bgp = 'bgpd' in d['demoni']
+
+    if not uses_frr:
+        if os.path.isdir(etc_frr):
+            shutil.rmtree(etc_frr, ignore_errors=True)
+        if had_bgp:
+            all_ips = list(miei_vecchi_ip | {str(x['ip_obj'].ip) for x in parsed_ifaces})
+            _pulisci_riferimenti_ip(lab_path, all_ips, note, escludi_dev=nome, descrizione=f"BGP disattivato su {nome}")
+    else:
+        os.makedirs(etc_frr, exist_ok=True)
+        if not os.path.exists(os.path.join(etc_frr, 'vtysh.conf')):
+            with open(os.path.join(etc_frr, 'vtysh.conf'), 'w', encoding='utf-8', newline='\n') as fh:
+                fh.write(VTYSH_TMPL.format(hostname=f"{nome}-frr"))
+        if os.path.exists(daemons_path):
+            dm = _righe_file(daemons_path)
+            dm = _set_demone(dm, 'zebra', 'yes')
+            dm = _set_demone(dm, 'bgpd', 'yes' if 'bgp' in protos else 'no')
+            dm = _set_demone(dm, 'ospfd', 'yes' if 'ospf' in protos else 'no')
+            dm = _set_demone(dm, 'ripd', 'yes' if 'rip' in protos else 'no')
+            _scrivi_esatte(daemons_path, dm)
+        else:
+            with open(daemons_path, 'w', encoding='utf-8', newline='\n') as fh:
+                fh.write(DAEMONS_TMPL.format(
+                    zebra='yes',
+                    ripd='yes' if 'rip' in protos else 'no',
+                    ospfd='yes' if 'ospf' in protos else 'no',
+                    bgpd='yes' if 'bgp' in protos else 'no',
+                ))
+
+        righe = _righe_file(frr_path) if os.path.exists(frr_path) else FRR_HEADER.rstrip('\n').split('\n')
+
+        # Rimuovi blocchi interface per interfacce rimosse
+        for rem in removed_ifaces:
+            righe = _rimuovi_blocco_interfaccia_frr(righe, rem['dev'])
+
+        # Helper per aggiornare / creare / rimuovere un blocco router <proto>
+        def _togli_blocco(lines, proto_name):
+            out_l = list(lines)
+            i = _inizio_blocco(out_l, rf'router\s+{proto_name}\b')
+            if i is not None:
+                f_end = _fine_blocco(out_l, i)
+                while f_end < len(out_l) and not out_l[f_end].strip():
+                    f_end += 1
+                del out_l[i:f_end]
+            return out_l
+
+        # Calcola reti IGP desiderate
+        rdata_tmp = {'asn': asn, 'interfaces': iface_dicts}
+        igp_nets_raw = p.get('igp_networks')
+        igp_nets = _parse_lista_reti(igp_nets_raw, opzionale=True) if (igp_nets_raw is not None and str(igp_nets_raw).strip()) else default_igp_networks(nome, rdata_tmp)
+        for lb in loopbacks:
+            try:
+                lb_ip = ipaddress.ip_interface(lb).ip
+                if not any(lb_ip in ipaddress.ip_network(n, strict=False) for n in igp_nets):
+                    igp_nets = igp_nets + [str(ipaddress.ip_interface(lb).network)]
+            except ValueError:
+                pass
+        red_bgp = ('bgp' in protos) and bool(p.get('igp_redistribute_bgp', True))
+
+        # --- OSPF ---
+        if 'ospf' not in protos:
+            righe = _togli_blocco(righe, 'ospf')
+            righe = [l for l in righe if not re.match(r'\s*redistribute\s+ospf\b', l)]
+        else:
+            i_o = _inizio_blocco(righe, r'router\s+ospf\b')
+            if i_o is None:
+                redis = ['redistribute connected'] + (['redistribute bgp'] if red_bgp else [])
+                blk = mk_ospf_stanza(igp_nets, ospf_area, ospf_stub, redis).rstrip('\n').split('\n')
+                i_b = _inizio_blocco(righe, r'router\s+bgp\b')
+                righe = (righe + [''] + blk) if i_b is None else (righe[:i_b] + blk + [''] + righe[i_b:])
+            else:
+                f_o = _fine_blocco(righe, i_o)
+                body = righe[i_o + 1:f_o]
+                # Conserva direttive extra (auto-cost, default-information, redistribute non-bgp/connected o route-map)
+                kept_extra = []
+                has_red_conn = False
+                has_red_bgp_rm = False
+                for l in body:
+                    s = ' '.join(l.split())
+                    if not s or s.startswith('network ') or re.match(r'area\s+\S+\s+stub\b', s):
+                        continue
+                    if s == 'redistribute connected':
+                        has_red_conn = True
+                        continue
+                    if s == 'redistribute bgp':
+                        continue
+                    if s.startswith('redistribute bgp '):
+                        if red_bgp:
+                            has_red_bgp_rm = True
+                            kept_extra.append(l)
+                        continue
+                    kept_extra.append(l)
+                new_body = [''] + [f"    network {n} area {ospf_area}" for n in dict.fromkeys(igp_nets)]
+                if ospf_stub:
+                    new_body.append(f"    area {ospf_area} stub")
+                new_body.append('')
+                if has_red_conn or True:
+                    new_body.append('    redistribute connected')
+                if red_bgp and not has_red_bgp_rm:
+                    new_body.append('    redistribute bgp')
+                new_body.extend(kept_extra)
+                righe = righe[:i_o + 1] + new_body + righe[f_o:]
+
+        # --- RIP ---
+        if 'rip' not in protos:
+            righe = _togli_blocco(righe, 'rip')
+            righe = [l for l in righe if not re.match(r'\s*redistribute\s+rip\b', l)]
+        else:
+            i_r = _inizio_blocco(righe, r'router\s+rip\b')
+            if i_r is None:
+                redis = ['redistribute connected'] + (['redistribute bgp'] if red_bgp else [])
+                blk = mk_rip_stanza(igp_nets, redis).rstrip('\n').split('\n')
+                i_b = _inizio_blocco(righe, r'router\s+bgp\b')
+                righe = (righe + [''] + blk) if i_b is None else (righe[:i_b] + blk + [''] + righe[i_b:])
+            else:
+                f_r = _fine_blocco(righe, i_r)
+                body = righe[i_r + 1:f_r]
+                kept_extra = []
+                has_red_bgp_rm = False
+                for l in body:
+                    s = ' '.join(l.split())
+                    if not s or s.startswith('network ') or s == 'redistribute connected' or s == 'redistribute bgp':
+                        continue
+                    if s.startswith('redistribute bgp '):
+                        if red_bgp:
+                            has_red_bgp_rm = True
+                            kept_extra.append(l)
+                        continue
+                    kept_extra.append(l)
+                new_body = [''] + [f"    network {n}" for n in dict.fromkeys(igp_nets)]
+                new_body.extend(['', '    redistribute connected'])
+                if red_bgp and not has_red_bgp_rm:
+                    new_body.append('    redistribute bgp')
+                new_body.extend(kept_extra)
+                righe = righe[:i_r + 1] + new_body + righe[f_r:]
+
+        # --- BGP ---
+        if 'bgp' not in protos:
+            righe = _togli_blocco(righe, 'bgp')
+            righe = [l for l in righe if not re.match(r'\s*debug\s+bgp\b', l) and not re.match(r'\s*redistribute\s+bgp\b', l)]
+            _scrivi_righe(frr_path, righe)
+            if had_bgp:
+                all_ips = list(miei_vecchi_ip | {str(x['ip_obj'].ip) for x in parsed_ifaces})
+                _pulisci_riferimenti_ip(lab_path, all_ips, note, escludi_dev=nome, descrizione=f"BGP disattivato su {nome}")
+        else:
+            if not any(l.strip().startswith('debug bgp') for l in righe):
+                idx_log = next((k for k, l in enumerate(righe) if l.strip().startswith('log file')), 0)
+                righe = righe[:idx_log + 1] + ['', 'debug bgp keepalives', 'debug bgp updates in', 'debug bgp updates out'] + righe[idx_log + 1:]
+
+            bgp_nets_raw = p.get('bgp_networks')
+            if bgp_nets_raw is not None:
+                bgp_nets = _parse_lista_reti(bgp_nets_raw, opzionale=True)
+            else:
+                bgp_nets = [str(x['ip_obj'].network) for x in parsed_ifaces]
+
+            i_b = _inizio_blocco(righe, r'router\s+bgp\b')
+            old_bgp_nets = []
+            if i_b is None:
+                blk = mk_bgp_stanza(asn, networks=bgp_nets).rstrip('\n').split('\n')
+                righe = righe + [''] + blk
+            else:
+                f_b = _fine_blocco(righe, i_b)
+                righe[i_b] = f"router bgp {asn}"
+                body = righe[i_b + 1:f_b]
+                kept_body = []
+                for l in body:
+                    s = ' '.join(l.split())
+                    if s.startswith('network ') and len(s.split()) == 2:
+                        old_bgp_nets.append(_norm_net(s.split()[1]))
+                        continue
+                    kept_body.append(l)
+                # Inserisci le network subito dopo no bgp ... (o in testa al blocco)
+                ins_pos = 0
+                for k, l in enumerate(kept_body):
+                    s = ' '.join(l.split())
+                    if s.startswith('no bgp ') or s.startswith('bgp '):
+                        ins_pos = k + 1
+                net_lines = [f"    network {n}" for n in dict.fromkeys(bgp_nets)]
+                if net_lines:
+                    kept_body = kept_body[:ins_pos] + [''] + net_lines + kept_body[ins_pos:]
+                righe = righe[:i_b + 1] + kept_body + righe[f_b:]
+
+            # Se l'ASN è cambiato, aggiorna set as-path prepend locale
+            if old_asn and old_asn != asn:
+                righe = [
+                    re.sub(rf'(?<=\s){old_asn}(?=\s|$)', asn, l)
+                    if re.match(r'^\s*set\s+as-path\s+prepend\b', l) else l
+                    for l in righe
+                ]
+
+            _scrivi_righe(frr_path, righe)
+
+            # Propagazione cambio ASN verso tutti gli altri router
+            if old_asn and old_asn != asn:
+                miei_attuali = {str(x['ip_obj'].ip) for x in parsed_ifaces} | {lb.split('/')[0] for lb in loopbacks}
+                for n2, d2 in disp.items():
+                    if n2 == nome or not d2['frr']:
+                        continue
+                    fp2 = os.path.join(lab_path, n2, 'etc', 'frr', 'frr.conf')
+                    if not os.path.exists(fp2):
+                        continue
+                    v2 = _righe_file(fp2)
+                    nu2 = []
+                    for l in v2:
+                        m = re.match(rf'^(\s*neighbor\s+(\S+)\s+remote-as\s+){old_asn}(\s*)$', l)
+                        nu2.append(f"{m.group(1)}{asn}{m.group(3)}" if m and m.group(2) in miei_attuali else l)
+                    if nu2 != v2:
+                        _scrivi_esatte(fp2, nu2)
+                        note.append(f"Aggiornato remote-as di {nome} (AS{old_asn} → AS{asn}) in {n2}/etc/frr/frr.conf.")
+
+            # Propagazione modifica 1-a-1 di una network BGP annunciata verso prefix-list/access-list
+            removed_bn = [x for x in old_bgp_nets if x not in bgp_nets]
+            added_bn = [x for x in bgp_nets if x not in old_bgp_nets]
+            if len(removed_bn) == 1 and len(added_bn) == 1:
+                _propaga_rete_in_policy(lab_path, removed_bn[0], added_bn[0], note, origine_router=nome)
+
+    # 6. Pulisci riferimenti agli IP effettivamente rimossi (interfacce/loopback eliminate)
+    if removed_ips:
+        _pulisci_riferimenti_ip(lab_path, removed_ips, note, escludi_dev=nome, descrizione=f"interfacce/loopback rimosse da {nome}")
+
+    # 7. Auto-neighbor BGP sulle LAN condivise se richiesto
+    if 'bgp' in protos and bool(p.get('auto_bgp_neighbors', True)):
+        auto_generate_bgp_neighbors(lab_path, _routers_from_disk(lab_path))
+
+    return f"Modifica configurazione router {nome}"
+
+
+def _op_reset_topology(lab_path, p, note):
+    """Resetta tutte le policy BGP e il routing dei router lasciando intatta
+    la topologia base (nodi, LAN, IP, host/WWW/DNS) e i protocolli attivati (daemons + ASN)."""
+    disp = leggi_dispositivi(lab_path)
+    resettati = []
+    for nome, d in sorted(disp.items()):
+        if d['tipo'] != 'router':
+            continue
+
+        # 1. .startup: conserva IP interfacce, loopback e systemctl start frr; rimuove rotte statiche
+        st_path = os.path.join(lab_path, f"{nome}.startup")
+        if os.path.exists(st_path):
+            v_st = _righe_file(st_path)
+            nu_st = [
+                l for l in v_st
+                if not re.match(r'^\s*(?:ip\s+route\s+add|route\s+add)\b', l)
+            ]
+            if nu_st != v_st:
+                _scrivi_esatte(st_path, nu_st)
+
+        # 2. frr.conf: ricostruisce solo header + blocchi vuoti per i protocolli abilitati nei daemons
+        if not d['frr']:
+            continue
+        frr_path = os.path.join(lab_path, nome, 'etc', 'frr', 'frr.conf')
+        demoni = set(d['demoni'])
+        parts = [FRR_HEADER.rstrip('\n')]
+
+        if 'bgpd' in demoni:
+            parts.append(
+                "\ndebug bgp keepalives\n"
+                "debug bgp updates in\n"
+                "debug bgp updates out"
+            )
+        if 'ospfd' in demoni:
+            parts.append("\nrouter ospf\n")
+        if 'ripd' in demoni:
+            parts.append("\nrouter rip\n")
+        if 'bgpd' in demoni:
+            asn = d['asn'] or ''
+            if not asn:
+                m = re.match(r'as(\d+)r', nome, re.I)
+                asn = m.group(1) if m else '1'
+            parts.append(
+                f"\nrouter bgp {asn}\n\n"
+                "    no bgp ebgp-requires-policy\n"
+                "    no bgp network import-check"
+            )
+
+        nuovo_testo = "\n".join(parts).rstrip('\n') + "\n"
+        vecchio_testo = "\n".join(_righe_file(frr_path)) + "\n"
+        if nuovo_testo != vecchio_testo:
+            with open(frr_path, 'w', encoding='utf-8', newline='\n') as fh:
+                fh.write(nuovo_testo)
+            resettati.append(nome)
+
+    if resettati:
+        note.append(
+            f"Azzerati routing e policy su {len(resettati)} router ({', '.join(resettati)}). "
+            "Topologia (lab.conf), IP interfacce, host/WWW/DNS e protocolli attivi (daemons) sono rimasti intatti."
+        )
+    else:
+        note.append("Nessun router aveva configurazioni di routing/policy da azzerare.")
+    return "Resetta topologia (routing e policy azzerati)"
+
+
 _LAB_OPS = {
     'add_router': _op_add_router,
     'add_host': _op_add_host,
@@ -1599,6 +2599,9 @@ _LAB_OPS = {
     'fix_names': _op_fix_names,
     'regen_xml': _op_regen_xml,
     'delete_xml': _op_delete_xml,
+    'reorder_interfaces': _op_reorder_interfaces,
+    'edit_router': _op_edit_router,
+    'reset_topology': _op_reset_topology,
 }
 
 
@@ -1813,9 +2816,13 @@ def check_frr_content(content):
     return out
 
 
-def suggerisci_ip_lan(lab_path, lan):
+def suggerisci_ip_lan(lab_path, lan, exclude=None):
     disp = leggi_dispositivi(lab_path)
-    own = _proprietari(disp)
+    own = set(_proprietari(disp).keys())
+    for ex in (exclude or []):
+        s = str(ex or '').strip().split('/')[0]
+        if s:
+            own.add(s)
     rete = _rete_lan(disp, lan)
     if not rete:
         return ''

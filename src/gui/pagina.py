@@ -292,10 +292,10 @@ async function apriLab(nome, mantieni) {
     $('#vuoto').hidden = true; $('#vista').hidden = false;
     $('#labNome').textContent = nome;
     $('#xmlNota').hidden = !lab.xml;
-    $('#xmlNota').innerHTML = `<span>Nel lab c'è <code>${esc(nome)}.xml</code> del generatore: <b>cancellalo prima della consegna</b> (l'archivio creato da qui lo esclude già).</span> <button class="small danger" id="bDelXmlTop">Rimuovi XML ora</button>`;
+    $('#xmlNota').innerHTML = lab.xml ? `<span>Nel lab c'è <code>${esc(nome)}.xml</code> del generatore: <b>cancellalo prima della consegna</b> (l'archivio creato da qui lo esclude già).</span> <button class="small danger" id="bDelXmlTop">Rimuovi XML ora</button>` : '';
     const inv = lab.nomi_non_validi || [];
     $('#nomiNota').hidden = !inv.length;
-    if (inv.length) $('#nomiNota').innerHTML = `<span><b>⚠ Nomi non validi per Kathará:</b> ${inv.map(x => `<code>${esc(x.attuale)}</code> → <code>${esc(x.proposto)}</code>`).join(', ')}</span> <button class="small danger" id="bFixNomiTop">Correggi nomi ora</button>`;
+    $('#nomiNota').innerHTML = inv.length ? `<span><b>⚠ Nomi non validi per Kathará:</b> ${inv.map(x => `<code>${esc(x.attuale)}</code> → <code>${esc(x.proposto)}</code>`).join(', ')}</span> <button class="small danger" id="bFixNomiTop">Correggi nomi ora</button>` : '';
     const nErr = (lab.avvisi_topologia || []).length + (lab.avvisi_config || []).length;
     const lv = $('#labVal');
     lv.textContent = nErr ? ('⚠ ' + nErr + ' avvisi') : '✔ 0 avvisi';
@@ -719,8 +719,9 @@ function lato() {
   el.innerHTML = `<div class="riga" style="margin:0"><h3>${esc(d.nome)}</h3><span class="badge">${esc(d.tipo)}</span>${d.asn ? `<span class="badge">AS${esc(d.asn)}</span>` : ''}<div class="sp"></div><a href="#" data-sel="">elenco</a></div>
     ${probs.length ? `<div class="fwarn" style="margin:8px 0;padding:6px 8px;font-size:12.5px"><b>⚠ ${probs.length} avvisi su ${esc(d.nome)}</b> <button class="small" id="sDiag" style="margin-left:6px">Diagnostica &amp; Correggi</button></div>` : ''}
     <div class="btns">
-      <button class="small" id="sMenu">⚙ Modifica dispositivo…</button>
-      <button class="small ghost" id="sEditF">✎ Editor file</button>
+      ${d.tipo === 'router' ? '<button class="small" id="sEditR">✎ Modifica Router</button>' : ''}
+      <button class="small ${d.tipo === 'router' ? 'ghost' : ''}" id="sMenu">⚙ Azioni…</button>
+      <button class="small ghost" id="sEditF">📄 Editor file</button>
       ${d.tipo === 'router' && d.demoni.includes('bgpd') ? '<button class="small ghost" id="sBgpPol">🛡 Policy BGP</button>' : ''}
     </div>
     <table><tr><th>Interf.</th><th>IP</th><th>LAN</th></tr>${d.interfacce.map(i => `<tr><td>${esc(i.dev)}</td><td>${esc(i.ip || '-')}</td><td>${esc(i.lan)}</td></tr>`).join('')}
@@ -751,6 +752,7 @@ $('#side').addEventListener('click', async e => {
   if (e.target.id === 'sideAddR') { modalAddRouter(); return; }
   if (e.target.id === 'sideAddH') { modalAddHost(); return; }
   if (e.target.id === 'sDiag') { const d = dispositivo(S.sel); if (d) modalDiagnostica(d); return; }
+  if (e.target.id === 'sEditR') { const d = dispositivo(S.sel); if (d) modalEditRouter(d); return; }
   if (e.target.id === 'sEditF') { const d = dispositivo(S.sel); if (d) modalEditorFile(d); return; }
   if (e.target.id === 'sBgpPol') { const d = dispositivo(S.sel); if (d) modalBgpPolicy(d); return; }
   if (e.target.id === 'sMenu') {

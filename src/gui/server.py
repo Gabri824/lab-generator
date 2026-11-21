@@ -309,7 +309,7 @@ def _gestisci_edit(st, path, corpo):
         if path == '/api/edit/check_frr':
             return {'problemi': ops.check_frr_content(corpo.get('content', ''))}
         if path == '/api/edit/suggest_ip':
-            return {'ip': ops.suggerisci_ip_lan(st.lab_path(corpo.get('lab', '')), corpo.get('lan', ''))}
+            return {'ip': ops.suggerisci_ip_lan(st.lab_path(corpo.get('lab', '')), corpo.get('lan', ''), exclude=corpo.get('exclude') or [])}
     except ops.OpError as e:
         raise Errore(str(e))
     raise Errore('Endpoint edit non previsto')

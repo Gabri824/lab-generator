@@ -46,18 +46,67 @@ async function copiaTesto(testo) {
   return ok;
 }
 
+let _modalDragCleanup = null;
 function chiudiModal() {
-  const bg = $('#modalBg');
-  if (bg) { bg.hidden = true; $('#modalBox').innerHTML = ''; }
+  if (_modalDragCleanup) { _modalDragCleanup(); _modalDragCleanup = null; }
+  const bg = $('#modalBg'), box = $('#modalBox');
+  if (box) { box.style.transform = ''; box.innerHTML = ''; }
+  if (bg) { bg.hidden = true; }
+}
+function abilitaDragModal(box) {
+  if (_modalDragCleanup) { _modalDragCleanup(); _modalDragCleanup = null; }
+  const head = box.querySelector('.modal-h');
+  if (!head) return;
+  let dx = 0, dy = 0, sx = 0, sy = 0, bx = 0, by = 0, active = false;
+  box.style.transform = '';
+  const onDown = e => {
+    if (e.button !== 0 || e.target.closest('button,input,select,a')) return;
+    active = true;
+    sx = e.clientX; sy = e.clientY;
+    bx = dx; by = dy;
+    head.classList.add('dragging');
+    e.preventDefault();
+  };
+  const onMove = e => {
+    if (!active) return;
+    let nx = bx + (e.clientX - sx);
+    let ny = by + (e.clientY - sy);
+    // Mantieni sempre la barra del titolo raggiungibile nella finestra
+    const rect = box.getBoundingClientRect();
+    const curDx = dx, curDy = dy;
+    const baseLeft = rect.left - curDx, baseTop = rect.top - curDy;
+    const minX = 60 - rect.width - baseLeft;
+    const maxX = window.innerWidth - 60 - baseLeft;
+    const minY = 6 - baseTop;
+    const maxY = window.innerHeight - 48 - baseTop;
+    dx = Math.max(minX, Math.min(maxX, nx));
+    dy = Math.max(minY, Math.min(maxY, ny));
+    box.style.transform = `translate(${dx}px, ${dy}px)`;
+  };
+  const onUp = () => {
+    if (!active) return;
+    active = false;
+    head.classList.remove('dragging');
+  };
+  head.addEventListener('mousedown', onDown);
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+  _modalDragCleanup = () => {
+    head.removeEventListener('mousedown', onDown);
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+  };
 }
 function apriModal(titolo, bodyHtml, footerHtml, opts) {
   opts = opts || {};
   const bg = $('#modalBg'), box = $('#modalBox');
   box.className = 'modal' + (opts.wide ? ' wide' : '');
-  box.innerHTML = `<div class="modal-h"><h2>${esc(titolo)}</h2><button class="modal-x" id="mClose" title="Chiudi (Esc)">&times;</button></div>
+  box.style.transform = '';
+  box.innerHTML = `<div class="modal-h" title="Trascina per spostare la finestra"><h2>${esc(titolo)}</h2><span class="modal-drag-hint">⠿ sposta</span><button class="modal-x" id="mClose" title="Chiudi (Esc)">&times;</button></div>
     <div class="modal-b" id="mBody"><div id="mErr" class="ferr" hidden></div>${bodyHtml}</div>
     <div class="modal-f" id="mFoot">${footerHtml || '<button class="ghost" id="mCancel">Chiudi</button>'}</div>`;
   bg.hidden = false;
+  abilitaDragModal(box);
   $('#mClose').onclick = chiudiModal;
   const c = $('#mCancel'); if (c) c.onclick = chiudiModal;
   if (opts.onMount) opts.onMount(box);
@@ -177,13 +226,152 @@ function asMultiBgp() {
   }
   return Object.entries(perAs).filter(([, rs]) => rs.length >= 2).sort((a, b) => (+a[0] || 0) - (+b[0] || 0));
 }
-async function suggerisciIp(lan, inputEl) {
-  if (!S.nome || !lan) return;
+function lanDatalistHtml() {
+  if (!S.lab) return '';
+  return (S.lab.lan || []).map(l => `<option value="${esc(l.nome)}">${esc(l.nome + (l.subnet ? ' (' + l.subnet + ')' : ''))}</option>`).join('');
+}
+function lanEsistenteConSubnet(lan) {
+  if (!S.lab || !lan) return false;
+  const k = lan.trim();
+  return (S.lab.lan || []).some(l => l.nome === k && !!l.subnet);
+}
+async function suggerisciIp(lan, inputEl, opts) {
+  opts = opts || {};
+  if (!S.nome || !lan || !lan.trim()) {
+    if (!opts.silent) toast('Inserisci o seleziona prima una LAN.', 'warn');
+    return;
+  }
   try {
-    const r = await apiPost('/api/edit/suggest_ip', {lab: S.nome, lan: lan.trim()});
-    if (r.ip && inputEl) inputEl.value = r.ip;
-    else toast('LAN nuova o senza subnet rilevata: inserisci IP/CIDR manualmente.', 'warn');
+    const payload = {lab: S.nome, lan: lan.trim()};
+    if (opts.exclude && opts.exclude.length) payload.exclude = opts.exclude;
+    const r = await apiPost('/api/edit/suggest_ip', payload);
+    if (r.ip && inputEl) {
+      inputEl.value = r.ip;
+      inputEl.dispatchEvent(new Event('input', {bubbles: true}));
+    } else if (!opts.silent) {
+      toast('LAN nuova o senza subnet rilevata: inserisci IP/CIDR manualmente.', 'warn');
+    }
   } catch (e) {}
+}
+function collegaAutoSuggerisciLan(lanEl, ipEl, getExclude, onLanChange) {
+  if (!lanEl || !ipEl) return;
+  let lastAutoLan = '';
+  const trigger = () => {
+    const val = lanEl.value.trim();
+    if (onLanChange) onLanChange(val);
+    if (val && val !== lastAutoLan && lanEsistenteConSubnet(val)) {
+      lastAutoLan = val;
+      const excl = getExclude ? getExclude() : [];
+      suggerisciIp(val, ipEl, {silent: true, exclude: excl});
+    } else if (!val || !lanEsistenteConSubnet(val)) {
+      lastAutoLan = '';
+    }
+  };
+  lanEl.addEventListener('change', trigger);
+  lanEl.addEventListener('input', trigger);
+}
+function creaListaInterfacceDnd(container, opts) {
+  opts = opts || {};
+  const ipPlaceholder = opts.ipPlaceholder || 'IP/CIDR (es. 10.0.0.1/24)';
+  let dragSrc = null;
+
+  function altriIpInLista(excludeRow) {
+    return [...container.querySelectorAll('.if-card')]
+      .filter(r => r !== excludeRow)
+      .map(r => r.querySelector('.ifIp').value.trim())
+      .filter(Boolean);
+  }
+  function aggiornaEtichette() {
+    const rows = [...container.querySelectorAll('.if-card')];
+    rows.forEach((r, idx) => {
+      const badge = r.querySelector('.if-badge');
+      if (badge) badge.textContent = `eth${idx} · LAN ${idx}`;
+      const rm = r.querySelector('.ifRm');
+      if (rm) rm.disabled = rows.length <= 1;
+    });
+    if (opts.onChange) opts.onChange();
+  }
+  function addRow(lan, ip, origDev) {
+    const row = document.createElement('div');
+    row.className = 'if-card';
+    row.draggable = true;
+    if (origDev) row.dataset.origDev = origDev;
+    row.innerHTML = `<span class="if-handle" title="Trascina per spostare questa LAN su un'altra interfaccia">⋮⋮</span>
+      <span class="if-badge">eth0 · LAN 0</span>
+      <input class="ifLan" list="mLanList" placeholder="LAN (es. A)" value="${esc(lan || '')}">
+      <input class="ifIp" placeholder="${esc(ipPlaceholder)}" value="${esc(ip || '')}">
+      <button type="button" class="small ghost ifSug" title="Inserisce il prossimo IP libero della LAN">Suggerisci IP</button>
+      <button type="button" class="small danger if-rm ifRm" title="Rimuovi questa interfaccia">✕</button>`;
+
+    const lanEl = row.querySelector('.ifLan');
+    const ipEl = row.querySelector('.ifIp');
+    // Evita che il drag interferisca con la selezione del testo negli input
+    row.querySelectorAll('input,button').forEach(ctrl => {
+      ctrl.addEventListener('mousedown', () => { row.draggable = false; });
+      ctrl.addEventListener('mouseup', () => { row.draggable = true; });
+      ctrl.addEventListener('blur', () => { row.draggable = true; });
+    });
+    row.querySelector('.if-handle').addEventListener('mousedown', () => { row.draggable = true; });
+
+    collegaAutoSuggerisciLan(lanEl, ipEl, () => altriIpInLista(row), opts.onLanInput);
+    row.querySelector('.ifSug').onclick = () => suggerisciIp(lanEl.value, ipEl, {exclude: altriIpInLista(row)});
+    row.querySelector('.ifRm').onclick = () => {
+      if (container.querySelectorAll('.if-card').length > 1) {
+        row.remove();
+        aggiornaEtichette();
+      }
+    };
+
+    row.addEventListener('dragstart', e => {
+      if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'BUTTON')) {
+        e.preventDefault();
+        return;
+      }
+      dragSrc = row;
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', ''); } catch (_) {}
+    });
+    row.addEventListener('dragover', e => {
+      if (!dragSrc || dragSrc === row) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      container.querySelectorAll('.if-card').forEach(x => x.classList.remove('drag-over'));
+      row.classList.add('drag-over');
+    });
+    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      row.classList.remove('drag-over');
+      if (!dragSrc || dragSrc === row) return;
+      const all = [...container.querySelectorAll('.if-card')];
+      const fromIdx = all.indexOf(dragSrc);
+      const toIdx = all.indexOf(row);
+      if (fromIdx < toIdx) row.after(dragSrc);
+      else row.before(dragSrc);
+      aggiornaEtichette();
+    });
+    row.addEventListener('dragend', () => {
+      if (dragSrc) dragSrc.classList.remove('dragging');
+      container.querySelectorAll('.if-card').forEach(x => x.classList.remove('drag-over'));
+      dragSrc = null;
+      row.draggable = true;
+    });
+
+    container.appendChild(row);
+    aggiornaEtichette();
+    return row;
+  }
+  function getValues() {
+    return [...container.querySelectorAll('.if-card')]
+      .map(r => ({
+        orig_dev: r.dataset.origDev || '',
+        lan: r.querySelector('.ifLan').value.trim(),
+        ip: r.querySelector('.ifIp').value.trim(),
+      }))
+      .filter(x => x.lan || x.ip);
+  }
+  return {addRow, getValues, refresh: aggiornaEtichette};
 }
 
 function chiudiCtx() {
@@ -283,7 +471,10 @@ function apriCtxDispositivo(x, y, d) {
     voci.push({sep: true});
   }
   voci.push({sec: 'Configurazione dispositivo'});
-  voci.push({label: '🔌 Interfacce (IP / Sposta LAN / Aggiungi)', fn: () => modalInterfacce(d)});
+  if (d.tipo === 'router') {
+    voci.push({label: '✎ Modifica Router (AS, IGP, BGP, LAN…)', hint: d.asn ? 'AS' + d.asn : '', fn: () => modalEditRouter(d)});
+  }
+  voci.push({label: '🔌 Interfacce (Riordina / IP / LAN)', fn: () => modalInterfacce(d)});
   voci.push({label: '◎ Aggiungi interfaccia Loopback (lo)', fn: () => modalLoopback(d)});
   if (d.tipo === 'router') {
     if (d.has_frr) {
@@ -293,7 +484,7 @@ function apriCtxDispositivo(x, y, d) {
     if (d.demoni.includes('bgpd')) {
       voci.push({sep: true}, {sec: 'BGP & Policy'});
       voci.push({label: '🛡 Aggiungi Policy BGP…', hint: 'PL / LP / MED / CPP / Def', fn: () => modalBgpPolicy(d)});
-      voci.push({label: '📢 Gestisci network BGP', hint: 'aggregato / rotte', fn: () => modalBgpNetwork(d)});
+      voci.push({label: '📢 Modifica / Gestisci network BGP', hint: 'modifica / aggiungi', fn: () => modalBgpNetwork(d)});
     }
     if (d.demoni.includes('ospfd') || d.demoni.includes('ripd')) {
       voci.push({sep: true}, {sec: 'IGP (OSPF / RIP)'});
@@ -635,6 +826,7 @@ function modalStrumentiLab() {
       </div>
       <div class="card" style="margin:0"><h3>Gestione cartella lab</h3>
         <div class="btns">
+          <button class="small warnbtn" id="stResetTopo">↺ RESETTA TOPOLOGIA</button>
           <button class="small danger" id="stDelLab">🗑 Elimina laboratorio (con backup)</button>
         </div>
       </div>
@@ -649,6 +841,17 @@ function modalStrumentiLab() {
         $('#stRegenXml').onclick = () => eseguiModifica('regen_xml', {});
         const dx = $('#stDelXml'); if (dx) dx.onclick = () => eseguiModifica('delete_xml', {});
         const fn = $('#stFixN'); if (fn) fn.onclick = () => eseguiModifica('fix_names', {});
+        $('#stResetTopo').onclick = () => {
+          apriModal(
+            'Conferma RESETTA TOPOLOGIA — ' + S.nome,
+            `<div class="fwarn"><b>Attenzione:</b> questa operazione rimuove <b>tutte le policy BGP</b> (prefix-list, route-map, access-list, local-pref, MED, default-originate), <b>tutti i neighbor BGP</b>, <b>tutti gli annunci di rete BGP/OSPF/RIP</b>, i costi OSPF e le rotte statiche sui router.<br><br>
+            Rimangono invece intatti la <b>topologia base</b> (nodi, LAN, interfacce e IP), gli host/WWW/DNS e i <b>protocolli attivati</b> sui router (daemons e numero AS). Potrai verificare le modifiche nell'<b>Anteprima Diff</b> e verrà creato un backup automatico.</div>`,
+            `<button class="ghost" id="mCancel">Annulla</button><button class="warnbtn" id="mConfirmReset">↺ Procedi con Anteprima Diff →</button>`,
+            {onMount: () => {
+              $('#mConfirmReset').onclick = () => eseguiModifica('reset_topology', {});
+            }}
+          );
+        };
         $('#stDelLab').onclick = () => {
           apriModal(
             'Conferma eliminazione lab ' + S.nome,
@@ -673,10 +876,9 @@ function modalStrumentiLab() {
 }
 
 function modalAddRouter() {
-  const lansList = nomiLanLab().map(l => `<option value="${esc(l)}">`).join('');
   apriModal(
     'Aggiungi Router',
-    `<datalist id="mLanList">${lansList}</datalist>
+    `<datalist id="mLanList">${lanDatalistHtml()}</datalist>
     <div class="fgrid">
       <div class="field"><label>Nome router (Kathará)</label><input id="arNome" value="${esc(prossimoNome('r'))}"></div>
       <div class="field"><label>Protocolli attivi</label>
@@ -690,9 +892,9 @@ function modalAddRouter() {
       <div class="field" id="arAsnBox"><label>Numero AS (BGP)</label><input id="arAsn" placeholder="es. 10"></div>
       <div class="field" id="arOspfBox" hidden><label>Area OSPF</label><div class="riga" style="margin:0"><input id="arArea" value="0.0.0.0"><label class="small"><input type="checkbox" id="arStub"> Stub</label></div></div>
       <div class="field full">
-        <label>Interfacce (eth0, eth1, …)</label>
-        <div id="arIfaces" class="dyn-list"></div>
-        <div><button class="small ghost" id="arAddIf">＋ Aggiungi interfaccia</button></div>
+        <label>Interfacce e LAN <span class="muted" style="font-weight:400">(trascina ⋮⋮ per riordinare eth0 / eth1 / … · selezionando una LAN esistente l'IP viene suggerito in automatico)</span></label>
+        <div id="arIfaces" class="if-list"></div>
+        <div><button type="button" class="small ghost" id="arAddIf">＋ Aggiungi interfaccia</button></div>
       </div>
       <div class="field"><label>Loopback opzionali (separate da virgola)</label><input id="arLo" placeholder="es. 1.1.1.1/32"></div>
       <div class="field"><label>Network IGP (vuoto = calcolo automatico)</label><input id="arIgpNets" placeholder="es. 10.0.0.0/8"></div>
@@ -712,18 +914,9 @@ function modalAddRouter() {
     {
       wide: true,
       onMount: box => {
-        function addIfRow(lan, ip) {
-          const row = document.createElement('div'); row.className = 'dyn-row';
-          row.innerHTML = `<input class="ifLan" list="mLanList" placeholder="LAN (es. A)" value="${esc(lan||'')}" style="max-width:120px">
-            <input class="ifIp" placeholder="IP/CIDR (es. 10.0.0.1/24)" value="${esc(ip||'')}">
-            <button type="button" class="small ghost ifSug">Suggerisci IP</button>
-            <button type="button" class="small ghost ifRm">✕</button>`;
-          row.querySelector('.ifSug').onclick = () => suggerisciIp(row.querySelector('.ifLan').value, row.querySelector('.ifIp'));
-          row.querySelector('.ifRm').onclick = () => { if ($('#arIfaces').children.length > 1) row.remove(); };
-          $('#arIfaces').appendChild(row);
-        }
-        addIfRow('', '');
-        $('#arAddIf').onclick = () => addIfRow('', '');
+        const ifList = creaListaInterfacceDnd($('#arIfaces'), {ipPlaceholder: 'IP/CIDR (es. 10.0.0.1/24)'});
+        ifList.addRow('', '');
+        $('#arAddIf').onclick = () => ifList.addRow('', '');
         function syncBoxes() {
           const ps = [...box.querySelectorAll('.arP:checked')].map(c => c.value);
           $('#arAsnBox').hidden = !ps.includes('bgp');
@@ -734,7 +927,7 @@ function modalAddRouter() {
         syncBoxes();
         $('#arGo').onclick = () => {
           const protocols = [...box.querySelectorAll('.arP:checked')].map(c => c.value);
-          const interfaces = [...$('#arIfaces').children].map(r => ({lan: r.querySelector('.ifLan').value.trim(), ip: r.querySelector('.ifIp').value.trim()})).filter(x => x.lan || x.ip);
+          const interfaces = ifList.getValues().map(x => ({lan: x.lan, ip: x.ip}));
           const loopbacks = $('#arLo').value.split(',').map(s => s.trim()).filter(Boolean);
           const static_routes = $('#arStat').value.split('\n').map(l => l.trim().split(/\s+/)).filter(a => a.length >= 2).map(a => ({dest: a[0], via: a[1], dev: a[2] || ''}));
           eseguiModifica('add_router', {
@@ -757,19 +950,132 @@ function modalAddRouter() {
   );
 }
 
+function modalEditRouter(d) {
+  const hasBgp = d.demoni.includes('bgpd');
+  const hasOspf = d.demoni.includes('ospfd');
+  const hasRip = d.demoni.includes('ripd');
+  const hasStat = (d.static_routes && d.static_routes.length > 0) || (!hasBgp && !hasOspf && !hasRip);
+  const igpList = (d.riepilogo && d.riepilogo.igp) || [];
+  const ospfObj = igpList.find(g => g.protocollo === 'OSPF');
+  const ripObj = igpList.find(g => g.protocollo === 'RIP');
+
+  // Estrai area OSPF, stub e network IGP correnti
+  let curArea = '0.0.0.0', curStub = false;
+  const igpNetsSet = [];
+  if (ospfObj) {
+    for (const v of (ospfObj.voci || [])) {
+      const ms = v.match(/^area\s+(\S+)\s+stub/i);
+      if (ms) { curArea = ms[1]; curStub = true; continue; }
+      const mn = v.match(/^(\S+)(?:\s+area\s+(\S+))?/);
+      if (mn) {
+        if (mn[2] && curArea === '0.0.0.0') curArea = mn[2];
+        if (!igpNetsSet.includes(mn[1])) igpNetsSet.push(mn[1]);
+      }
+    }
+  }
+  if (ripObj) {
+    for (const v of (ripObj.voci || [])) {
+      const net = v.split(/\s+/)[0];
+      if (net && !igpNetsSet.includes(net)) igpNetsSet.push(net);
+    }
+  }
+  const curBgpNets = (d.riepilogo && d.riepilogo.bgp_networks) || [];
+  const curRedBgp = igpList.some(g => (g.redistribute || []).some(r => r.startsWith('bgp')));
+  const curStatText = (d.static_routes || []).map(r => [r.dest, r.via, r.dev].filter(Boolean).join(' ')).join('\n');
+
+  apriModal(
+    'Modifica Router — ' + d.nome,
+    `<datalist id="mLanList">${lanDatalistHtml()}</datalist>
+    <div class="finfo">Modifica protocolli, numero AS, interfacce/LAN (trascina ⋮⋮ per spostare tra <code>eth0, eth1…</code>), network IGP e network BGP annunciate. Le policy BGP esistenti vengono preservate e i riferimenti sugli altri dispositivi (<code>remote-as</code>, IP, neighbor, gateway) vengono aggiornati automaticamente.</div>
+    <div class="fgrid">
+      <div class="field"><label>Router</label><input value="${esc(d.nome)}" disabled></div>
+      <div class="field"><label>Protocolli attivi</label>
+        <div class="chkrow" style="margin-top:6px">
+          <label><input type="checkbox" class="erP" value="bgp" ${hasBgp ? 'checked' : ''}> BGP</label>
+          <label><input type="checkbox" class="erP" value="ospf" ${hasOspf ? 'checked' : ''}> OSPF</label>
+          <label><input type="checkbox" class="erP" value="rip" ${hasRip ? 'checked' : ''}> RIP</label>
+          <label><input type="checkbox" class="erP" value="statico" ${hasStat ? 'checked' : ''}> Statico</label>
+        </div>
+      </div>
+      <div class="field" id="erAsnBox"><label>Numero AS (BGP)</label><input id="erAsn" value="${esc(d.asn || '')}" placeholder="es. 10"></div>
+      <div class="field" id="erOspfBox" hidden><label>Area OSPF</label><div class="riga" style="margin:0"><input id="erArea" value="${esc(curArea)}"><label class="small"><input type="checkbox" id="erStub" ${curStub ? 'checked' : ''}> Stub</label></div></div>
+      <div class="field full">
+        <label>Interfacce e LAN <span class="muted" style="font-weight:400">(trascina ⋮⋮ per cambiare interfaccia eth0 / eth1 / …)</span></label>
+        <div id="erIfaces" class="if-list"></div>
+        <div><button type="button" class="small ghost" id="erAddIf">＋ Aggiungi interfaccia</button></div>
+      </div>
+      <div class="field"><label>Loopback (separate da virgola)</label><input id="erLo" value="${esc((d.loopback || []).join(', '))}" placeholder="es. 1.1.1.1/32"></div>
+      <div class="field" id="erIgpBox"><label>Network IGP (OSPF/RIP, separate da virgola; vuoto = auto)</label><input id="erIgpNets" value="${esc(igpNetsSet.join(', '))}" placeholder="es. 10.0.0.0/8"></div>
+      <div class="field" id="erBgpBox"><label>Network BGP annunciate (separate da virgola)</label><input id="erBgpNets" value="${esc(curBgpNets.join(', '))}" placeholder="es. 10.0.0.0/8, 100.0.0.0/24"></div>
+      <div class="field"><label>Opzioni BGP / IGP</label>
+        <div class="chkrow" style="margin-top:6px">
+          <label><input type="checkbox" id="erRed" ${curRedBgp ? 'checked' : ''}> redistribute bgp in IGP</label>
+          <label><input type="checkbox" id="erAutoNb" checked> auto-neighbor BGP su LAN comuni</label>
+        </div>
+      </div>
+      <div class="field full" id="erStatBox" hidden>
+        <label>Rotte statiche (una per riga: <code>destinazione next-hop [ethX]</code>, es. <code>0.0.0.0/0 10.0.0.2</code>)</label>
+        <textarea id="erStat" rows="2">${esc(curStatText)}</textarea>
+      </div>
+    </div>`,
+    `<button class="ghost" id="mCancel">Annulla</button><button id="erGo">Anteprima Diff →</button>`,
+    {
+      wide: true,
+      onMount: box => {
+        const ifList = creaListaInterfacceDnd($('#erIfaces'), {ipPlaceholder: 'IP/CIDR (es. 10.0.0.1/24)'});
+        if (d.interfacce && d.interfacce.length) {
+          for (const it of d.interfacce) ifList.addRow(it.lan, it.ip, it.dev);
+        } else {
+          ifList.addRow('', '');
+        }
+        $('#erAddIf').onclick = () => ifList.addRow('', '');
+        function syncBoxes() {
+          const ps = [...box.querySelectorAll('.erP:checked')].map(c => c.value);
+          $('#erAsnBox').hidden = !ps.includes('bgp');
+          $('#erBgpBox').hidden = !ps.includes('bgp');
+          $('#erOspfBox').hidden = !ps.includes('ospf');
+          $('#erIgpBox').hidden = !(ps.includes('ospf') || ps.includes('rip'));
+          $('#erStatBox').hidden = !ps.includes('statico');
+        }
+        box.querySelectorAll('.erP').forEach(c => c.onchange = syncBoxes);
+        syncBoxes();
+        $('#erGo').onclick = () => {
+          const protocols = [...box.querySelectorAll('.erP:checked')].map(c => c.value);
+          const interfaces = ifList.getValues();
+          const loopbacks = $('#erLo').value.split(',').map(s => s.trim()).filter(Boolean);
+          const static_routes = $('#erStat').value.split('\n').map(l => l.trim().split(/\s+/)).filter(a => a.length >= 2).map(a => ({dest: a[0], via: a[1], dev: a[2] || ''}));
+          eseguiModifica('edit_router', {
+            nome: d.nome,
+            protocols,
+            asn: $('#erAsn').value.trim(),
+            ospf_area: $('#erArea').value.trim() || '0.0.0.0',
+            ospf_area_stub: $('#erStub').checked,
+            interfaces,
+            loopbacks,
+            igp_networks: $('#erIgpNets').value.trim(),
+            bgp_networks: $('#erBgpNets').value.trim(),
+            igp_redistribute_bgp: $('#erRed').checked,
+            auto_bgp_neighbors: $('#erAutoNb').checked,
+            static_routes,
+          });
+        };
+      }
+    }
+  );
+}
+
 function modalAddHost() {
-  const lansList = nomiLanLab().map(l => `<option value="${esc(l)}">`).join('');
   const dnsOpts = dnsLab().map(d => { const ip = (d.interfacce[0] || {}).ip || ''; return `<option value="${esc(ip.split('/')[0])}">${esc(d.nome + ' (' + ip.split('/')[0] + ')')}</option>`; }).join('');
   apriModal(
     'Aggiungi Host / PC',
-    `<datalist id="mLanList">${lansList}</datalist><datalist id="mDnsList">${dnsOpts}</datalist>
+    `<datalist id="mLanList">${lanDatalistHtml()}</datalist><datalist id="mDnsList">${dnsOpts}</datalist>
     <div class="fgrid">
       <div class="field"><label>Nome host (Kathará)</label><input id="ahNome" value="${esc(prossimoNome('pc'))}"></div>
       <div class="field"><label>Resolver DNS opzionale (resolv.conf)</label><input id="ahRes" list="mDnsList" placeholder="IP nameserver (opzionale)"></div>
       <div class="field full">
-        <label>Interfacce</label>
-        <div id="ahIfaces" class="dyn-list"></div>
-        <div><button class="small ghost" id="ahAddIf">＋ Aggiungi interfaccia</button></div>
+        <label>Interfacce e LAN <span class="muted" style="font-weight:400">(trascina ⋮⋮ per riordinare · IP suggerito in automatico su LAN esistente)</span></label>
+        <div id="ahIfaces" class="if-list"></div>
+        <div><button type="button" class="small ghost" id="ahAddIf">＋ Aggiungi interfaccia</button></div>
       </div>
       <div class="field full"><label>Default Gateway</label>
         <div class="riga" style="margin:0"><input id="ahGw" placeholder="es. 10.0.0.1" style="flex:1"><select id="ahGwPick" style="max-width:220px"><option value="">— scegli router su LAN —</option></select></div>
@@ -782,23 +1088,18 @@ function modalAddHost() {
           const lans = [...$('#ahIfaces').querySelectorAll('.ifLan')].map(i => i.value.trim()).filter(Boolean);
           const rs = lans.flatMap(l => routerSuLan(l));
           $('#ahGwPick').innerHTML = '<option value="">— scegli router su LAN —</option>' + rs.map(r => `<option value="${esc(r.ip)}">${esc(r.ip + ' (' + r.nome + ')')}</option>`).join('');
+          if (rs.length && !$('#ahGw').value) $('#ahGw').value = rs[0].ip;
         }
         $('#ahGwPick').onchange = () => { if ($('#ahGwPick').value) $('#ahGw').value = $('#ahGwPick').value; };
-        function addRow() {
-          const row = document.createElement('div'); row.className = 'dyn-row';
-          row.innerHTML = `<input class="ifLan" list="mLanList" placeholder="LAN (es. A)" style="max-width:120px">
-            <input class="ifIp" placeholder="IP/CIDR (es. 10.0.0.10/24)">
-            <button type="button" class="small ghost ifSug">Suggerisci IP</button>
-            <button type="button" class="small ghost ifRm">✕</button>`;
-          row.querySelector('.ifLan').oninput = aggiornaGwPick;
-          row.querySelector('.ifSug').onclick = () => suggerisciIp(row.querySelector('.ifLan').value, row.querySelector('.ifIp'));
-          row.querySelector('.ifRm').onclick = () => { if ($('#ahIfaces').children.length > 1) { row.remove(); aggiornaGwPick(); } };
-          $('#ahIfaces').appendChild(row);
-        }
-        addRow();
-        $('#ahAddIf').onclick = addRow;
+        const ifList = creaListaInterfacceDnd($('#ahIfaces'), {
+          ipPlaceholder: 'IP/CIDR (es. 10.0.0.10/24)',
+          onLanInput: aggiornaGwPick,
+          onChange: aggiornaGwPick,
+        });
+        ifList.addRow('', '');
+        $('#ahAddIf').onclick = () => ifList.addRow('', '');
         $('#ahGo').onclick = () => {
-          const interfaces = [...$('#ahIfaces').children].map(r => ({lan: r.querySelector('.ifLan').value.trim(), ip: r.querySelector('.ifIp').value.trim()})).filter(x => x.lan || x.ip);
+          const interfaces = ifList.getValues().map(x => ({lan: x.lan, ip: x.ip}));
           eseguiModifica('add_host', {nome: $('#ahNome').value.trim(), interfaces, gateway: $('#ahGw').value.trim(), resolver: $('#ahRes').value.trim()});
         };
       }
@@ -807,20 +1108,21 @@ function modalAddHost() {
 }
 
 function modalAddWww() {
-  const lansList = nomiLanLab().map(l => `<option value="${esc(l)}">`).join('');
   apriModal(
     'Aggiungi Server WWW (Apache2)',
-    `<datalist id="mLanList">${lansList}</datalist>
+    `<datalist id="mLanList">${lanDatalistHtml()}</datalist>
     <div class="fgrid">
       <div class="field"><label>Nome server</label><input id="awNome" value="${esc(prossimoNome('www'))}"></div>
       <div class="field"><label>LAN</label><input id="awLan" list="mLanList" placeholder="es. A"></div>
-      <div class="field"><label>IP/CIDR</label><div class="riga" style="margin:0"><input id="awIp" placeholder="es. 10.0.0.80/24" style="flex:1"><button type="button" class="small ghost" id="awSug">Suggerisci</button></div></div>
+      <div class="field"><label>IP/CIDR</label><div class="riga" style="margin:0"><input id="awIp" placeholder="es. 10.0.0.80/24" style="flex:1"><button type="button" class="small ghost" id="awSug">Suggerisci IP</button></div></div>
       <div class="field"><label>Default Gateway</label><input id="awGw" placeholder="es. 10.0.0.1"></div>
     </div>`,
     `<button class="ghost" id="mCancel">Annulla</button><button id="awGo">Anteprima Diff →</button>`,
     {
       onMount: () => {
-        $('#awLan').oninput = () => { const rs = routerSuLan($('#awLan').value.trim()); if (rs.length && !$('#awGw').value) $('#awGw').value = rs[0].ip; };
+        collegaAutoSuggerisciLan($('#awLan'), $('#awIp'), null, val => {
+          const rs = routerSuLan(val); if (rs.length && !$('#awGw').value) $('#awGw').value = rs[0].ip;
+        });
         $('#awSug').onclick = () => suggerisciIp($('#awLan').value, $('#awIp'));
         $('#awGo').onclick = () => eseguiModifica('add_www', {nome: $('#awNome').value.trim(), lan: $('#awLan').value.trim(), ip: $('#awIp').value.trim(), gateway: $('#awGw').value.trim()});
       }
@@ -829,12 +1131,11 @@ function modalAddWww() {
 }
 
 function modalAddDns() {
-  const lansList = nomiLanLab().map(l => `<option value="${esc(l)}">`).join('');
   const hasRoot = dnsLab().some(d => d.is_dns_root);
   const nonDns = S.lab.dispositivi.filter(d => d.tipo !== 'dns');
   apriModal(
     'Aggiungi Server DNS (BIND9)',
-    `<datalist id="mLanList">${lansList}</datalist>
+    `<datalist id="mLanList">${lanDatalistHtml()}</datalist>
     <div class="fgrid">
       <div class="field"><label>Nome server DNS</label><input id="adNome" value="${hasRoot ? esc(prossimoNome('dns')) : 'root'}"></div>
       <div class="field"><label>Ruolo zona "."</label>
@@ -845,7 +1146,7 @@ function modalAddDns() {
         </select>
       </div>
       <div class="field"><label>LAN</label><input id="adLan" list="mLanList" placeholder="es. A"></div>
-      <div class="field"><label>IP/CIDR</label><div class="riga" style="margin:0"><input id="adIp" placeholder="es. 10.0.0.53/24" style="flex:1"><button type="button" class="small ghost" id="adSug">Suggerisci</button></div></div>
+      <div class="field"><label>IP/CIDR</label><div class="riga" style="margin:0"><input id="adIp" placeholder="es. 10.0.0.53/24" style="flex:1"><button type="button" class="small ghost" id="adSug">Suggerisci IP</button></div></div>
       <div class="field"><label>Default Gateway</label><input id="adGw" placeholder="es. 10.0.0.1"></div>
       <div class="field" id="adRootIpBox"><label>IP Root server (se hint; vuoto = rileva root nel lab)</label><input id="adRootIp" placeholder="auto"></div>
       <div class="field"><label>allow-recursion (opzionale)</label><input id="adRec" placeholder="es. any  oppure  10.0.0.0/8"></div>
@@ -873,7 +1174,9 @@ function modalAddDns() {
           $('#adRootIpBox').hidden = r !== 'hint';
         }
         $('#adRole').onchange = syncRole; syncRole();
-        $('#adLan').oninput = () => { const rs = routerSuLan($('#adLan').value.trim()); if (rs.length && !$('#adGw').value) $('#adGw').value = rs[0].ip; };
+        collegaAutoSuggerisciLan($('#adLan'), $('#adIp'), null, val => {
+          const rs = routerSuLan(val); if (rs.length && !$('#adGw').value) $('#adGw').value = rs[0].ip;
+        });
         $('#adSug').onclick = () => suggerisciIp($('#adLan').value, $('#adIp'));
         $('#adGo').onclick = () => {
           const delegations = $('#adDel').value.split('\n').map(l => l.trim().split(/\s+/)).filter(a => a.length >= 2).map(a => ({zone: a[0], ns: a[1], ip: a[2] || ''}));
@@ -896,24 +1199,37 @@ function modalAddDns() {
 }
 
 function modalInterfacce(d) {
-  const lansList = nomiLanLab().map(l => `<option value="${esc(l)}">`).join('');
+  const origOrder = (d.interfacce || []).map(it => it.dev);
   apriModal(
     'Interfacce di ' + d.nome,
-    `<datalist id="mLanList">${lansList}</datalist>
-    <table><tr><th>Dev</th><th>LAN</th><th>IP/CIDR</th><th>Azioni</th></tr>
-      ${d.interfacce.map(it => `<tr><td><b>${esc(it.dev)}</b></td><td>${esc(it.lan)}</td><td><code>${esc(it.ip || '(senza IP)')}</code></td>
-        <td class="btns" style="margin:0">
-          <button class="small ghost" data-eip="${esc(it.dev)}">Cambia IP</button>
-          <button class="small ghost" data-mov="${esc(it.dev)}">Sposta LAN</button>
-          <button class="small danger" data-rem="${esc(it.dev)}">Rimuovi</button>
-        </td></tr>`).join('') || '<tr><td colspan="4" class="muted">Nessuna interfaccia</td></tr>'}
-    </table>
+    `<datalist id="mLanList">${lanDatalistHtml()}</datalist>
+    <div class="fhelp" style="margin-bottom:6px">Trascina una riga tramite <b>⋮⋮</b> per spostare una LAN su un'altra interfaccia (<code>eth0 · LAN 0</code>, <code>eth1 · LAN 1</code>, …). L'ordine verrà aggiornato in <code>lab.conf</code>, <code>.startup</code> e <code>frr.conf</code>.</div>
+    <div id="exIfList" class="if-list">
+      ${(d.interfacce || []).map((it, idx) => `<div class="if-card" draggable="true" data-orig="${esc(it.dev)}">
+        <span class="if-handle" title="Trascina per riordinare le interfacce">⋮⋮</span>
+        <span class="if-badge">eth${idx} · LAN ${idx}</span>
+        <span class="badge" style="font-weight:700">LAN ${esc(it.lan)}</span>
+        <code style="flex:1;min-width:120px">${esc(it.ip || '(senza IP)')}</code>
+        <span class="muted small if-orig-note"></span>
+        <div class="btns" style="margin:0">
+          <button type="button" class="small ghost" data-eip="${esc(it.dev)}">Cambia IP</button>
+          <button type="button" class="small ghost" data-mov="${esc(it.dev)}">Sposta LAN</button>
+          <button type="button" class="small danger" data-rem="${esc(it.dev)}">✕ Rimuovi</button>
+        </div>
+      </div>`).join('') || '<div class="muted">Nessuna interfaccia</div>'}
+    </div>
+    <div id="ifReorderBar" class="if-reorder-bar" hidden>
+      <span><b>Ordine modificato:</b> le LAN sono state riassegnate alle nuove interfacce.</span>
+      <div class="sp"></div>
+      <button type="button" class="small ghost" id="ifReordReset">Ripristina</button>
+      <button type="button" class="small" id="ifReordSave">Salva ordine (Anteprima Diff →)</button>
+    </div>
     <div id="ifAction" style="margin-top:12px"></div>
     <div class="card" style="margin-top:12px;margin-bottom:0">
       <h3>＋ Aggiungi nuova interfaccia</h3>
       <div class="fgrid">
         <div class="field"><label>LAN (esistente o nuova)</label><input id="niLan" list="mLanList" placeholder="es. B"></div>
-        <div class="field"><label>IP/CIDR</label><div class="riga" style="margin:0"><input id="niIp" placeholder="es. 10.1.0.1/24" style="flex:1"><button type="button" class="small ghost" id="niSug">Suggerisci</button></div></div>
+        <div class="field"><label>IP/CIDR</label><div class="riga" style="margin:0"><input id="niIp" placeholder="es. 10.1.0.1/24" style="flex:1"><button type="button" class="small ghost" id="niSug">Suggerisci IP</button></div></div>
       </div>
       ${d.tipo === 'router' ? `<div class="chkrow" style="margin-top:8px">
         ${d.demoni.includes('bgpd') ? '<label><input type="checkbox" id="niBgp" checked> Annuncia in BGP</label><label><input type="checkbox" id="niNb" checked> Crea neighbor BGP su LAN</label>' : ''}
@@ -925,6 +1241,63 @@ function modalInterfacce(d) {
     {
       wide: true,
       onMount: box => {
+        const listEl = $('#exIfList');
+        let dragSrc = null;
+        function syncOrderUi() {
+          const cards = [...listEl.querySelectorAll('.if-card')];
+          const curOrder = cards.map(c => c.dataset.orig);
+          const changed = curOrder.some((v, i) => v !== origOrder[i]);
+          cards.forEach((c, i) => {
+            c.querySelector('.if-badge').textContent = `eth${i} · LAN ${i}`;
+            const note = c.querySelector('.if-orig-note');
+            note.textContent = c.dataset.orig !== `eth${i}` ? `(era ${c.dataset.orig})` : '';
+          });
+          $('#ifReorderBar').hidden = !changed;
+        }
+        listEl.querySelectorAll('.if-card').forEach(card => {
+          card.addEventListener('dragstart', e => {
+            if (e.target.closest('button')) { e.preventDefault(); return; }
+            dragSrc = card;
+            card.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            try { e.dataTransfer.setData('text/plain', card.dataset.orig); } catch (_) {}
+          });
+          card.addEventListener('dragover', e => {
+            if (!dragSrc || dragSrc === card) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            listEl.querySelectorAll('.if-card').forEach(x => x.classList.remove('drag-over'));
+            card.classList.add('drag-over');
+          });
+          card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+          card.addEventListener('drop', e => {
+            e.preventDefault();
+            card.classList.remove('drag-over');
+            if (!dragSrc || dragSrc === card) return;
+            const cards = [...listEl.querySelectorAll('.if-card')];
+            if (cards.indexOf(dragSrc) < cards.indexOf(card)) card.after(dragSrc);
+            else card.before(dragSrc);
+            syncOrderUi();
+          });
+          card.addEventListener('dragend', () => {
+            if (dragSrc) dragSrc.classList.remove('dragging');
+            listEl.querySelectorAll('.if-card').forEach(x => x.classList.remove('drag-over'));
+            dragSrc = null;
+          });
+        });
+        $('#ifReordReset').onclick = () => {
+          for (const devName of origOrder) {
+            const c = listEl.querySelector(`.if-card[data-orig="${CSS.escape(devName)}"]`);
+            if (c) listEl.appendChild(c);
+          }
+          syncOrderUi();
+        };
+        $('#ifReordSave').onclick = () => {
+          const order = [...listEl.querySelectorAll('.if-card')].map(c => c.dataset.orig);
+          eseguiModifica('reorder_interfaces', {nome: d.nome, order});
+        };
+
+        collegaAutoSuggerisciLan($('#niLan'), $('#niIp'));
         $('#niSug').onclick = () => suggerisciIp($('#niLan').value, $('#niIp'));
         $('#niAdd').onclick = () => eseguiModifica('add_interface', {
           nome: d.nome, lan: $('#niLan').value.trim(), ip: $('#niIp').value.trim(),
@@ -938,7 +1311,7 @@ function modalInterfacce(d) {
             const it = d.interfacce.find(x => x.dev === bIp.dataset.eip);
             const altri = (it.vicini || []).length;
             $('#ifAction').innerHTML = `<div class="card" style="margin:0"><h3>Cambia IP di ${esc(d.nome)} ${esc(it.dev)} (LAN ${esc(it.lan)})</h3>
-              <div class="fhelp">L'IP verrà aggiornato automaticamente in tutti i file del lab (startup, frr.conf, neighbor BGP, gateway, DNS).</div>
+              <div class="fhelp">L'IP verrà aggiornato automaticamente in tutti i file del lab (startup, frr.conf, annunci BGP/IGP, neighbor BGP, gateway, DNS).</div>
               <div class="fgrid" style="margin-top:8px">
                 <div class="field"><label>Nuovo IP/CIDR (attuale: ${esc(it.ip || '-')})</label><input id="ciVal" value="${esc(it.ip || '')}"></div>
                 ${altri ? `<div class="field"><label>Se cambi subnet (ci sono altri ${altri} nodi su LAN ${esc(it.lan)})</label>
@@ -954,9 +1327,10 @@ function modalInterfacce(d) {
             $('#ifAction').innerHTML = `<div class="card" style="margin:0"><h3>Sposta ${esc(d.nome)} ${esc(it.dev)} su un'altra LAN</h3>
               <div class="fgrid">
                 <div class="field"><label>Nuova LAN (ora ${esc(it.lan)})</label><input id="mvLan" list="mLanList" placeholder="es. C"></div>
-                <div class="field"><label>Nuovo IP/CIDR (opzionale, consigliato se la subnet cambia)</label><div class="riga" style="margin:0"><input id="mvIp" placeholder="lascia vuoto per tenere ${esc(it.ip || '-')}" style="flex:1"><button type="button" class="small ghost" id="mvSug">Suggerisci</button></div></div>
+                <div class="field"><label>Nuovo IP/CIDR (suggerito automaticamente su LAN esistente)</label><div class="riga" style="margin:0"><input id="mvIp" placeholder="lascia vuoto per tenere ${esc(it.ip || '-')}" style="flex:1"><button type="button" class="small ghost" id="mvSug">Suggerisci IP</button></div></div>
               </div>
               <div class="riga"><button class="small" id="mvGo">Anteprima Diff →</button></div></div>`;
+            collegaAutoSuggerisciLan($('#mvLan'), $('#mvIp'));
             $('#mvSug').onclick = () => suggerisciIp($('#mvLan').value, $('#mvIp'));
             $('#mvGo').onclick = () => eseguiModifica('move_interface', {nome: d.nome, dev: it.dev, new_lan: $('#mvLan').value.trim(), new_ip: $('#mvIp').value.trim()});
             return;
@@ -1273,18 +1647,43 @@ function modalBgpNetwork(d) {
   const cur = (d.riepilogo && d.riepilogo.bgp_networks) || [];
   const prop = d.asn ? `${d.asn}.0.0.0/8` : '';
   apriModal(
-    'Gestisci network BGP su ' + d.nome,
-    `<div class="finfo">Reti attualmente annunciate in BGP: ${cur.length ? cur.map(n => `<code>${esc(n)}</code>`).join(', ') : '<span class="muted">nessuna</span>'}</div>
-    <div class="fgrid one">
-      <div class="field"><label>Azione</label><select id="bnAct"><option value="add">Aggiungi network BGP</option><option value="remove">Rimuovi network BGP</option></select></div>
-      <div class="field"><label>Reti CIDR (separate da virgola)</label><input id="bnNets" value="${esc(prop)}" placeholder="es. 100.0.0.0/8, 0.0.0.0/0"></div>
-      <div class="chkrow" id="bnCovBox"><label><input type="checkbox" id="bnCov"> Rimuovi automaticamente da BGP le sottoreti più specifiche (non di peering) già coperte dall'aggregato</label></div>
+    'Modifica / Gestisci network BGP su ' + d.nome,
+    `<div class="finfo">Puoi <b>modificare</b> o <b>rimuovere</b> direttamente le reti già annunciate in BGP (con aggiornamento automatico dei riferimenti in prefix-list/access-list), oppure aggiungerne di nuove.</div>
+    <div class="field" style="margin-bottom:12px">
+      <label>Reti attualmente annunciate in BGP (${cur.length})</label>
+      <div id="bnCurList" class="dyn-list">
+        ${cur.length ? cur.map((n, i) => `<div class="bgp-net-row" data-old="${esc(n)}">
+          <span class="badge">#${i + 1}</span>
+          <input class="bnEditVal" value="${esc(n)}" placeholder="es. 100.0.0.0/8">
+          <button type="button" class="small bnSaveBtn">Salva modifica</button>
+          <button type="button" class="small danger bnDelBtn" title="Rimuovi questo annuncio BGP">✕</button>
+        </div>`).join('') : '<div class="muted small">Nessuna network BGP attualmente annunciata.</div>'}
+      </div>
+    </div>
+    <div class="card" style="margin:0">
+      <h3>＋ Aggiungi nuove network BGP</h3>
+      <div class="fgrid one">
+        <div class="field"><label>Reti CIDR da aggiungere (separate da virgola)</label><input id="bnNets" value="${esc(prop)}" placeholder="es. 100.0.0.0/8, 0.0.0.0/0"></div>
+        <div class="chkrow"><label><input type="checkbox" id="bnCov"> Rimuovi automaticamente da BGP le sottoreti più specifiche (non di peering) già coperte dall'aggregato</label></div>
+      </div>
+      <div class="riga"><button class="small" id="bnAddGo">Aggiungi (Anteprima Diff →)</button></div>
     </div>`,
-    `<button class="ghost" id="mCancel">Annulla</button><button id="bnGo">Anteprima Diff →</button>`,
+    `<button class="ghost" id="mCancel">Chiudi</button>`,
     {
-      onMount: () => {
-        $('#bnAct').onchange = () => { $('#bnCovBox').hidden = $('#bnAct').value !== 'add'; };
-        $('#bnGo').onclick = () => eseguiModifica('bgp_network', {nome: d.nome, action: $('#bnAct').value, networks: $('#bnNets').value.trim(), remove_covered: $('#bnCov').checked});
+      wide: true,
+      onMount: box => {
+        $('#bnCurList').onclick = e => {
+          const row = e.target.closest('.bgp-net-row');
+          if (!row) return;
+          const oldNet = row.dataset.old;
+          if (e.target.closest('.bnSaveBtn')) {
+            const newNet = row.querySelector('.bnEditVal').value.trim();
+            eseguiModifica('bgp_network', {nome: d.nome, action: 'edit', old_network: oldNet, new_network: newNet});
+          } else if (e.target.closest('.bnDelBtn')) {
+            eseguiModifica('bgp_network', {nome: d.nome, action: 'remove', networks: oldNet});
+          }
+        };
+        $('#bnAddGo').onclick = () => eseguiModifica('bgp_network', {nome: d.nome, action: 'add', networks: $('#bnNets').value.trim(), remove_covered: $('#bnCov').checked});
       }
     }
   );
