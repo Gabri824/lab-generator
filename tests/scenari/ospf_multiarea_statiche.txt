@@ -1,0 +1,62 @@
+# Router OSPF in area 0 e in area stub, rotte statiche, host con due interfacce.
+# Una risposta per riga; riga vuota = Invio; righe con # = commento.
+# --- conteggi: router, host, www, dns, conferma
+3
+1
+0
+0
+
+# --- r1: bgp+ospf, AS 100, backbone, 2 interfacce
+
+bgp ospf
+100
+s
+2
+A
+10.0.0.1/30
+B
+10.0.1.1/30
+
+
+# conferma r1
+
+# --- r2: ospf, area 1.1.1.1 stub
+
+ospf
+1.1.1.1
+s
+2
+A
+10.0.0.2/30
+C
+10.1.0.1/24
+
+
+# --- r3: ospf + statico nell'area di default, 2 rotte statiche
+
+ospf statico
+
+1
+B
+10.0.1.2/30
+
+2
+default
+10.0.1.1
+
+30.0.0.0/24
+10.0.1.1
+eth0
+
+# --- host1: due interfacce, gateway sulla prima
+
+2
+10.1.0.10/24
+C
+192.168.5.10/24
+D
+10.1.0.1
+
+
+# --- menu post-creazione: termina
+0

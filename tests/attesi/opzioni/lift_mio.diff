@@ -1,0 +1,44 @@
+--- rigenerato/as100r1/etc/frr/frr.conf
++++ reale/as100r1/etc/frr/frr.conf
+@@ -18,4 +18,10 @@
+     neighbor 1.0.0.2 description Router as200r1
+     neighbor 1.0.0.10 remote-as 300
+     neighbor 1.0.0.10 description Router as300r1
++    neighbor 1.0.0.10 route-map FILTER_IN_1_0_0_10 in
+ 
++access-list 10 deny 10.0.0.0/8
++access-list 10 permit any
++
++route-map FILTER_IN_1_0_0_10 permit 10
++    match ip address 10
+--- rigenerato/as10r3/etc/frr/frr.conf
++++ reale/as10r3/etc/frr/frr.conf
+@@ -28,3 +28,6 @@
+     neighbor 1.0.0.25 description Router as400r1
+     neighbor 1.0.0.21 remote-as 500
+     neighbor 1.0.0.21 description Router as500r1
++    network 10.0.0.0/8
++    network 10.1.0.0/24
++    network 10.2.0.0/24
+--- rigenerato/as300r1/etc/frr/frr.conf
++++ reale/as300r1/etc/frr/frr.conf
+@@ -27,4 +27,19 @@
+     neighbor 1.0.0.30 description Router as10r3
+     neighbor 1.0.0.14 remote-as 400
+     neighbor 1.0.0.14 description Router as400r1
++    neighbor 1.0.0.14 route-map PREF_IN_1_0_0_14 in
++    neighbor 1.0.0.18 route-map PREF_IN_1_0_0_18 in
+ 
++route-map PREF_IN_1_0_0_14 permit 10
++    match ip address prefix-list PREF_IN_1_0_0_14_NETS
++    set local-preference 150
++route-map PREF_IN_1_0_0_14 permit 20
++
++ip prefix-list PREF_IN_1_0_0_14_NETS permit 10.1.0.0/24
++
++route-map PREF_IN_1_0_0_18 permit 10
++    match ip address prefix-list PREF_IN_1_0_0_18_NETS
++    set local-preference 150
++route-map PREF_IN_1_0_0_18 permit 20
++
++ip prefix-list PREF_IN_1_0_0_18_NETS permit 10.2.0.0/24

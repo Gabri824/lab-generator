@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lab name="papillon_mio">
+  <routers>
+    <router name="r1">
+      <protocols>
+        <protocol>ospf</protocol>
+      </protocols>
+      <ospf_area>0.0.0.0</ospf_area>
+      <interfaces>
+        <interface name="eth0" lan="A" ip="20.20.1.1/24"/>
+        <interface name="eth1" lan="B" ip="20.20.2.1/24"/>
+        <interface name="eth2" lan="E" ip="20.20.5.2/24"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>20.20.0.0/16</igp_network>
+      </igp_networks>
+    </router>
+    <router name="r2">
+      <protocols>
+        <protocol>ospf</protocol>
+      </protocols>
+      <ospf_area>0.0.0.0</ospf_area>
+      <interfaces>
+        <interface name="eth0" lan="B" ip="20.20.2.2/24"/>
+        <interface name="eth1" lan="C" ip="20.20.3.1/24"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>20.20.0.0/16</igp_network>
+      </igp_networks>
+    </router>
+    <router name="r3">
+      <protocols>
+        <protocol>bgp</protocol>
+        <protocol>ospf</protocol>
+      </protocols>
+      <asn>20</asn>
+      <ospf_area>0.0.0.0</ospf_area>
+      <interfaces>
+        <interface name="eth0" lan="C" ip="20.20.3.2/24"/>
+        <interface name="eth1" lan="D" ip="20.20.4.1/24"/>
+        <interface name="eth2" lan="F" ip="10.1.0.1/30"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>20.20.0.0/16</igp_network>
+      </igp_networks>
+    </router>
+    <router name="r4">
+      <protocols>
+        <protocol>ospf</protocol>
+      </protocols>
+      <ospf_area>0.0.0.0</ospf_area>
+      <interfaces>
+        <interface name="eth0" lan="D" ip="20.20.4.2/24"/>
+        <interface name="eth1" lan="E" ip="20.20.5.1/24"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>20.20.0.0/16</igp_network>
+      </igp_networks>
+    </router>
+    <router name="r5">
+      <protocols>
+        <protocol>bgp</protocol>
+        <protocol>rip</protocol>
+      </protocols>
+      <asn>30</asn>
+      <interfaces>
+        <interface name="eth0" lan="F" ip="10.1.0.2/30"/>
+        <interface name="eth1" lan="G" ip="30.30.3.1/24"/>
+        <interface name="eth2" lan="H" ip="30.30.2.2/24"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>30.30.0.0/16</igp_network>
+      </igp_networks>
+    </router>
+    <router name="r6">
+      <protocols>
+        <protocol>rip</protocol>
+      </protocols>
+      <interfaces>
+        <interface name="eth0" lan="I" ip="30.30.4.1/24"/>
+        <interface name="eth1" lan="H" ip="30.30.2.1/24"/>
+        <interface name="eth2" lan="L" ip="30.30.1.1/24"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>30.30.0.0/16</igp_network>
+      </igp_networks>
+    </router>
+    <router name="r7">
+      <protocols>
+        <protocol>rip</protocol>
+      </protocols>
+      <interfaces>
+        <interface name="eth0" lan="I" ip="30.30.4.2/24"/>
+        <interface name="eth1" lan="G" ip="30.30.3.2/24"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>30.30.0.0/16</igp_network>
+      </igp_networks>
+    </router>
+  </routers>
+  <hosts>
+    <host name="client" ip="20.20.1.2/24" gateway="20.20.1.1" lan="A" gw_dev="eth0">
+      <interfaces>
+        <interface name="eth0" lan="A" ip="20.20.1.2/24"/>
+      </interfaces>
+    </host>
+  </hosts>
+  <www>
+    <server name="server" ip="30.30.1.2/24" gateway="30.30.1.1" lan="L"/>
+  </www>
+  <lab_conf>r1[0]=A
+r1[1]=B
+r1[2]=E
+r1[image]="kathara/frr"
+
+r2[0]=B
+r2[1]=C
+r2[image]="kathara/frr"
+
+r3[0]=C
+r3[1]=D
+r3[2]=F
+r3[image]="kathara/frr"
+
+r4[0]=D
+r4[1]=E
+r4[image]="kathara/frr"
+
+r5[0]=F
+r5[1]=G
+r5[2]=H
+r5[image]="kathara/frr"
+
+r6[0]=I
+r6[1]=H
+r6[2]=L
+r6[image]="kathara/frr"
+
+r7[0]=I
+r7[1]=G
+r7[image]="kathara/frr"
+
+client[0]=A
+client[image]="kathara/base"
+
+server[0]=L
+server[image]="kathara/base"
+</lab_conf>
+</lab>

@@ -1,0 +1,1460 @@
+{
+ "dati.leggi_lab": {
+  "avvisi_config": [],
+  "avvisi_topologia": [],
+  "dispositivi": [
+   {
+    "asn": "1",
+    "demoni": [
+     "ospfd",
+     "bgpd"
+    ],
+    "gateway": null,
+    "gruppo": "1",
+    "immagine": "kathara/frr",
+    "interfacce": [
+     {
+      "avvisi": [],
+      "bgp": [
+       {
+        "asn": "2",
+        "chi": "as2",
+        "ip": "10.0.0.2",
+        "policy": [],
+        "tipo": "eBGP"
+       }
+      ],
+      "costo": null,
+      "dev": "eth0",
+      "igp": [],
+      "ip": "10.0.0.1/30",
+      "lan": "D",
+      "vicini": [
+       {
+        "ip": "10.0.0.2/30",
+        "nome": "as2"
+       }
+      ]
+     },
+     {
+      "avvisi": [],
+      "bgp": [
+       {
+        "asn": "1",
+        "chi": "as1r2",
+        "ip": "1.3.0.2",
+        "policy": [],
+        "tipo": "iBGP"
+       }
+      ],
+      "costo": null,
+      "dev": "eth1",
+      "igp": [
+       "OSPF"
+      ],
+      "ip": "1.3.0.1/24",
+      "lan": "C",
+      "vicini": [
+       {
+        "ip": "1.3.0.2/24",
+        "nome": "as1r2"
+       }
+      ]
+     }
+    ],
+    "loopback": [],
+    "nameserver": [],
+    "nome": "as1r1",
+    "riepilogo": {
+     "bgp_networks": [
+      "10.0.0.0/30",
+      "1.0.0.0/8"
+     ],
+     "costi": [],
+     "igp": [
+      {
+       "auto_cost": null,
+       "protocollo": "OSPF",
+       "redistribute": [
+        "connected",
+        "bgp"
+       ],
+       "voci": [
+        "1.0.0.0/8 area 0.0.0.0"
+       ]
+      }
+     ],
+     "neighbor": [
+      {
+       "asn": "2",
+       "chi": "as2",
+       "ip": "10.0.0.2",
+       "policy": [],
+       "tipo": "eBGP"
+      },
+      {
+       "asn": "1",
+       "chi": "as1r2",
+       "ip": "1.3.0.2",
+       "policy": [],
+       "tipo": "iBGP"
+      }
+     ],
+     "redistribute_bgp": []
+    },
+    "riferimenti_frr": [],
+    "tipo": "router",
+    "zone": []
+   },
+   {
+    "asn": "1",
+    "demoni": [
+     "ospfd",
+     "bgpd"
+    ],
+    "gateway": null,
+    "gruppo": "1",
+    "immagine": "kathara/frr",
+    "interfacce": [
+     {
+      "avvisi": [],
+      "bgp": [],
+      "costo": null,
+      "dev": "eth0",
+      "igp": [
+       "OSPF"
+      ],
+      "ip": "1.2.0.2/24",
+      "lan": "B",
+      "vicini": [
+       {
+        "ip": "1.2.0.3/24",
+        "nome": "as1r3"
+       }
+      ]
+     },
+     {
+      "avvisi": [],
+      "bgp": [
+       {
+        "asn": "1",
+        "chi": "as1r1",
+        "ip": "1.3.0.1",
+        "policy": [],
+        "tipo": "iBGP"
+       }
+      ],
+      "costo": null,
+      "dev": "eth1",
+      "igp": [
+       "OSPF"
+      ],
+      "ip": "1.3.0.2/24",
+      "lan": "C",
+      "vicini": [
+       {
+        "ip": "1.3.0.1/24",
+        "nome": "as1r1"
+       }
+      ]
+     },
+     {
+      "avvisi": [],
+      "bgp": [
+       {
+        "asn": "3",
+        "chi": "as3",
+        "ip": "10.0.0.6",
+        "policy": [],
+        "tipo": "eBGP"
+       }
+      ],
+      "costo": null,
+      "dev": "eth2",
+      "igp": [],
+      "ip": "10.0.0.5/30",
+      "lan": "E",
+      "vicini": [
+       {
+        "ip": "10.0.0.6/30",
+        "nome": "as3"
+       }
+      ]
+     }
+    ],
+    "loopback": [],
+    "nameserver": [],
+    "nome": "as1r2",
+    "riepilogo": {
+     "bgp_networks": [
+      "10.0.0.4/30",
+      "1.0.0.0/8"
+     ],
+     "costi": [],
+     "igp": [
+      {
+       "auto_cost": null,
+       "protocollo": "OSPF",
+       "redistribute": [
+        "connected",
+        "bgp"
+       ],
+       "voci": [
+        "1.0.0.0/8 area 0.0.0.0"
+       ]
+      }
+     ],
+     "neighbor": [
+      {
+       "asn": "1",
+       "chi": "as1r1",
+       "ip": "1.3.0.1",
+       "policy": [],
+       "tipo": "iBGP"
+      },
+      {
+       "asn": "3",
+       "chi": "as3",
+       "ip": "10.0.0.6",
+       "policy": [],
+       "tipo": "eBGP"
+      }
+     ],
+     "redistribute_bgp": []
+    },
+    "riferimenti_frr": [],
+    "tipo": "router",
+    "zone": []
+   },
+   {
+    "asn": "1",
+    "demoni": [
+     "ospfd"
+    ],
+    "gateway": null,
+    "gruppo": "1",
+    "immagine": "kathara/frr",
+    "interfacce": [
+     {
+      "avvisi": [],
+      "bgp": [],
+      "costo": null,
+      "dev": "eth0",
+      "igp": [
+       "OSPF"
+      ],
+      "ip": "1.1.0.3/24",
+      "lan": "A",
+      "vicini": [
+       {
+        "ip": "1.1.0.1/24",
+        "nome": "pc1"
+       }
+      ]
+     },
+     {
+      "avvisi": [],
+      "bgp": [],
+      "costo": null,
+      "dev": "eth1",
+      "igp": [
+       "OSPF"
+      ],
+      "ip": "1.2.0.3/24",
+      "lan": "B",
+      "vicini": [
+       {
+        "ip": "1.2.0.2/24",
+        "nome": "as1r2"
+       }
+      ]
+     }
+    ],
+    "loopback": [],
+    "nameserver": [],
+    "nome": "as1r3",
+    "riepilogo": {
+     "bgp_networks": [],
+     "costi": [],
+     "igp": [
+      {
+       "auto_cost": null,
+       "protocollo": "OSPF",
+       "redistribute": [
+        "connected"
+       ],
+       "voci": [
+        "1.0.0.0/8 area 0.0.0.0"
+       ]
+      }
+     ],
+     "neighbor": [],
+     "redistribute_bgp": []
+    },
+    "riferimenti_frr": [],
+    "tipo": "router",
+    "zone": []
+   },
+   {
+    "asn": "2",
+    "demoni": [
+     "bgpd"
+    ],
+    "gateway": null,
+    "gruppo": "2",
+    "immagine": "kathara/frr",
+    "interfacce": [
+     {
+      "avvisi": [],
+      "bgp": [
+       {
+        "asn": "1",
+        "chi": "as1r1",
+        "ip": "10.0.0.1",
+        "policy": [],
+        "tipo": "eBGP"
+       }
+      ],
+      "costo": null,
+      "dev": "eth0",
+      "igp": [],
+      "ip": "10.0.0.2/30",
+      "lan": "D",
+      "vicini": [
+       {
+        "ip": "10.0.0.1/30",
+        "nome": "as1r1"
+       }
+      ]
+     },
+     {
+      "avvisi": [],
+      "bgp": [
+       {
+        "asn": "5",
+        "chi": "as5",
+        "ip": "10.0.0.10",
+        "policy": [],
+        "tipo": "eBGP"
+       }
+      ],
+      "costo": null,
+      "dev": "eth1",
+      "igp": [],
+      "ip": "10.0.0.9/30",
+      "lan": "G",
+      "vicini": [
+       {
+        "ip": "10.0.0.10/30",
+        "nome": "as5"
+       }
+      ]
+     },
+     {
+      "avvisi": [],
+      "bgp": [
+       {
+        "asn": "3",
+        "chi": "as3",
+        "ip": "10.0.0.14",
+        "policy": [],
+        "tipo": "eBGP"
+       }
+      ],
+      "costo": null,
+      "dev": "eth2",
+      "igp": [],
+      "ip": "10.0.0.13/30",
+      "lan": "F",
+      "vicini": [
+       {
+        "ip": "10.0.0.14/30",
+        "nome": "as3"
+       }
+      ]
+     }
+    ],
+    "loopback": [],
+    "nameserver": [],
+    "nome": "as2",
+    "riepilogo": {
+     "bgp_networks": [
+      "10.0.0.0/30",
+      "10.0.0.8/30",
+      "10.0.0.12/30"
+     ],
+     "costi": [],
+     "igp": [],
+     "neighbor": [
+      {
+       "asn": "1",
+       "chi": "as1r1",
+       "ip": "10.0.0.1",
+       "policy": [],
+       "tipo": "eBGP"
+      },
+      {
+       "asn": "5",
+       "chi": "as5",
+       "ip": "10.0.0.10",
+       "policy": [],
+       "tipo": "eBGP"
+      },
+      {
+       "asn": "3",
+       "chi": "as3",
+       "ip": "10.0.0.14",
+       "policy": [],
+       "tipo": "eBGP"
+      }
+     ],
+     "redistribute_bgp": []
+    },
+    "riferimenti_frr": [],
+    "tipo": "router",
+    "zone": []
+   },
+   {
+    "asn": "3",
+    "demoni": [
+     "bgpd"
+    ],
+    "gateway": null,
+    "gruppo": "3",
+    "immagine": "kathara/frr",
+    "interfacce": [
+     {
+      "avvisi": [],
+      "bgp": [
+       {
+        "asn": "1",
+        "chi": "as1r2",
+        "ip": "10.0.0.5",
+        "policy": [],
+        "tipo": "eBGP"
+       }
+      ],
+      "costo": null,
+      "dev": "eth0",
+      "igp": [],
+      "ip": "10.0.0.6/30",
+      "lan": "E",
+      "vicini": [
+       {
+        "ip": "10.0.0.5/30",
+        "nome": "as1r2"
+       }
+      ]
+     },
+     {
+      "avvisi": [],
+      "bgp": [
+       {
+        "asn": "2",
+        "chi": "as2",
+        "ip": "10.0.0.13",
+        "policy": [],
+        "tipo": "eBGP"
+       }
+      ],
+      "costo": null,
+      "dev": "eth1",
+      "igp": [],
+      "ip": "10.0.0.14/30",
+      "lan": "F",
+      "vicini": [
+       {
+        "ip": "10.0.0.13/30",
+        "nome": "as2"
+       }
+      ]
+     },
+     {
+      "avvisi": [],
+      "bgp": [
+       {
+        "asn": "4",
+        "chi": "as4",
+        "ip": "10.0.0.18",
+        "policy": [],
+        "tipo": "eBGP"
+       }
+      ],
+      "costo": null,
+      "dev": "eth2",
+      "igp": [],
+      "ip": "10.0.0.17/30",
+      "lan": "H",
+      "vicini": [
+       {
+        "ip": "10.0.0.18/30",
+        "nome": "as4"
+       }
+      ]
+     }
+    ],
+    "loopback": [],
+    "nameserver": [],
+    "nome": "as3",
+    "riepilogo": {
+     "bgp_networks": [
+      "10.0.0.4/30",
+      "10.0.0.12/30",
+      "10.0.0.16/30"
+     ],
+     "costi": [],
+     "igp": [],
+     "neighbor": [
+      {
+       "asn": "1",
+       "chi": "as1r2",
+       "ip": "10.0.0.5",
+       "policy": [],
+       "tipo": "eBGP"
+      },
+      {
+       "asn": "2",
+       "chi": "as2",
+       "ip": "10.0.0.13",
+       "policy": [],
+       "tipo": "eBGP"
+      },
+      {
+       "asn": "4",
+       "chi": "as4",
+       "ip": "10.0.0.18",
+       "policy": [],
+       "tipo": "eBGP"
+      }
+     ],
+     "redistribute_bgp": []
+    },
+    "riferimenti_frr": [],
+    "tipo": "router",
+    "zone": []
+   },
+   {
+    "asn": "4",
+    "demoni": [
+     "bgpd"
+    ],
+    "gateway": null,
+    "gruppo": "4",
+    "immagine": "kathara/frr",
+    "interfacce": [
+     {
+      "avvisi": [],
+      "bgp": [
+       {
+        "asn": "5",
+        "chi": "as5",
+        "ip": "10.0.0.21",
+        "policy": [],
+        "tipo": "eBGP"
+       }
+      ],
+      "costo": null,
+      "dev": "eth0",
+      "igp": [],
+      "ip": "10.0.0.22/30",
+      "lan": "I",
+      "vicini": [
+       {
+        "ip": "10.0.0.21/30",
+        "nome": "as5"
+       }
+      ]
+     },
+     {
+      "avvisi": [],
+      "bgp": [
+       {
+        "asn": "6",
+        "chi": "as6",
+        "ip": "10.0.0.26",
+        "policy": [],
+        "tipo": "eBGP"
+       }
+      ],
+      "costo": null,
+      "dev": "eth1",
+      "igp": [],
+      "ip": "10.0.0.25/30",
+      "lan": "J",
+      "vicini": [
+       {
+        "ip": "10.0.0.26/30",
+        "nome": "as6"
+       }
+      ]
+     },
+     {
+      "avvisi": [],
+      "bgp": [
+       {
+        "asn": "3",
+        "chi": "as3",
+        "ip": "10.0.0.17",
+        "policy": [],
+        "tipo": "eBGP"
+       }
+      ],
+      "costo": null,
+      "dev": "eth2",
+      "igp": [],
+      "ip": "10.0.0.18/30",
+      "lan": "H",
+      "vicini": [
+       {
+        "ip": "10.0.0.17/30",
+        "nome": "as3"
+       }
+      ]
+     }
+    ],
+    "loopback": [],
+    "nameserver": [],
+    "nome": "as4",
+    "riepilogo": {
+     "bgp_networks": [
+      "10.0.0.20/30",
+      "10.0.0.24/30",
+      "10.0.0.16/30"
+     ],
+     "costi": [],
+     "igp": [],
+     "neighbor": [
+      {
+       "asn": "3",
+       "chi": "as3",
+       "ip": "10.0.0.17",
+       "policy": [],
+       "tipo": "eBGP"
+      },
+      {
+       "asn": "5",
+       "chi": "as5",
+       "ip": "10.0.0.21",
+       "policy": [],
+       "tipo": "eBGP"
+      },
+      {
+       "asn": "6",
+       "chi": "as6",
+       "ip": "10.0.0.26",
+       "policy": [],
+       "tipo": "eBGP"
+      }
+     ],
+     "redistribute_bgp": []
+    },
+    "riferimenti_frr": [],
+    "tipo": "router",
+    "zone": []
+   },
+   {
+    "asn": "5",
+    "demoni": [
+     "bgpd"
+    ],
+    "gateway": null,
+    "gruppo": "5",
+    "immagine": "kathara/frr",
+    "interfacce": [
+     {
+      "avvisi": [],
+      "bgp": [
+       {
+        "asn": "2",
+        "chi": "as2",
+        "ip": "10.0.0.9",
+        "policy": [],
+        "tipo": "eBGP"
+       }
+      ],
+      "costo": null,
+      "dev": "eth0",
+      "igp": [],
+      "ip": "10.0.0.10/30",
+      "lan": "G",
+      "vicini": [
+       {
+        "ip": "10.0.0.9/30",
+        "nome": "as2"
+       }
+      ]
+     },
+     {
+      "avvisi": [],
+      "bgp": [
+       {
+        "asn": "4",
+        "chi": "as4",
+        "ip": "10.0.0.22",
+        "policy": [],
+        "tipo": "eBGP"
+       }
+      ],
+      "costo": null,
+      "dev": "eth1",
+      "igp": [],
+      "ip": "10.0.0.21/30",
+      "lan": "I",
+      "vicini": [
+       {
+        "ip": "10.0.0.22/30",
+        "nome": "as4"
+       }
+      ]
+     }
+    ],
+    "loopback": [],
+    "nameserver": [],
+    "nome": "as5",
+    "riepilogo": {
+     "bgp_networks": [
+      "10.0.0.8/30",
+      "10.0.0.20/30"
+     ],
+     "costi": [],
+     "igp": [],
+     "neighbor": [
+      {
+       "asn": "2",
+       "chi": "as2",
+       "ip": "10.0.0.9",
+       "policy": [],
+       "tipo": "eBGP"
+      },
+      {
+       "asn": "4",
+       "chi": "as4",
+       "ip": "10.0.0.22",
+       "policy": [],
+       "tipo": "eBGP"
+      }
+     ],
+     "redistribute_bgp": []
+    },
+    "riferimenti_frr": [],
+    "tipo": "router",
+    "zone": []
+   },
+   {
+    "asn": "6",
+    "demoni": [
+     "bgpd"
+    ],
+    "gateway": null,
+    "gruppo": "6",
+    "immagine": "kathara/frr",
+    "interfacce": [
+     {
+      "avvisi": [],
+      "bgp": [
+       {
+        "asn": "4",
+        "chi": "as4",
+        "ip": "10.0.0.25",
+        "policy": [],
+        "tipo": "eBGP"
+       }
+      ],
+      "costo": null,
+      "dev": "eth0",
+      "igp": [],
+      "ip": "10.0.0.26/30",
+      "lan": "J",
+      "vicini": [
+       {
+        "ip": "10.0.0.25/30",
+        "nome": "as4"
+       }
+      ]
+     },
+     {
+      "avvisi": [],
+      "bgp": [],
+      "costo": null,
+      "dev": "eth1",
+      "igp": [],
+      "ip": "6.0.0.6/24",
+      "lan": "K",
+      "vicini": [
+       {
+        "ip": "6.0.0.2/24",
+        "nome": "pc2"
+       }
+      ]
+     }
+    ],
+    "loopback": [],
+    "nameserver": [],
+    "nome": "as6",
+    "riepilogo": {
+     "bgp_networks": [
+      "10.0.0.24/30",
+      "6.0.0.0/24"
+     ],
+     "costi": [],
+     "igp": [],
+     "neighbor": [
+      {
+       "asn": "4",
+       "chi": "as4",
+       "ip": "10.0.0.25",
+       "policy": [],
+       "tipo": "eBGP"
+      }
+     ],
+     "redistribute_bgp": []
+    },
+    "riferimenti_frr": [],
+    "tipo": "router",
+    "zone": []
+   },
+   {
+    "asn": null,
+    "demoni": [],
+    "gateway": "1.1.0.3",
+    "gruppo": "1",
+    "immagine": "kathara/base",
+    "interfacce": [
+     {
+      "avvisi": [],
+      "bgp": [],
+      "costo": null,
+      "dev": "eth0",
+      "igp": [],
+      "ip": "1.1.0.1/24",
+      "lan": "A",
+      "vicini": [
+       {
+        "ip": "1.1.0.3/24",
+        "nome": "as1r3"
+       }
+      ]
+     }
+    ],
+    "loopback": [],
+    "nameserver": [],
+    "nome": "pc1",
+    "riepilogo": null,
+    "riferimenti_frr": [],
+    "tipo": "host",
+    "zone": []
+   },
+   {
+    "asn": null,
+    "demoni": [],
+    "gateway": "6.0.0.6",
+    "gruppo": "6",
+    "immagine": "kathara/base",
+    "interfacce": [
+     {
+      "avvisi": [],
+      "bgp": [],
+      "costo": null,
+      "dev": "eth0",
+      "igp": [],
+      "ip": "6.0.0.2/24",
+      "lan": "K",
+      "vicini": [
+       {
+        "ip": "6.0.0.6/24",
+        "nome": "as6"
+       }
+      ]
+     }
+    ],
+    "loopback": [],
+    "nameserver": [],
+    "nome": "pc2",
+    "riepilogo": null,
+    "riferimenti_frr": [],
+    "tipo": "host",
+    "zone": []
+   }
+  ],
+  "lan": [
+   {
+    "membri": [
+     "as1r3",
+     "pc1"
+    ],
+    "nome": "A",
+    "subnet": "1.1.0.0/24"
+   },
+   {
+    "membri": [
+     "as1r2",
+     "as1r3"
+    ],
+    "nome": "B",
+    "subnet": "1.2.0.0/24"
+   },
+   {
+    "membri": [
+     "as1r1",
+     "as1r2"
+    ],
+    "nome": "C",
+    "subnet": "1.3.0.0/24"
+   },
+   {
+    "membri": [
+     "as1r1",
+     "as2"
+    ],
+    "nome": "D",
+    "subnet": "10.0.0.0/30"
+   },
+   {
+    "membri": [
+     "as1r2",
+     "as3"
+    ],
+    "nome": "E",
+    "subnet": "10.0.0.4/30"
+   },
+   {
+    "membri": [
+     "as2",
+     "as3"
+    ],
+    "nome": "F",
+    "subnet": "10.0.0.12/30"
+   },
+   {
+    "membri": [
+     "as2",
+     "as5"
+    ],
+    "nome": "G",
+    "subnet": "10.0.0.8/30"
+   },
+   {
+    "membri": [
+     "as3",
+     "as4"
+    ],
+    "nome": "H",
+    "subnet": "10.0.0.16/30"
+   },
+   {
+    "membri": [
+     "as4",
+     "as5"
+    ],
+    "nome": "I",
+    "subnet": "10.0.0.20/30"
+   },
+   {
+    "membri": [
+     "as4",
+     "as6"
+    ],
+    "nome": "J",
+    "subnet": "10.0.0.24/30"
+   },
+   {
+    "membri": [
+     "as6",
+     "pc2"
+    ],
+    "nome": "K",
+    "subnet": "6.0.0.0/24"
+   }
+  ],
+  "nome": "t1c1_test",
+  "xml": true
+ },
+ "leggi_dispositivi": {
+  "as1r1": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": "1",
+   "demoni": [
+    "ospfd",
+    "bgpd"
+   ],
+   "frr": true,
+   "gateway": null,
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "10.0.0.1/30",
+     "lan": "D"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "1.3.0.1/24",
+     "lan": "C"
+    }
+   ],
+   "loopback": [],
+   "nameserver": [],
+   "nome": "as1r1",
+   "tipo": "router",
+   "zone": []
+  },
+  "as1r2": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": "1",
+   "demoni": [
+    "ospfd",
+    "bgpd"
+   ],
+   "frr": true,
+   "gateway": null,
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "1.2.0.2/24",
+     "lan": "B"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "1.3.0.2/24",
+     "lan": "C"
+    },
+    {
+     "dev": "eth2",
+     "idx": 2,
+     "ip": "10.0.0.5/30",
+     "lan": "E"
+    }
+   ],
+   "loopback": [],
+   "nameserver": [],
+   "nome": "as1r2",
+   "tipo": "router",
+   "zone": []
+  },
+  "as1r3": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": null,
+   "demoni": [
+    "ospfd"
+   ],
+   "frr": true,
+   "gateway": null,
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "1.1.0.3/24",
+     "lan": "A"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "1.2.0.3/24",
+     "lan": "B"
+    }
+   ],
+   "loopback": [],
+   "nameserver": [],
+   "nome": "as1r3",
+   "tipo": "router",
+   "zone": []
+  },
+  "as2": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": "2",
+   "demoni": [
+    "bgpd"
+   ],
+   "frr": true,
+   "gateway": null,
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "10.0.0.2/30",
+     "lan": "D"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "10.0.0.9/30",
+     "lan": "G"
+    },
+    {
+     "dev": "eth2",
+     "idx": 2,
+     "ip": "10.0.0.13/30",
+     "lan": "F"
+    }
+   ],
+   "loopback": [],
+   "nameserver": [],
+   "nome": "as2",
+   "tipo": "router",
+   "zone": []
+  },
+  "as3": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": "3",
+   "demoni": [
+    "bgpd"
+   ],
+   "frr": true,
+   "gateway": null,
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "10.0.0.6/30",
+     "lan": "E"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "10.0.0.14/30",
+     "lan": "F"
+    },
+    {
+     "dev": "eth2",
+     "idx": 2,
+     "ip": "10.0.0.17/30",
+     "lan": "H"
+    }
+   ],
+   "loopback": [],
+   "nameserver": [],
+   "nome": "as3",
+   "tipo": "router",
+   "zone": []
+  },
+  "as4": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": "4",
+   "demoni": [
+    "bgpd"
+   ],
+   "frr": true,
+   "gateway": null,
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "10.0.0.22/30",
+     "lan": "I"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "10.0.0.25/30",
+     "lan": "J"
+    },
+    {
+     "dev": "eth2",
+     "idx": 2,
+     "ip": "10.0.0.18/30",
+     "lan": "H"
+    }
+   ],
+   "loopback": [],
+   "nameserver": [],
+   "nome": "as4",
+   "tipo": "router",
+   "zone": []
+  },
+  "as5": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": "5",
+   "demoni": [
+    "bgpd"
+   ],
+   "frr": true,
+   "gateway": null,
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "10.0.0.10/30",
+     "lan": "G"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "10.0.0.21/30",
+     "lan": "I"
+    }
+   ],
+   "loopback": [],
+   "nameserver": [],
+   "nome": "as5",
+   "tipo": "router",
+   "zone": []
+  },
+  "as6": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": "6",
+   "demoni": [
+    "bgpd"
+   ],
+   "frr": true,
+   "gateway": null,
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "10.0.0.26/30",
+     "lan": "J"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "6.0.0.6/24",
+     "lan": "K"
+    }
+   ],
+   "loopback": [],
+   "nameserver": [],
+   "nome": "as6",
+   "tipo": "router",
+   "zone": []
+  },
+  "pc1": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": null,
+   "demoni": [],
+   "frr": false,
+   "gateway": "1.1.0.3",
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "1.1.0.1/24",
+     "lan": "A"
+    }
+   ],
+   "loopback": [],
+   "nameserver": [],
+   "nome": "pc1",
+   "tipo": "host",
+   "zone": []
+  },
+  "pc2": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": null,
+   "demoni": [],
+   "frr": false,
+   "gateway": "6.0.0.6",
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "6.0.0.2/24",
+     "lan": "K"
+    }
+   ],
+   "loopback": [],
+   "nameserver": [],
+   "nome": "pc2",
+   "tipo": "host",
+   "zone": []
+  }
+ },
+ "rebuild_lab_metadata_and_export": {
+  "hosts": [
+   {
+    "gateway": "1.1.0.3",
+    "ip": "1.1.0.1/24",
+    "lan": "A",
+    "name": "pc1"
+   },
+   {
+    "gateway": "6.0.0.6",
+    "ip": "6.0.0.2/24",
+    "lan": "K",
+    "name": "pc2"
+   }
+  ],
+  "lab_conf": "as1r1[0]=D\nas1r1[1]=C\nas1r1[image]=\"kathara/frr\"\n\nas1r2[0]=B\nas1r2[1]=C\nas1r2[2]=E\nas1r2[image]=\"kathara/frr\"\n\nas1r3[0]=A\nas1r3[1]=B\nas1r3[image]=\"kathara/frr\"\n\nas2[0]=D\nas2[1]=G\nas2[2]=F\nas2[image]=\"kathara/frr\"\n\nas3[0]=E\nas3[1]=F\nas3[2]=H\nas3[image]=\"kathara/frr\"\n\nas4[0]=I\nas4[1]=J\nas4[2]=H\nas4[image]=\"kathara/frr\"\n\nas5[0]=G\nas5[1]=I\nas5[image]=\"kathara/frr\"\n\nas6[0]=J\nas6[1]=K\nas6[image]=\"kathara/frr\"\n\npc1[0]=A\npc1[image]=\"kathara/base\"\n\npc2[0]=K\npc2[image]=\"kathara/base\"\n",
+  "routers": {
+   "as1r1": {
+    "asn": "1",
+    "interfaces": [
+     {
+      "ip": "10.0.0.1/30",
+      "lan": "D",
+      "name": "eth0"
+     },
+     {
+      "ip": "1.3.0.1/24",
+      "lan": "C",
+      "name": "eth1"
+     }
+    ],
+    "protocols": [
+     "bgp",
+     "ospf"
+    ]
+   },
+   "as1r2": {
+    "asn": "1",
+    "interfaces": [
+     {
+      "ip": "1.2.0.2/24",
+      "lan": "B",
+      "name": "eth0"
+     },
+     {
+      "ip": "1.3.0.2/24",
+      "lan": "C",
+      "name": "eth1"
+     },
+     {
+      "ip": "10.0.0.5/30",
+      "lan": "E",
+      "name": "eth2"
+     }
+    ],
+    "protocols": [
+     "bgp",
+     "ospf"
+    ]
+   },
+   "as1r3": {
+    "asn": "",
+    "interfaces": [
+     {
+      "ip": "1.1.0.3/24",
+      "lan": "A",
+      "name": "eth0"
+     },
+     {
+      "ip": "1.2.0.3/24",
+      "lan": "B",
+      "name": "eth1"
+     }
+    ],
+    "protocols": [
+     "ospf"
+    ]
+   },
+   "as2": {
+    "asn": "2",
+    "interfaces": [
+     {
+      "ip": "10.0.0.2/30",
+      "lan": "D",
+      "name": "eth0"
+     },
+     {
+      "ip": "10.0.0.9/30",
+      "lan": "G",
+      "name": "eth1"
+     },
+     {
+      "ip": "10.0.0.13/30",
+      "lan": "F",
+      "name": "eth2"
+     }
+    ],
+    "protocols": [
+     "bgp"
+    ]
+   },
+   "as3": {
+    "asn": "3",
+    "interfaces": [
+     {
+      "ip": "10.0.0.6/30",
+      "lan": "E",
+      "name": "eth0"
+     },
+     {
+      "ip": "10.0.0.14/30",
+      "lan": "F",
+      "name": "eth1"
+     },
+     {
+      "ip": "10.0.0.17/30",
+      "lan": "H",
+      "name": "eth2"
+     }
+    ],
+    "protocols": [
+     "bgp"
+    ]
+   },
+   "as4": {
+    "asn": "4",
+    "interfaces": [
+     {
+      "ip": "10.0.0.22/30",
+      "lan": "I",
+      "name": "eth0"
+     },
+     {
+      "ip": "10.0.0.25/30",
+      "lan": "J",
+      "name": "eth1"
+     },
+     {
+      "ip": "10.0.0.18/30",
+      "lan": "H",
+      "name": "eth2"
+     }
+    ],
+    "protocols": [
+     "bgp"
+    ]
+   },
+   "as5": {
+    "asn": "5",
+    "interfaces": [
+     {
+      "ip": "10.0.0.10/30",
+      "lan": "G",
+      "name": "eth0"
+     },
+     {
+      "ip": "10.0.0.21/30",
+      "lan": "I",
+      "name": "eth1"
+     }
+    ],
+    "protocols": [
+     "bgp"
+    ]
+   },
+   "as6": {
+    "asn": "6",
+    "interfaces": [
+     {
+      "ip": "10.0.0.26/30",
+      "lan": "J",
+      "name": "eth0"
+     },
+     {
+      "ip": "6.0.0.6/24",
+      "lan": "K",
+      "name": "eth1"
+     }
+    ],
+    "protocols": [
+     "bgp"
+    ]
+   }
+  },
+  "wwws": []
+ }
+}

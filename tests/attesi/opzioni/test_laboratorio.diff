@@ -1,0 +1,43 @@
+--- rigenerato/r1/etc/frr/frr.conf
++++ reale/r1/etc/frr/frr.conf
+@@ -18,4 +18,12 @@
+     neighbor 10.0.0.2 description Router r2
+     neighbor 20.0.0.2 remote-as 3
+     neighbor 20.0.0.2 description Router r3
++    
++    neighbor 10.0.0.2 prefix-list peer_r2_in in
++    neighbor 10.0.0.2 prefix-list peer_r2_out out
+ 
++
++ip prefix-list peer_r2_in permit any
++ip prefix-list peer_r2_out permit 20.0.0.1
++ip prefix-list peer_r2_out permit 20.0.0.2
++
+--- rigenerato/r3/etc/frr/frr.conf
++++ reale/r3/etc/frr/frr.conf
+@@ -15,4 +15,11 @@
+     network 20.0.0.0/24
+     neighbor 20.0.0.1 remote-as 1
+     neighbor 20.0.0.1 description Router r1
++    
++    neighbor 20.0.0.1 prefix-list provider_r1_in in
++    neighbor 20.0.0.1 prefix-list provider_r1_out out
+ 
++
++ip prefix-list provider_r1_in permit any
++ip prefix-list provider_r1_out permit 20.0.0.2
++
+--- rigenerato/r4/etc/frr/frr.conf
++++ reale/r4/etc/frr/frr.conf
+@@ -15,4 +15,11 @@
+     network 30.0.0.0/24
+     neighbor 30.0.0.1 remote-as 2
+     neighbor 30.0.0.1 description Router r2
++    
++    neighbor 30.0.0.1 prefix-list provider_r2_in in
++    neighbor 30.0.0.1 prefix-list provider_r2_out out
+ 
++
++ip prefix-list provider_r2_in permit any
++ip prefix-list provider_r2_out permit 30.0.0.2
++

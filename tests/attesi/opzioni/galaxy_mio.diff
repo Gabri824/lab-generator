@@ -1,0 +1,53 @@
+--- rigenerato/as1r3/etc/frr/frr.conf
++++ reale/as1r3/etc/frr/frr.conf
+@@ -25,3 +25,18 @@
+     neighbor 10.20.0.2 description Router as2r1
+     neighbor 20.10.0.2 remote-as 2
+     neighbor 20.10.0.2 description Router as2r5
++    neighbor 10.20.0.2 default-originate
++    neighbor 10.20.0.2 prefix-list SOLO_DEFAULT_10_20_0_2 out
++    neighbor 20.10.0.2 default-originate
++    neighbor 20.10.0.2 prefix-list SOLO_DEFAULT_20_10_0_2 out
++    network 1.0.0.0/8
++    neighbor 20.10.0.2 prefix-list PL_as1r3_20_10_0_2_in in
++
++ip prefix-list SOLO_DEFAULT_10_20_0_2 permit 0.0.0.0/0
++ip prefix-list SOLO_DEFAULT_10_20_0_2 permit 1.0.0.0/8
++
++ip prefix-list SOLO_DEFAULT_20_10_0_2 permit 0.0.0.0/0
++ip prefix-list SOLO_DEFAULT_20_10_0_2 permit 1.0.0.0/8
++
++ip prefix-list PL_as1r3_20_10_0_2_in deny 2.4.0.0/24
++ip prefix-list PL_as1r3_20_10_0_2_in permit any
+--- rigenerato/as2r1/etc/frr/frr.conf
++++ reale/as2r1/etc/frr/frr.conf
+@@ -22,3 +22,11 @@
+     network 10.20.0.0/30
+     neighbor 10.20.0.1 remote-as 1
+     neighbor 10.20.0.1 description Router as1r3
++    network 2.0.0.0/8
++    network 2.1.0.0/24
++    network 2.2.0.0/24
++    network 2.3.0.0/24
++    network 2.4.0.0/24
++    network 2.5.0.0/24
++    network 2.6.0.0/24
++    network 2.7.0.0/24
+--- rigenerato/as2r5/etc/frr/frr.conf
++++ reale/as2r5/etc/frr/frr.conf
+@@ -22,3 +22,15 @@
+     network 20.10.0.0/30
+     neighbor 20.10.0.1 remote-as 1
+     neighbor 20.10.0.1 description Router as1r3
++    network 2.0.0.0/8
++    network 2.1.0.0/24
++    network 2.2.0.0/24
++    network 2.3.0.0/24
++    network 2.4.0.0/24
++    network 2.5.0.0/24
++    network 2.6.0.0/24
++    network 2.7.0.0/24
++    neighbor 20.10.0.1 route-map LOCALMED_OUT_20_10_0_1 out
++
++route-map LOCALMED_OUT_20_10_0_1 permit 10
++    set metric 20

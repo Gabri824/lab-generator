@@ -1,0 +1,74 @@
+{
+ "butterfly_test": {
+  "esercizio": "2013-12-20-butterfly",
+  "ko": []
+ },
+ "candy_test": {
+  "esercizio": "2017-12-15-candy",
+  "ko": []
+ },
+ "del-monte-castle_mio": {
+  "esercizio": "2017-12-15-del-monte-castle",
+  "ko": []
+ },
+ "eye_test": {
+  "esercizio": "2015-12-11-eye",
+  "ko": []
+ },
+ "galaxy_mio": {
+  "esercizio": "2024-11-8-Galaxy",
+  "ko": [
+   "immagini dei router (default soluzione: kathara/base)",
+   "as1r3: network annunciate (4 attese)",
+   "as2r5: network annunciate (8 attese)"
+  ]
+ },
+ "garden_umbrella_mio": {
+  "esercizio": "2013-12-20-garden-umbrella",
+  "ko": []
+ },
+ "hourglass_test": {
+  "esercizio": "2016-12-16-hour-glass",
+  "ko": []
+ },
+ "left_spotlight_mio": {
+  "esercizio": "2015-12-11-left_spotlight",
+  "ko": [
+   "as2r1: network annunciate (3 attese)"
+  ]
+ },
+ "lift_mio": {
+  "esercizio": "2013-12-20-lift",
+  "ko": []
+ },
+ "papillon_mio": {
+  "esercizio": "2016-12-16-papillon",
+  "ko": []
+ },
+ "red_baron_test": {
+  "esercizio": "2020-12-18-red-baron",
+  "ko": []
+ },
+ "stairs_mio": {
+  "esercizio": "2018-01-17-stairs",
+  "ko": [
+   "as1r2: network annunciate (2 attese)"
+  ]
+ },
+ "t1_c1_mio": {
+  "esercizio": "2021-11-29-t1-c1",
+  "ko": []
+ },
+ "t1c1_test": {
+  "esercizio": "2021-11-29-t1-c1",
+  "ko": []
+ },
+ "tennis_test": {
+  "esercizio": "2016-07-01-tennis",
+  "ko": [
+   "IP di tutte le interfacce",
+   "as20r4: network annunciate (2 attese)",
+   "as2r1: network annunciate (2 attese)"
+  ]
+ }
+}

@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lab name="hourglass_test">
+  <routers>
+    <router name="r1">
+      <protocols>
+        <protocol>rip</protocol>
+      </protocols>
+      <interfaces>
+        <interface name="eth0" lan="C" ip="50.50.3.1/24"/>
+        <interface name="eth1" lan="A" ip="50.50.1.1/24"/>
+        <interface name="eth2" lan="B" ip="50.50.2.1/24"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>50.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+    <router name="r2">
+      <protocols>
+        <protocol>rip</protocol>
+      </protocols>
+      <interfaces>
+        <interface name="eth0" lan="D" ip="50.50.4.1/24"/>
+        <interface name="eth1" lan="C" ip="50.50.3.2/24"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>50.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+    <router name="r3">
+      <protocols>
+        <protocol>bgp</protocol>
+        <protocol>rip</protocol>
+      </protocols>
+      <asn>50</asn>
+      <interfaces>
+        <interface name="eth0" lan="E" ip="10.1.0.2/30"/>
+        <interface name="eth1" lan="D" ip="50.50.4.2/24"/>
+        <interface name="eth2" lan="B" ip="50.50.2.2/24"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>50.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+    <router name="r4">
+      <protocols>
+        <protocol>bgp</protocol>
+        <protocol>ospf</protocol>
+      </protocols>
+      <asn>40</asn>
+      <ospf_area>0.0.0.0</ospf_area>
+      <interfaces>
+        <interface name="eth0" lan="G" ip="40.40.4.2/24"/>
+        <interface name="eth1" lan="F" ip="40.40.5.2/24"/>
+        <interface name="eth2" lan="E" ip="10.1.0.1/30"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>40.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+    <router name="r5">
+      <protocols>
+        <protocol>ospf</protocol>
+      </protocols>
+      <ospf_area>0.0.0.0</ospf_area>
+      <interfaces>
+        <interface name="eth0" lan="G" ip="40.40.4.1/24"/>
+        <interface name="eth1" lan="H" ip="40.40.3.2/24"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>40.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+    <router name="r6">
+      <protocols>
+        <protocol>ospf</protocol>
+      </protocols>
+      <ospf_area>0.0.0.0</ospf_area>
+      <interfaces>
+        <interface name="eth0" lan="I" ip="40.40.2.2/24"/>
+        <interface name="eth1" lan="H" ip="40.40.3.1/24"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>40.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+    <router name="r7">
+      <protocols>
+        <protocol>ospf</protocol>
+      </protocols>
+      <ospf_area>0.0.0.0</ospf_area>
+      <interfaces>
+        <interface name="eth0" lan="I" ip="40.40.2.1/24"/>
+        <interface name="eth1" lan="L" ip="40.40.1.1/24"/>
+        <interface name="eth2" lan="F" ip="40.40.5.1/24"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>40.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+  </routers>
+  <hosts>
+    <host name="user" ip="40.40.1.2/24" gateway="40.40.1.1" lan="L" gw_dev="eth0">
+      <interfaces>
+        <interface name="eth0" lan="L" ip="40.40.1.2/24"/>
+      </interfaces>
+    </host>
+  </hosts>
+  <www>
+    <server name="www" ip="50.50.1.2/24" gateway="50.50.1.1" lan="A"/>
+  </www>
+  <lab_conf>r1[0]=C
+r1[1]=A
+r1[2]=B
+r1[image]=&quot;kathara/frr&quot;
+
+r2[0]=D
+r2[1]=C
+r2[image]=&quot;kathara/frr&quot;
+
+r3[0]=E
+r3[1]=D
+r3[2]=B
+r3[image]=&quot;kathara/frr&quot;
+
+r4[0]=G
+r4[1]=F
+r4[2]=E
+r4[image]=&quot;kathara/frr&quot;
+
+r5[0]=G
+r5[1]=H
+r5[image]=&quot;kathara/frr&quot;
+
+r6[0]=I
+r6[1]=H
+r6[image]=&quot;kathara/frr&quot;
+
+r7[0]=I
+r7[1]=L
+r7[2]=F
+r7[image]=&quot;kathara/frr&quot;
+
+user[0]=L
+user[image]=&quot;kathara/base&quot;
+
+www[0]=A
+www[image]=&quot;kathara/base&quot;
+</lab_conf>
+</lab>

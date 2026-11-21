@@ -1,0 +1,50 @@
+--- rigenerato/r1/etc/frr/frr.conf
++++ reale/r1/etc/frr/frr.conf
+@@ -8,4 +8,5 @@
+     network 20.20.0.0/16 area 0.0.0.0
+ 
+     redistribute connected
++    auto-cost reference-bandwidth 100
+ 
+--- rigenerato/r2/etc/frr/frr.conf
++++ reale/r2/etc/frr/frr.conf
+@@ -8,4 +8,9 @@
+     network 20.20.0.0/16 area 0.0.0.0
+ 
+     redistribute connected
++    auto-cost reference-bandwidth 100
+ 
++
++interface eth0
++    ospf cost 100
++
+--- rigenerato/r3/etc/frr/frr.conf
++++ reale/r3/etc/frr/frr.conf
+@@ -13,6 +13,7 @@
+ 
+     redistribute connected
+     redistribute bgp
++    auto-cost reference-bandwidth 100
+ 
+ router bgp 20
+ 
+@@ -22,3 +23,4 @@
+     network 10.1.0.0/30
+     neighbor 10.1.0.2 remote-as 30
+     neighbor 10.1.0.2 description Router r5
++    network 20.20.0.0/16
+--- rigenerato/r4/etc/frr/frr.conf
++++ reale/r4/etc/frr/frr.conf
+@@ -8,4 +8,5 @@
+     network 20.20.0.0/16 area 0.0.0.0
+ 
+     redistribute connected
++    auto-cost reference-bandwidth 100
+ 
+--- rigenerato/r5/etc/frr/frr.conf
++++ reale/r5/etc/frr/frr.conf
+@@ -22,3 +22,4 @@
+     network 10.1.0.0/30
+     neighbor 10.1.0.1 remote-as 20
+     neighbor 10.1.0.1 description Router r3
++    network 30.30.0.0/16

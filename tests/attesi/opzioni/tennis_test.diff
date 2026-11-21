@@ -1,0 +1,158 @@
+--- rigenerato/as10r1/etc/frr/frr.conf
++++ reale/as10r1/etc/frr/frr.conf
+@@ -14,9 +14,12 @@
+ 
+     network 10.20.0.0/30
+     network 10.1.0.0/30
+-    network 10.0.0.0/24
+     neighbor 10.1.0.2 remote-as 1
+     neighbor 10.1.0.2 description Router as1r1
+     neighbor 10.20.0.2 remote-as 20
+     neighbor 10.20.0.2 description Router as20r3
++    network 10.0.0.0/8
++    neighbor 10.1.0.2 route-map PREF_IN_10_1_0_2 in
+ 
++route-map PREF_IN_10_1_0_2 permit 10
++    set local-preference 150
+--- rigenerato/as1r1/etc/frr/frr.conf
++++ reale/as1r1/etc/frr/frr.conf
+@@ -12,11 +12,10 @@
+     no bgp ebgp-requires-policy
+     no bgp network import-check
+ 
+-    network 1.0.0.0/24
+     network 10.1.0.0/30
+     network 1.20.0.0/30
+     neighbor 10.1.0.1 remote-as 10
+     neighbor 10.1.0.1 description Router as10r1
+     neighbor 1.20.0.2 remote-as 20
+     neighbor 1.20.0.2 description Router as20r2
+-
++    network 1.0.0.0/8
+--- rigenerato/as20r1/etc/frr/frr.conf
++++ reale/as20r1/etc/frr/frr.conf
+@@ -13,6 +13,7 @@
+ 
+     redistribute connected
+     redistribute bgp
++    auto-cost reference-bandwidth 100
+ 
+ router bgp 20
+ 
+@@ -26,3 +27,6 @@
+     neighbor 20.1.0.2 description Router as20r2
+     neighbor 20.4.0.4 remote-as 20
+     neighbor 20.4.0.4 description Router as20r4
++    network 20.0.0.0/8
++    neighbor 20.3.0.3 remote-as 20
++    neighbor 20.3.0.3 description iBGP as20r3
+--- rigenerato/as20r2/etc/frr/frr.conf
++++ reale/as20r2/etc/frr/frr.conf
+@@ -13,6 +13,7 @@
+ 
+     redistribute connected
+     redistribute bgp
++    auto-cost reference-bandwidth 100
+ 
+ router bgp 20
+ 
+@@ -26,3 +27,10 @@
+     neighbor 20.1.0.1 description Router as20r1
+     neighbor 20.2.0.3 remote-as 20
+     neighbor 20.2.0.3 description Router as20r3
++    network 20.0.0.0/8
++    neighbor 20.4.0.4 remote-as 20
++    neighbor 20.4.0.4 description iBGP as20r4
++
++interface eth1
++    ospf cost 90
++
+--- rigenerato/as20r3/etc/frr/frr.conf
++++ reale/as20r3/etc/frr/frr.conf
+@@ -13,6 +13,7 @@
+ 
+     redistribute connected
+     redistribute bgp
++    auto-cost reference-bandwidth 100
+ 
+ router bgp 20
+ 
+@@ -26,3 +27,10 @@
+     neighbor 20.3.0.4 description Router as20r4
+     neighbor 10.20.0.1 remote-as 10
+     neighbor 10.20.0.1 description Router as10r1
++    network 20.0.0.0/8
++    neighbor 20.1.0.1 remote-as 20
++    neighbor 20.1.0.1 description iBGP as20r1
++
++interface eth1
++    ospf cost 90
++
+--- rigenerato/as20r4/etc/frr/frr.conf
++++ reale/as20r4/etc/frr/frr.conf
+@@ -13,6 +13,7 @@
+ 
+     redistribute connected
+     redistribute bgp
++    auto-cost reference-bandwidth 100
+ 
+ router bgp 20
+ 
+@@ -26,3 +27,6 @@
+     neighbor 20.4.0.1 description Router as20r1
+     neighbor 20.3.0.3 remote-as 20
+     neighbor 20.3.0.3 description Router as20r3
++    network 20.0.0.0/8
++    neighbor 20.1.0.2 remote-as 20
++    neighbor 20.1.0.2 description iBGP as20r2
+--- rigenerato/as2r1/etc/frr/frr.conf
++++ reale/as2r1/etc/frr/frr.conf
+@@ -12,7 +12,6 @@
+     network 2.0.0.0/8
+ 
+     redistribute connected
+-    redistribute bgp
+ 
+ router bgp 2
+ 
+@@ -22,3 +21,6 @@
+     network 2.20.4.4/30
+     neighbor 2.20.4.6 remote-as 20
+     neighbor 2.20.4.6 description Router as20r4
++    network 2.0.0.0/8
++    neighbor 2.0.0.2 remote-as 2
++    neighbor 2.0.0.2 description iBGP as2r2
+--- rigenerato/as2r2/etc/frr/frr.conf
++++ reale/as2r2/etc/frr/frr.conf
+@@ -22,3 +22,14 @@
+     network 2.20.0.0/30
+     neighbor 2.20.0.1 remote-as 20
+     neighbor 2.20.0.1 description Router as20r1
++    network 2.0.0.0/8
++    neighbor 2.1.0.1 remote-as 2
++    neighbor 2.1.0.1 description iBGP as2r1
++    neighbor 2.20.0.1 route-map PREF_IN_2_20_0_1 in
++    neighbor 2.20.0.1 route-map LOCALMED_OUT_2_20_0_1 out
++
++route-map PREF_IN_2_20_0_1 permit 10
++    set local-preference 150
++
++route-map LOCALMED_OUT_2_20_0_1 permit 10
++    set metric 20
+--- /dev/null
++++ reale/pc/etc/resolv.conf
+@@ -0,0 +1 @@
++nameserver 1.0.0.2
+--- rigenerato/root/etc/bind/db.root
++++ reale/root/etc/bind/db.root
+@@ -10,3 +10,5 @@
+ @               	IN	NS	ROOT-SERVER.
+ ROOT-SERVER.    	IN	A	20.3.0.2
+ 
++com.            	IN	NS	dns.com.
++dns.com.        	IN	A	20.1.0.3
+--- rigenerato/web_srv/var/www/html/index.html
++++ reale/web_srv/var/www/html/index.html
+@@ -1 +1 @@
+-<html><head><title>web_srv</title></head><body><h1>Server web_srv</h1></body></html>
++<html><head><title>web-srv</title></head><body><h1>Server web-srv</h1></body></html>

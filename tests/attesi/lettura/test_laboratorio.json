@@ -1,0 +1,620 @@
+{
+ "dati.leggi_lab": {
+  "avvisi_config": [
+   "r1 (frr.conf riga 23): la prefix-list peer_r2_out non è definita: FRR non dà errori e la sessione resta Established, ma verso 10.0.0.2 non passa nessuna rotta. Tutte le sue righe sono scartate: correggile.",
+   "r1 (frr.conf riga 27): '20.0.0.1' non è valido in una prefix-list (serve una rete con la maschera): FRR scarta la riga. Forse intendevi 20.0.0.0/24?",
+   "r1 (frr.conf riga 28): '20.0.0.2' non è valido in una prefix-list (serve una rete con la maschera): FRR scarta la riga. Forse intendevi 20.0.0.0/24?",
+   "r3 (frr.conf riga 20): la prefix-list provider_r1_out non è definita: FRR non dà errori e la sessione resta Established, ma verso 20.0.0.1 non passa nessuna rotta. Tutte le sue righe sono scartate: correggile.",
+   "r3 (frr.conf riga 24): '20.0.0.2' non è valido in una prefix-list (serve una rete con la maschera): FRR scarta la riga. Forse intendevi 20.0.0.0/24?",
+   "r4 (frr.conf riga 20): la prefix-list provider_r2_out non è definita: FRR non dà errori e la sessione resta Established, ma verso 30.0.0.1 non passa nessuna rotta. Tutte le sue righe sono scartate: correggile.",
+   "r4 (frr.conf riga 24): '30.0.0.2' non è valido in una prefix-list (serve una rete con la maschera): FRR scarta la riga. Forse intendevi 30.0.0.0/24?"
+  ],
+  "avvisi_topologia": [],
+  "dispositivi": [
+   {
+    "asn": "1",
+    "demoni": [
+     "bgpd"
+    ],
+    "gateway": null,
+    "gruppo": "1",
+    "immagine": "kathara/frr",
+    "interfacce": [
+     {
+      "avvisi": [],
+      "bgp": [
+       {
+        "asn": "2",
+        "chi": "r2",
+        "ip": "10.0.0.2",
+        "policy": [
+         {
+          "direzione": "in",
+          "nome": "peer_r2_in",
+          "testo": "prefix-list permit any"
+         },
+         {
+          "direzione": "out",
+          "nome": "peer_r2_out",
+          "testo": "prefix-list permit 20.0.0.1, 20.0.0.2"
+         }
+        ],
+        "tipo": "eBGP"
+       }
+      ],
+      "costo": null,
+      "dev": "eth0",
+      "igp": [],
+      "ip": "10.0.0.1/24",
+      "lan": "A",
+      "vicini": [
+       {
+        "ip": "10.0.0.2/24",
+        "nome": "r2"
+       }
+      ]
+     },
+     {
+      "avvisi": [],
+      "bgp": [
+       {
+        "asn": "3",
+        "chi": "r3",
+        "ip": "20.0.0.2",
+        "policy": [],
+        "tipo": "eBGP"
+       }
+      ],
+      "costo": null,
+      "dev": "eth1",
+      "igp": [],
+      "ip": "20.0.0.1/24",
+      "lan": "B",
+      "vicini": [
+       {
+        "ip": "20.0.0.2/24",
+        "nome": "r3"
+       }
+      ]
+     }
+    ],
+    "loopback": [],
+    "nameserver": [],
+    "nome": "r1",
+    "riepilogo": {
+     "bgp_networks": [
+      "10.0.0.0/24",
+      "20.0.0.0/24"
+     ],
+     "costi": [],
+     "igp": [],
+     "neighbor": [
+      {
+       "asn": "2",
+       "chi": "r2",
+       "ip": "10.0.0.2",
+       "policy": [
+        {
+         "direzione": "in",
+         "nome": "peer_r2_in",
+         "testo": "prefix-list permit any"
+        },
+        {
+         "direzione": "out",
+         "nome": "peer_r2_out",
+         "testo": "prefix-list permit 20.0.0.1, 20.0.0.2"
+        }
+       ],
+       "tipo": "eBGP"
+      },
+      {
+       "asn": "3",
+       "chi": "r3",
+       "ip": "20.0.0.2",
+       "policy": [],
+       "tipo": "eBGP"
+      }
+     ],
+     "redistribute_bgp": []
+    },
+    "riferimenti_frr": [
+     {
+      "gravita": "errore",
+      "messaggio": "la prefix-list peer_r2_out non è definita: FRR non dà errori e la sessione resta Established, ma verso 10.0.0.2 non passa nessuna rotta. Tutte le sue righe sono scartate: correggile.",
+      "riga": 23,
+      "testo": "neighbor 10.0.0.2 prefix-list peer_r2_out out"
+     },
+     {
+      "gravita": "errore",
+      "messaggio": "'20.0.0.1' non è valido in una prefix-list (serve una rete con la maschera): FRR scarta la riga. Forse intendevi 20.0.0.0/24?",
+      "riga": 27,
+      "testo": "ip prefix-list peer_r2_out permit 20.0.0.1"
+     },
+     {
+      "gravita": "errore",
+      "messaggio": "'20.0.0.2' non è valido in una prefix-list (serve una rete con la maschera): FRR scarta la riga. Forse intendevi 20.0.0.0/24?",
+      "riga": 28,
+      "testo": "ip prefix-list peer_r2_out permit 20.0.0.2"
+     }
+    ],
+    "tipo": "router",
+    "zone": []
+   },
+   {
+    "asn": "2",
+    "demoni": [
+     "bgpd"
+    ],
+    "gateway": null,
+    "gruppo": "2",
+    "immagine": "kathara/frr",
+    "interfacce": [
+     {
+      "avvisi": [],
+      "bgp": [
+       {
+        "asn": "1",
+        "chi": "r1",
+        "ip": "10.0.0.1",
+        "policy": [],
+        "tipo": "eBGP"
+       }
+      ],
+      "costo": null,
+      "dev": "eth0",
+      "igp": [],
+      "ip": "10.0.0.2/24",
+      "lan": "A",
+      "vicini": [
+       {
+        "ip": "10.0.0.1/24",
+        "nome": "r1"
+       }
+      ]
+     },
+     {
+      "avvisi": [],
+      "bgp": [
+       {
+        "asn": "4",
+        "chi": "r4",
+        "ip": "30.0.0.2",
+        "policy": [],
+        "tipo": "eBGP"
+       }
+      ],
+      "costo": null,
+      "dev": "eth1",
+      "igp": [],
+      "ip": "30.0.0.1/24",
+      "lan": "C",
+      "vicini": [
+       {
+        "ip": "30.0.0.2/24",
+        "nome": "r4"
+       }
+      ]
+     }
+    ],
+    "loopback": [],
+    "nameserver": [],
+    "nome": "r2",
+    "riepilogo": {
+     "bgp_networks": [
+      "10.0.0.0/24",
+      "30.0.0.0/24"
+     ],
+     "costi": [],
+     "igp": [],
+     "neighbor": [
+      {
+       "asn": "1",
+       "chi": "r1",
+       "ip": "10.0.0.1",
+       "policy": [],
+       "tipo": "eBGP"
+      },
+      {
+       "asn": "4",
+       "chi": "r4",
+       "ip": "30.0.0.2",
+       "policy": [],
+       "tipo": "eBGP"
+      }
+     ],
+     "redistribute_bgp": []
+    },
+    "riferimenti_frr": [],
+    "tipo": "router",
+    "zone": []
+   },
+   {
+    "asn": "3",
+    "demoni": [
+     "bgpd"
+    ],
+    "gateway": null,
+    "gruppo": "3",
+    "immagine": "kathara/frr",
+    "interfacce": [
+     {
+      "avvisi": [],
+      "bgp": [
+       {
+        "asn": "1",
+        "chi": "r1",
+        "ip": "20.0.0.1",
+        "policy": [
+         {
+          "direzione": "in",
+          "nome": "provider_r1_in",
+          "testo": "prefix-list permit any"
+         },
+         {
+          "direzione": "out",
+          "nome": "provider_r1_out",
+          "testo": "prefix-list permit 20.0.0.2"
+         }
+        ],
+        "tipo": "eBGP"
+       }
+      ],
+      "costo": null,
+      "dev": "eth0",
+      "igp": [],
+      "ip": "20.0.0.2/24",
+      "lan": "B",
+      "vicini": [
+       {
+        "ip": "20.0.0.1/24",
+        "nome": "r1"
+       }
+      ]
+     }
+    ],
+    "loopback": [],
+    "nameserver": [],
+    "nome": "r3",
+    "riepilogo": {
+     "bgp_networks": [
+      "20.0.0.0/24"
+     ],
+     "costi": [],
+     "igp": [],
+     "neighbor": [
+      {
+       "asn": "1",
+       "chi": "r1",
+       "ip": "20.0.0.1",
+       "policy": [
+        {
+         "direzione": "in",
+         "nome": "provider_r1_in",
+         "testo": "prefix-list permit any"
+        },
+        {
+         "direzione": "out",
+         "nome": "provider_r1_out",
+         "testo": "prefix-list permit 20.0.0.2"
+        }
+       ],
+       "tipo": "eBGP"
+      }
+     ],
+     "redistribute_bgp": []
+    },
+    "riferimenti_frr": [
+     {
+      "gravita": "errore",
+      "messaggio": "la prefix-list provider_r1_out non è definita: FRR non dà errori e la sessione resta Established, ma verso 20.0.0.1 non passa nessuna rotta. Tutte le sue righe sono scartate: correggile.",
+      "riga": 20,
+      "testo": "neighbor 20.0.0.1 prefix-list provider_r1_out out"
+     },
+     {
+      "gravita": "errore",
+      "messaggio": "'20.0.0.2' non è valido in una prefix-list (serve una rete con la maschera): FRR scarta la riga. Forse intendevi 20.0.0.0/24?",
+      "riga": 24,
+      "testo": "ip prefix-list provider_r1_out permit 20.0.0.2"
+     }
+    ],
+    "tipo": "router",
+    "zone": []
+   },
+   {
+    "asn": "4",
+    "demoni": [
+     "bgpd"
+    ],
+    "gateway": null,
+    "gruppo": "4",
+    "immagine": "kathara/frr",
+    "interfacce": [
+     {
+      "avvisi": [],
+      "bgp": [
+       {
+        "asn": "2",
+        "chi": "r2",
+        "ip": "30.0.0.1",
+        "policy": [
+         {
+          "direzione": "in",
+          "nome": "provider_r2_in",
+          "testo": "prefix-list permit any"
+         },
+         {
+          "direzione": "out",
+          "nome": "provider_r2_out",
+          "testo": "prefix-list permit 30.0.0.2"
+         }
+        ],
+        "tipo": "eBGP"
+       }
+      ],
+      "costo": null,
+      "dev": "eth0",
+      "igp": [],
+      "ip": "30.0.0.2/24",
+      "lan": "C",
+      "vicini": [
+       {
+        "ip": "30.0.0.1/24",
+        "nome": "r2"
+       }
+      ]
+     }
+    ],
+    "loopback": [],
+    "nameserver": [],
+    "nome": "r4",
+    "riepilogo": {
+     "bgp_networks": [
+      "30.0.0.0/24"
+     ],
+     "costi": [],
+     "igp": [],
+     "neighbor": [
+      {
+       "asn": "2",
+       "chi": "r2",
+       "ip": "30.0.0.1",
+       "policy": [
+        {
+         "direzione": "in",
+         "nome": "provider_r2_in",
+         "testo": "prefix-list permit any"
+        },
+        {
+         "direzione": "out",
+         "nome": "provider_r2_out",
+         "testo": "prefix-list permit 30.0.0.2"
+        }
+       ],
+       "tipo": "eBGP"
+      }
+     ],
+     "redistribute_bgp": []
+    },
+    "riferimenti_frr": [
+     {
+      "gravita": "errore",
+      "messaggio": "la prefix-list provider_r2_out non è definita: FRR non dà errori e la sessione resta Established, ma verso 30.0.0.1 non passa nessuna rotta. Tutte le sue righe sono scartate: correggile.",
+      "riga": 20,
+      "testo": "neighbor 30.0.0.1 prefix-list provider_r2_out out"
+     },
+     {
+      "gravita": "errore",
+      "messaggio": "'30.0.0.2' non è valido in una prefix-list (serve una rete con la maschera): FRR scarta la riga. Forse intendevi 30.0.0.0/24?",
+      "riga": 24,
+      "testo": "ip prefix-list provider_r2_out permit 30.0.0.2"
+     }
+    ],
+    "tipo": "router",
+    "zone": []
+   }
+  ],
+  "lan": [
+   {
+    "membri": [
+     "r1",
+     "r2"
+    ],
+    "nome": "A",
+    "subnet": "10.0.0.0/24"
+   },
+   {
+    "membri": [
+     "r1",
+     "r3"
+    ],
+    "nome": "B",
+    "subnet": "20.0.0.0/24"
+   },
+   {
+    "membri": [
+     "r2",
+     "r4"
+    ],
+    "nome": "C",
+    "subnet": "30.0.0.0/24"
+   }
+  ],
+  "nome": "test_laboratorio",
+  "xml": true
+ },
+ "leggi_dispositivi": {
+  "r1": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": "1",
+   "demoni": [
+    "bgpd"
+   ],
+   "frr": true,
+   "gateway": null,
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "10.0.0.1/24",
+     "lan": "A"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "20.0.0.1/24",
+     "lan": "B"
+    }
+   ],
+   "loopback": [],
+   "nameserver": [],
+   "nome": "r1",
+   "tipo": "router",
+   "zone": []
+  },
+  "r2": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": "2",
+   "demoni": [
+    "bgpd"
+   ],
+   "frr": true,
+   "gateway": null,
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "10.0.0.2/24",
+     "lan": "A"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "30.0.0.1/24",
+     "lan": "C"
+    }
+   ],
+   "loopback": [],
+   "nameserver": [],
+   "nome": "r2",
+   "tipo": "router",
+   "zone": []
+  },
+  "r3": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": "3",
+   "demoni": [
+    "bgpd"
+   ],
+   "frr": true,
+   "gateway": null,
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "20.0.0.2/24",
+     "lan": "B"
+    }
+   ],
+   "loopback": [],
+   "nameserver": [],
+   "nome": "r3",
+   "tipo": "router",
+   "zone": []
+  },
+  "r4": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": "4",
+   "demoni": [
+    "bgpd"
+   ],
+   "frr": true,
+   "gateway": null,
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "30.0.0.2/24",
+     "lan": "C"
+    }
+   ],
+   "loopback": [],
+   "nameserver": [],
+   "nome": "r4",
+   "tipo": "router",
+   "zone": []
+  }
+ },
+ "rebuild_lab_metadata_and_export": {
+  "hosts": [],
+  "lab_conf": "r1[0]=A\nr1[1]=B\nr1[image]=\"kathara/frr\"\n\nr2[0]=A\nr2[1]=C\nr2[image]=\"kathara/frr\"\n\nr3[0]=B\nr3[image]=\"kathara/frr\"\n\nr4[0]=C\nr4[image]=\"kathara/frr\"\n",
+  "routers": {
+   "r1": {
+    "asn": "1",
+    "interfaces": [
+     {
+      "ip": "10.0.0.1/24",
+      "lan": "A",
+      "name": "eth0"
+     },
+     {
+      "ip": "20.0.0.1/24",
+      "lan": "B",
+      "name": "eth1"
+     }
+    ],
+    "protocols": [
+     "bgp"
+    ]
+   },
+   "r2": {
+    "asn": "2",
+    "interfaces": [
+     {
+      "ip": "10.0.0.2/24",
+      "lan": "A",
+      "name": "eth0"
+     },
+     {
+      "ip": "30.0.0.1/24",
+      "lan": "C",
+      "name": "eth1"
+     }
+    ],
+    "protocols": [
+     "bgp"
+    ]
+   },
+   "r3": {
+    "asn": "3",
+    "interfaces": [
+     {
+      "ip": "20.0.0.2/24",
+      "lan": "B",
+      "name": "eth0"
+     }
+    ],
+    "protocols": [
+     "bgp"
+    ]
+   },
+   "r4": {
+    "asn": "4",
+    "interfaces": [
+     {
+      "ip": "30.0.0.2/24",
+      "lan": "C",
+      "name": "eth0"
+     }
+    ],
+    "protocols": [
+     "bgp"
+    ]
+   }
+  },
+  "wwws": []
+ }
+}

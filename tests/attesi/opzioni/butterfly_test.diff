@@ -1,0 +1,73 @@
+--- rigenerato/as100r1/etc/frr/frr.conf
++++ reale/as100r1/etc/frr/frr.conf
+@@ -25,3 +25,6 @@
+     neighbor 40.100.0.40 description Router as40r1
+     neighbor 50.100.1.50 remote-as 50
+     neighbor 50.100.1.50 description Router as50r1
++    network 100.0.0.0/8
++    network 100.1.0.0/24
++    network 100.2.0.0/24
+--- rigenerato/as100r3/etc/frr/frr.conf
++++ reale/as100r3/etc/frr/frr.conf
+@@ -22,3 +22,6 @@
+     network 50.100.0.0/24
+     neighbor 50.100.0.50 remote-as 50
+     neighbor 50.100.0.50 description Router as50r1
++    network 100.0.0.0/8
++    network 100.1.0.0/24
++    network 100.2.0.0/24
+--- rigenerato/as10r1/etc/frr/frr.conf
++++ reale/as10r1/etc/frr/frr.conf
+@@ -18,4 +18,12 @@
+     neighbor 10.20.0.20 description Router as20r1
+     neighbor 10.50.0.50 remote-as 50
+     neighbor 10.50.0.50 description Router as50r1
++    neighbor 10.20.0.20 route-map PREF_IN_10_20_0_20 in
+ 
++route-map PREF_IN_10_20_0_20 permit 10
++    match ip address prefix-list PREF_IN_10_20_0_20_NETS
++    set local-preference 150
++route-map PREF_IN_10_20_0_20 permit 20
++
++ip prefix-list PREF_IN_10_20_0_20_NETS permit 100.1.0.0/24
++ip prefix-list PREF_IN_10_20_0_20_NETS permit 100.2.0.0/24
+--- rigenerato/as20r1/etc/frr/frr.conf
++++ reale/as20r1/etc/frr/frr.conf
+@@ -21,4 +21,19 @@
+     neighbor 20.30.0.30 description Router as30r1
+     neighbor 20.50.0.50 remote-as 50
+     neighbor 20.50.0.50 description Router as50r1
++    neighbor 20.50.0.50 route-map PREF_IN_20_50_0_50 in
++    neighbor 20.30.0.30 route-map PREF_IN_20_30_0_30 in
+ 
++route-map PREF_IN_20_50_0_50 permit 10
++    match ip address prefix-list PREF_IN_20_50_0_50_NETS
++    set local-preference 150
++route-map PREF_IN_20_50_0_50 permit 20
++
++ip prefix-list PREF_IN_20_50_0_50_NETS permit 100.1.0.0/24
++
++route-map PREF_IN_20_30_0_30 permit 10
++    match ip address prefix-list PREF_IN_20_30_0_30_NETS
++    set local-preference 150
++route-map PREF_IN_20_30_0_30 permit 20
++
++ip prefix-list PREF_IN_20_30_0_30_NETS permit 100.2.0.0/24
+--- rigenerato/as50r1/etc/frr/frr.conf
++++ reale/as50r1/etc/frr/frr.conf
+@@ -30,4 +30,15 @@
+     neighbor 50.100.0.1 description Router as100r3
+     neighbor 50.100.1.1 remote-as 100
+     neighbor 50.100.1.1 description Router as100r1
++    neighbor 50.100.0.1 prefix-list PL_as50r1_50_100_0_1_in in
++    neighbor 50.100.1.1 prefix-list PL_as50r1_50_100_1_1_in in
+ 
++ip prefix-list PL_as50r1_50_100_0_1_in deny 100.0.0.0/8
++ip prefix-list PL_as50r1_50_100_0_1_in deny 100.1.0.0/24
++ip prefix-list PL_as50r1_50_100_0_1_in deny 100.2.0.0/24
++ip prefix-list PL_as50r1_50_100_0_1_in permit any
++
++ip prefix-list PL_as50r1_50_100_1_1_in deny 100.0.0.0/8
++ip prefix-list PL_as50r1_50_100_1_1_in deny 100.1.0.0/24
++ip prefix-list PL_as50r1_50_100_1_1_in deny 100.2.0.0/24
++ip prefix-list PL_as50r1_50_100_1_1_in permit any

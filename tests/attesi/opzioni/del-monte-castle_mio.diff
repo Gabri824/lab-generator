@@ -1,0 +1,80 @@
+--- rigenerato/as1r1/etc/frr/frr.conf
++++ reale/as1r1/etc/frr/frr.conf
+@@ -18,4 +18,7 @@
+     neighbor 10.0.0.29 description Router as8r1
+     neighbor 10.0.0.2 remote-as 2
+     neighbor 10.0.0.2 description Router as2r1
++    neighbor 10.0.0.2 route-map PREF_IN_10_0_0_2 in
+ 
++route-map PREF_IN_10_0_0_2 permit 10
++    set local-preference 110
+--- rigenerato/as2r1/etc/frr/frr.conf
++++ reale/as2r1/etc/frr/frr.conf
+@@ -18,4 +18,7 @@
+     neighbor 10.0.0.1 description Router as1r1
+     neighbor 10.0.0.6 remote-as 3
+     neighbor 10.0.0.6 description Router as3r1
++    neighbor 10.0.0.6 route-map PREF_IN_10_0_0_6 in
+ 
++route-map PREF_IN_10_0_0_6 permit 10
++    set local-preference 110
+--- rigenerato/as3r1/etc/frr/frr.conf
++++ reale/as3r1/etc/frr/frr.conf
+@@ -18,4 +18,7 @@
+     neighbor 10.0.0.5 description Router as2r1
+     neighbor 10.0.0.10 remote-as 4
+     neighbor 10.0.0.10 description Router as4r1
++    neighbor 10.0.0.10 route-map PREF_IN_10_0_0_10 in
+ 
++route-map PREF_IN_10_0_0_10 permit 10
++    set local-preference 110
+--- rigenerato/as4r1/etc/frr/frr.conf
++++ reale/as4r1/etc/frr/frr.conf
+@@ -18,4 +18,7 @@
+     neighbor 10.0.0.9 description Router as3r1
+     neighbor 10.0.0.14 remote-as 5
+     neighbor 10.0.0.14 description Router as5r1
++    neighbor 10.0.0.14 route-map PREF_IN_10_0_0_14 in
+ 
++route-map PREF_IN_10_0_0_14 permit 10
++    set local-preference 110
+--- rigenerato/as5r1/etc/frr/frr.conf
++++ reale/as5r1/etc/frr/frr.conf
+@@ -18,4 +18,7 @@
+     neighbor 10.0.0.13 description Router as4r1
+     neighbor 10.0.0.18 remote-as 6
+     neighbor 10.0.0.18 description Router as6r1
++    neighbor 10.0.0.18 route-map PREF_IN_10_0_0_18 in
+ 
++route-map PREF_IN_10_0_0_18 permit 10
++    set local-preference 110
+--- rigenerato/as6r1/etc/frr/frr.conf
++++ reale/as6r1/etc/frr/frr.conf
+@@ -18,4 +18,7 @@
+     neighbor 10.0.0.17 description Router as5r1
+     neighbor 10.0.0.22 remote-as 7
+     neighbor 10.0.0.22 description Router as7r1
++    neighbor 10.0.0.22 route-map PREF_IN_10_0_0_22 in
+ 
++route-map PREF_IN_10_0_0_22 permit 10
++    set local-preference 110
+--- rigenerato/as7r1/etc/frr/frr.conf
++++ reale/as7r1/etc/frr/frr.conf
+@@ -18,4 +18,7 @@
+     neighbor 10.0.0.21 description Router as6r1
+     neighbor 10.0.0.26 remote-as 8
+     neighbor 10.0.0.26 description Router as8r1
++    neighbor 10.0.0.26 route-map PREF_IN_10_0_0_26 in
+ 
++route-map PREF_IN_10_0_0_26 permit 10
++    set local-preference 110
+--- rigenerato/as8r1/etc/frr/frr.conf
++++ reale/as8r1/etc/frr/frr.conf
+@@ -18,4 +18,7 @@
+     neighbor 10.0.0.30 description Router as1r1
+     neighbor 10.0.0.25 remote-as 7
+     neighbor 10.0.0.25 description Router as7r1
++    neighbor 10.0.0.30 route-map PREF_IN_10_0_0_30 in
+ 
++route-map PREF_IN_10_0_0_30 permit 10
++    set local-preference 110

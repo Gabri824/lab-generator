@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lab name="galaxy_mio">
+  <routers>
+    <router name="as1r1">
+      <protocols>
+        <protocol>rip</protocol>
+      </protocols>
+      <interfaces>
+        <interface name="eth0" lan="A" ip="1.0.0.1/24"/>
+        <interface name="eth1" lan="B" ip="1.1.0.1/24"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>1.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+    <router name="as1r2">
+      <protocols>
+        <protocol>rip</protocol>
+      </protocols>
+      <interfaces>
+        <interface name="eth0" lan="B" ip="1.1.0.2/24"/>
+        <interface name="eth1" lan="C" ip="1.2.0.1/24"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>1.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+    <router name="as1r3">
+      <protocols>
+        <protocol>bgp</protocol>
+        <protocol>rip</protocol>
+      </protocols>
+      <asn>1</asn>
+      <interfaces>
+        <interface name="eth0" lan="C" ip="1.2.0.2/24"/>
+        <interface name="eth1" lan="D" ip="10.20.0.1/30"/>
+        <interface name="eth2" lan="E" ip="20.10.0.1/30"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>1.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+    <router name="as2r1">
+      <protocols>
+        <protocol>bgp</protocol>
+        <protocol>ospf</protocol>
+      </protocols>
+      <asn>2</asn>
+      <ospf_area>0.0.0.0</ospf_area>
+      <interfaces>
+        <interface name="eth0" lan="D" ip="10.20.0.2/30"/>
+        <interface name="eth1" lan="F" ip="2.6.0.1/24"/>
+        <interface name="eth2" lan="G" ip="2.4.0.1/24"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>2.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+    <router name="as2r2">
+      <protocols>
+        <protocol>ospf</protocol>
+      </protocols>
+      <ospf_area>0.0.0.0</ospf_area>
+      <interfaces>
+        <interface name="eth0" lan="F" ip="2.6.0.2/24"/>
+        <interface name="eth1" lan="H" ip="2.7.0.2/24"/>
+        <interface name="eth2" lan="I" ip="2.5.0.2/24"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>2.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+    <router name="as2r3">
+      <protocols>
+        <protocol>ospf</protocol>
+      </protocols>
+      <ospf_area>0.0.0.0</ospf_area>
+      <interfaces>
+        <interface name="eth0" lan="G" ip="2.4.0.3/24"/>
+        <interface name="eth1" lan="I" ip="2.5.0.3/24"/>
+        <interface name="eth2" lan="M" ip="2.2.0.3/24"/>
+        <interface name="eth3" lan="L" ip="2.3.0.3/24"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>2.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+    <router name="as2r4">
+      <protocols>
+        <protocol>ospf</protocol>
+      </protocols>
+      <ospf_area>0.0.0.0</ospf_area>
+      <interfaces>
+        <interface name="eth0" lan="N" ip="2.1.0.4/24"/>
+        <interface name="eth1" lan="M" ip="2.2.0.4/24"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>2.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+    <router name="as2r5">
+      <protocols>
+        <protocol>bgp</protocol>
+        <protocol>ospf</protocol>
+      </protocols>
+      <asn>2</asn>
+      <ospf_area>0.0.0.0</ospf_area>
+      <interfaces>
+        <interface name="eth0" lan="E" ip="20.10.0.2/30"/>
+        <interface name="eth1" lan="L" ip="2.3.0.5/24"/>
+        <interface name="eth2" lan="N" ip="2.1.0.5/24"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>2.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+  </routers>
+  <hosts>
+    <host name="pc1" ip="1.0.0.2/24" gateway="1.0.0.1" lan="A" gw_dev="eth0">
+      <interfaces>
+        <interface name="eth0" lan="A" ip="1.0.0.2/24"/>
+      </interfaces>
+    </host>
+  </hosts>
+  <www>
+    <server name="web" ip="2.7.0.100/24" gateway="2.7.0.2" lan="H"/>
+  </www>
+  <lab_conf>as1r1[0]=A
+as1r1[1]=B
+as1r1[image]="kathara/frr"
+
+as1r2[0]=B
+as1r2[1]=C
+as1r2[image]="kathara/frr"
+
+as1r3[0]=C
+as1r3[1]=D
+as1r3[2]=E
+as1r3[image]="kathara/frr"
+
+as2r1[0]=D
+as2r1[1]=F
+as2r1[2]=G
+as2r1[image]="kathara/frr"
+
+as2r2[0]=F
+as2r2[1]=H
+as2r2[2]=I
+as2r2[image]="kathara/frr"
+
+as2r3[0]=G
+as2r3[1]=I
+as2r3[2]=M
+as2r3[3]=L
+as2r3[image]="kathara/frr"
+
+as2r4[0]=N
+as2r4[1]=M
+as2r4[image]="kathara/frr"
+
+as2r5[0]=E
+as2r5[1]=L
+as2r5[2]=N
+as2r5[image]="kathara/frr"
+
+pc1[0]=A
+pc1[image]="kathara/base"
+
+web[0]=H
+web[image]="kathara/base"
+</lab_conf>
+</lab>

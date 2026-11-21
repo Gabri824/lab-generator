@@ -1,0 +1,14 @@
+--- rigenerato/as1r1/etc/frr/frr.conf
++++ reale/as1r1/etc/frr/frr.conf
+@@ -24,3 +24,4 @@
+     neighbor 10.0.0.2 description Router as2
+     neighbor 1.3.0.2 remote-as 1
+     neighbor 1.3.0.2 description Router as1r2
++    network 1.0.0.0/8
+--- rigenerato/as1r2/etc/frr/frr.conf
++++ reale/as1r2/etc/frr/frr.conf
+@@ -24,3 +24,4 @@
+     neighbor 1.3.0.1 description Router as1r1
+     neighbor 10.0.0.6 remote-as 3
+     neighbor 10.0.0.6 description Router as3
++    network 1.0.0.0/8

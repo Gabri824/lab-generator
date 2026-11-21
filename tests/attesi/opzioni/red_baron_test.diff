@@ -1,0 +1,87 @@
+--- rigenerato/r1/etc/frr/frr.conf
++++ reale/r1/etc/frr/frr.conf
+@@ -15,8 +15,8 @@
+     network 100.1.0.0/16
+     network 101.202.0.0/24
+     network 50.10.1.0/24
+-    neighbor 101.202.0.2 remote-as 2
+-    neighbor 101.202.0.2 description Router r2
++    neighbor 101.202.0.1 remote-as 2
++    neighbor 101.202.0.1 description Router r2
+     neighbor 50.10.1.4 remote-as 10
+     neighbor 50.10.1.4 description Router r10
+ 
+--- rigenerato/r10/etc/frr/frr.conf
++++ reale/r10/etc/frr/frr.conf
+@@ -22,4 +22,30 @@
+     neighbor 110.220.0.1 description Router r20
+     neighbor 50.100.10.4 remote-as 100
+     neighbor 50.100.10.4 description Router r100
++    
++    neighbor 50.10.1.2 prefix-list provider_r1_in in
++    neighbor 50.10.1.2 prefix-list provider_r1_out out
++    
++    neighbor 110.220.0.1 prefix-list peer_r20_in in
++    neighbor 110.220.0.1 prefix-list peer_r20_out out
++    
++    neighbor 50.100.10.4 prefix-list customer_r100_in in
++    neighbor 50.100.10.4 prefix-list customer_r100_out out
+ 
++
++ip prefix-list provider_r1_in permit any
++ip prefix-list provider_r1_out permit 100.10.0.0/16
++ip prefix-list provider_r1_out permit 50.100.10.0/24
++ip prefix-list provider_r1_out permit 100.100.0.0/16
++
++ip prefix-list provider_r1_out permit 110.220.0.0/24
++
++ip prefix-list peer_r20_in permit any
++ip prefix-list peer_r20_out permit 100.10.0.0/16
++ip prefix-list peer_r20_out permit 50.100.10.0/24
++ip prefix-list peer_r20_out permit 100.100.0.0/16
++
++
++ip prefix-list customer_r100_in permit any
++ip prefix-list customer_r100_out permit any
++
+--- rigenerato/r2.startup
++++ reale/r2.startup
+@@ -1,4 +1,4 @@
+-ip address add 101.202.0.2/24 dev eth0
++ip address add 101.202.0.1/24 dev eth0
+ ip address add 200.2.0.3/16 dev eth1
+ ip address add 50.20.2.2/24 dev eth2
+ 
+--- rigenerato/r20/etc/frr/frr.conf
++++ reale/r20/etc/frr/frr.conf
+@@ -22,4 +22,30 @@
+     neighbor 110.220.0.3 description Router r10
+     neighbor 50.200.20.4 remote-as 200
+     neighbor 50.200.20.4 description Router r200
++    
++    neighbor 50.20.2.2 prefix-list provider_r2_in in
++    neighbor 50.20.2.2 prefix-list provider_r2_out out
++    
++    neighbor 110.220.0.3 prefix-list peer_r10_in in
++    neighbor 110.220.0.3 prefix-list peer_r10_out out
++    
++    neighbor 50.200.20.4 prefix-list customer_r200_in in
++    neighbor 50.200.20.4 prefix-list customer_r200_out out
+ 
++
++ip prefix-list provider_r2_in permit any
++ip prefix-list provider_r2_out permit 200.20.0.0/16
++ip prefix-list provider_r2_out permit 50.200.20.0/24
++ip prefix-list provider_r2_out permit 200.200.0.0/16
++
++ip prefix-list provider_r2_out permit 110.220.0.0/24
++
++ip prefix-list peer_r10_in permit any
++ip prefix-list peer_r10_out permit 200.20.0.0/16
++ip prefix-list peer_r10_out permit 50.200.20.0/24
++ip prefix-list peer_r10_out permit 200.200.0.0/16
++
++
++ip prefix-list customer_r200_in permit any
++ip prefix-list customer_r200_out permit any
++

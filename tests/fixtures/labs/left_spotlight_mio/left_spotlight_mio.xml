@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lab name="left_spotlight_mio">
+  <routers>
+    <router name="as1r1">
+      <protocols>
+        <protocol>bgp</protocol>
+      </protocols>
+      <asn>1</asn>
+      <interfaces>
+        <interface name="eth0" lan="J" ip="1.0.0.1/24"/>
+        <interface name="eth1" lan="C" ip="1.2.0.1/30"/>
+        <interface name="eth2" lan="B" ip="1.3.2.1/30"/>
+        <interface name="eth3" lan="A" ip="1.3.1.2/30"/>
+      </interfaces>
+    </router>
+    <router name="as2r1">
+      <protocols>
+        <protocol>bgp</protocol>
+      </protocols>
+      <asn>2</asn>
+      <interfaces>
+        <interface name="eth0" lan="K" ip="2.0.0.1/24"/>
+        <interface name="eth1" lan="D" ip="2.3.0.2/30"/>
+        <interface name="eth2" lan="C" ip="1.2.0.2/30"/>
+      </interfaces>
+    </router>
+    <router name="as3r1">
+      <protocols>
+        <protocol>bgp</protocol>
+        <protocol>ospf</protocol>
+      </protocols>
+      <asn>3</asn>
+      <ospf_area>0.0.0.0</ospf_area>
+      <interfaces>
+        <interface name="eth0" lan="E" ip="3.0.1.1/24"/>
+        <interface name="eth1" lan="G" ip="3.0.2.1/24"/>
+        <interface name="eth2" lan="A" ip="1.3.1.1/30"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>3.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+    <router name="as3r2">
+      <protocols>
+        <protocol>bgp</protocol>
+        <protocol>ospf</protocol>
+      </protocols>
+      <asn>3</asn>
+      <ospf_area>0.0.0.0</ospf_area>
+      <interfaces>
+        <interface name="eth0" lan="F" ip="3.0.3.2/24"/>
+        <interface name="eth1" lan="E" ip="3.0.1.2/24"/>
+        <interface name="eth2" lan="B" ip="1.3.2.2/30"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>3.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+    <router name="as3r3">
+      <protocols>
+        <protocol>ospf</protocol>
+      </protocols>
+      <ospf_area>0.0.0.0</ospf_area>
+      <interfaces>
+        <interface name="eth0" lan="H" ip="3.0.4.3/24"/>
+        <interface name="eth1" lan="G" ip="3.0.2.3/24"/>
+        <interface name="eth2" lan="F" ip="3.0.3.3/24"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>3.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+    <router name="as3r4">
+      <protocols>
+        <protocol>bgp</protocol>
+        <protocol>ospf</protocol>
+      </protocols>
+      <asn>3</asn>
+      <ospf_area>0.0.0.0</ospf_area>
+      <interfaces>
+        <interface name="eth0" lan="D" ip="2.3.0.1/30"/>
+        <interface name="eth1" lan="H" ip="3.0.4.4/24"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>3.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+  </routers>
+  <hosts/>
+  <www/>
+  <lab_conf>as1r1[0]=J
+as1r1[1]=C
+as1r1[2]=B
+as1r1[3]=A
+as1r1[image]=&quot;kathara/frr&quot;
+
+as2r1[0]=K
+as2r1[1]=D
+as2r1[2]=C
+as2r1[image]=&quot;kathara/frr&quot;
+
+as3r1[0]=E
+as3r1[1]=G
+as3r1[2]=A
+as3r1[image]=&quot;kathara/frr&quot;
+
+as3r2[0]=F
+as3r2[1]=E
+as3r2[2]=B
+as3r2[image]=&quot;kathara/frr&quot;
+
+as3r3[0]=H
+as3r3[1]=G
+as3r3[2]=F
+as3r3[image]=&quot;kathara/frr&quot;
+
+as3r4[0]=D
+as3r4[1]=H
+as3r4[image]=&quot;kathara/frr&quot;
+</lab_conf>
+</lab>

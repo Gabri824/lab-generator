@@ -1,0 +1,1044 @@
+{
+ "dati.leggi_lab": {
+  "avvisi_config": [
+   "rabe1 (frr.conf riga 33): la prefix-list myNeighbors è definita ma non è usata da nessuna parte (nome scritto diverso dove dovrebbe essere usata?).",
+   "rcdf3 (frr.conf riga 33): la prefix-list myNeighbors è definita ma non è usata da nessuna parte (nome scritto diverso dove dovrebbe essere usata?)."
+  ],
+  "avvisi_topologia": [],
+  "dispositivi": [
+   {
+    "asn": "100",
+    "demoni": [
+     "ripd",
+     "bgpd"
+    ],
+    "gateway": null,
+    "gruppo": "100",
+    "immagine": "kathara/frr",
+    "interfacce": [
+     {
+      "avvisi": [],
+      "bgp": [],
+      "costo": null,
+      "dev": "eth0",
+      "igp": [
+       "RIP"
+      ],
+      "ip": "100.1.4.1/24",
+      "lan": "E",
+      "vicini": [
+       {
+        "ip": "100.1.4.4/24",
+        "nome": "reg4"
+       }
+      ]
+     },
+     {
+      "avvisi": [],
+      "bgp": [
+       {
+        "asn": "7",
+        "chi": "rxa4",
+        "ip": "50.7.1.7",
+        "policy": [],
+        "tipo": "eBGP"
+       }
+      ],
+      "costo": null,
+      "dev": "eth1",
+      "igp": [],
+      "ip": "50.7.1.1/24",
+      "lan": "A",
+      "vicini": [
+       {
+        "ip": "50.7.1.7/24",
+        "nome": "rxa4"
+       }
+      ]
+     },
+     {
+      "avvisi": [],
+      "bgp": [],
+      "costo": null,
+      "dev": "eth2",
+      "igp": [
+       "RIP"
+      ],
+      "ip": "100.1.2.1/24",
+      "lan": "B",
+      "vicini": [
+       {
+        "ip": "100.1.2.2/24",
+        "nome": "rbc2"
+       }
+      ]
+     }
+    ],
+    "loopback": [
+     "2.2.2.2/32"
+    ],
+    "nameserver": [],
+    "nome": "rabe1",
+    "riepilogo": {
+     "bgp_networks": [
+      "50.7.1.0/24",
+      "100.0.0.0/8",
+      "2.2.2.2/32"
+     ],
+     "costi": [],
+     "igp": [
+      {
+       "auto_cost": null,
+       "protocollo": "RIP",
+       "redistribute": [
+        "connected",
+        "bgp route-map eBGP"
+       ],
+       "voci": [
+        "100.0.0.0/8",
+        "2.2.2.2/32"
+       ]
+      }
+     ],
+     "neighbor": [
+      {
+       "asn": "7",
+       "chi": "rxa4",
+       "ip": "50.7.1.7",
+       "policy": [],
+       "tipo": "eBGP"
+      },
+      {
+       "asn": "100",
+       "chi": "rcdf3",
+       "ip": "3.3.3.3",
+       "policy": [],
+       "tipo": "iBGP"
+      }
+     ],
+     "redistribute_bgp": []
+    },
+    "riferimenti_frr": [
+     {
+      "gravita": "avviso",
+      "messaggio": "la prefix-list myNeighbors è definita ma non è usata da nessuna parte (nome scritto diverso dove dovrebbe essere usata?).",
+      "riga": 33,
+      "testo": "prefix-list myNeighbors"
+     }
+    ],
+    "tipo": "router",
+    "zone": []
+   },
+   {
+    "asn": "100",
+    "demoni": [
+     "ripd"
+    ],
+    "gateway": null,
+    "gruppo": "100",
+    "immagine": "kathara/frr",
+    "interfacce": [
+     {
+      "avvisi": [],
+      "bgp": [],
+      "costo": null,
+      "dev": "eth0",
+      "igp": [
+       "RIP"
+      ],
+      "ip": "100.1.2.2/24",
+      "lan": "B",
+      "vicini": [
+       {
+        "ip": "100.1.2.1/24",
+        "nome": "rabe1"
+       }
+      ]
+     },
+     {
+      "avvisi": [],
+      "bgp": [],
+      "costo": null,
+      "dev": "eth1",
+      "igp": [
+       "RIP"
+      ],
+      "ip": "100.2.3.2/24",
+      "lan": "C",
+      "vicini": [
+       {
+        "ip": "100.2.3.3/24",
+        "nome": "rcdf3"
+       }
+      ]
+     }
+    ],
+    "loopback": [],
+    "nameserver": [],
+    "nome": "rbc2",
+    "riepilogo": {
+     "bgp_networks": [],
+     "costi": [],
+     "igp": [
+      {
+       "auto_cost": null,
+       "protocollo": "RIP",
+       "redistribute": [
+        "connected"
+       ],
+       "voci": [
+        "100.0.0.0/8"
+       ]
+      }
+     ],
+     "neighbor": [],
+     "redistribute_bgp": []
+    },
+    "riferimenti_frr": [],
+    "tipo": "router",
+    "zone": []
+   },
+   {
+    "asn": "100",
+    "demoni": [
+     "ripd",
+     "bgpd"
+    ],
+    "gateway": null,
+    "gruppo": "100",
+    "immagine": "kathara/frr",
+    "interfacce": [
+     {
+      "avvisi": [],
+      "bgp": [],
+      "costo": null,
+      "dev": "eth0",
+      "igp": [
+       "RIP"
+      ],
+      "ip": "100.3.5.3/24",
+      "lan": "F",
+      "vicini": [
+       {
+        "ip": "100.3.5.5/24",
+        "nome": "rgf5"
+       }
+      ]
+     },
+     {
+      "avvisi": [],
+      "bgp": [],
+      "costo": null,
+      "dev": "eth1",
+      "igp": [
+       "RIP"
+      ],
+      "ip": "100.2.3.3/24",
+      "lan": "C",
+      "vicini": [
+       {
+        "ip": "100.2.3.2/24",
+        "nome": "rbc2"
+       }
+      ]
+     },
+     {
+      "avvisi": [],
+      "bgp": [
+       {
+        "asn": "8",
+        "chi": "rdy8",
+        "ip": "50.3.8.8",
+        "policy": [],
+        "tipo": "eBGP"
+       }
+      ],
+      "costo": null,
+      "dev": "eth2",
+      "igp": [],
+      "ip": "50.3.8.3/24",
+      "lan": "D",
+      "vicini": [
+       {
+        "ip": "50.3.8.8/24",
+        "nome": "rdy8"
+       }
+      ]
+     }
+    ],
+    "loopback": [
+     "3.3.3.3/32"
+    ],
+    "nameserver": [],
+    "nome": "rcdf3",
+    "riepilogo": {
+     "bgp_networks": [
+      "50.3.8.0/24",
+      "100.0.0.0/8",
+      "3.3.3.3/32"
+     ],
+     "costi": [],
+     "igp": [
+      {
+       "auto_cost": null,
+       "protocollo": "RIP",
+       "redistribute": [
+        "connected",
+        "bgp route-map eBGP"
+       ],
+       "voci": [
+        "100.0.0.0/8",
+        "3.3.3.3/32"
+       ]
+      }
+     ],
+     "neighbor": [
+      {
+       "asn": "8",
+       "chi": "rdy8",
+       "ip": "50.3.8.8",
+       "policy": [],
+       "tipo": "eBGP"
+      },
+      {
+       "asn": "100",
+       "chi": "rabe1",
+       "ip": "2.2.2.2",
+       "policy": [],
+       "tipo": "iBGP"
+      }
+     ],
+     "redistribute_bgp": []
+    },
+    "riferimenti_frr": [
+     {
+      "gravita": "avviso",
+      "messaggio": "la prefix-list myNeighbors è definita ma non è usata da nessuna parte (nome scritto diverso dove dovrebbe essere usata?).",
+      "riga": 33,
+      "testo": "prefix-list myNeighbors"
+     }
+    ],
+    "tipo": "router",
+    "zone": []
+   },
+   {
+    "asn": "8",
+    "demoni": [
+     "bgpd"
+    ],
+    "gateway": null,
+    "gruppo": "8",
+    "immagine": "kathara/frr",
+    "interfacce": [
+     {
+      "avvisi": [],
+      "bgp": [],
+      "costo": null,
+      "dev": "eth0",
+      "igp": [],
+      "ip": "8.8.8.8/25",
+      "lan": "Y",
+      "vicini": []
+     },
+     {
+      "avvisi": [],
+      "bgp": [
+       {
+        "asn": "100",
+        "chi": "rcdf3",
+        "ip": "50.3.8.3",
+        "policy": [],
+        "tipo": "eBGP"
+       }
+      ],
+      "costo": null,
+      "dev": "eth1",
+      "igp": [],
+      "ip": "50.3.8.8/24",
+      "lan": "D",
+      "vicini": [
+       {
+        "ip": "50.3.8.3/24",
+        "nome": "rcdf3"
+       }
+      ]
+     }
+    ],
+    "loopback": [],
+    "nameserver": [],
+    "nome": "rdy8",
+    "riepilogo": {
+     "bgp_networks": [
+      "8.8.8.0/25",
+      "50.3.8.0/24",
+      "8.8.8.0/24"
+     ],
+     "costi": [],
+     "igp": [],
+     "neighbor": [
+      {
+       "asn": "100",
+       "chi": "rcdf3",
+       "ip": "50.3.8.3",
+       "policy": [],
+       "tipo": "eBGP"
+      }
+     ],
+     "redistribute_bgp": []
+    },
+    "riferimenti_frr": [],
+    "tipo": "router",
+    "zone": []
+   },
+   {
+    "asn": "100",
+    "demoni": [
+     "ripd"
+    ],
+    "gateway": null,
+    "gruppo": "100",
+    "immagine": "kathara/frr",
+    "interfacce": [
+     {
+      "avvisi": [],
+      "bgp": [],
+      "costo": null,
+      "dev": "eth0",
+      "igp": [
+       "RIP"
+      ],
+      "ip": "100.1.4.4/24",
+      "lan": "E",
+      "vicini": [
+       {
+        "ip": "100.1.4.1/24",
+        "nome": "rabe1"
+       }
+      ]
+     },
+     {
+      "avvisi": [],
+      "bgp": [],
+      "costo": null,
+      "dev": "eth1",
+      "igp": [
+       "RIP"
+      ],
+      "ip": "100.4.5.4/24",
+      "lan": "G",
+      "vicini": [
+       {
+        "ip": "100.4.5.5/24",
+        "nome": "rgf5"
+       }
+      ]
+     }
+    ],
+    "loopback": [],
+    "nameserver": [],
+    "nome": "reg4",
+    "riepilogo": {
+     "bgp_networks": [],
+     "costi": [],
+     "igp": [
+      {
+       "auto_cost": null,
+       "protocollo": "RIP",
+       "redistribute": [
+        "connected"
+       ],
+       "voci": [
+        "100.0.0.0/8"
+       ]
+      }
+     ],
+     "neighbor": [],
+     "redistribute_bgp": []
+    },
+    "riferimenti_frr": [],
+    "tipo": "router",
+    "zone": []
+   },
+   {
+    "asn": "100",
+    "demoni": [
+     "ripd"
+    ],
+    "gateway": null,
+    "gruppo": "100",
+    "immagine": "kathara/frr",
+    "interfacce": [
+     {
+      "avvisi": [],
+      "bgp": [],
+      "costo": null,
+      "dev": "eth0",
+      "igp": [
+       "RIP"
+      ],
+      "ip": "100.4.5.5/24",
+      "lan": "G",
+      "vicini": [
+       {
+        "ip": "100.4.5.4/24",
+        "nome": "reg4"
+       }
+      ]
+     },
+     {
+      "avvisi": [],
+      "bgp": [],
+      "costo": null,
+      "dev": "eth1",
+      "igp": [
+       "RIP"
+      ],
+      "ip": "100.3.5.5/24",
+      "lan": "F",
+      "vicini": [
+       {
+        "ip": "100.3.5.3/24",
+        "nome": "rcdf3"
+       }
+      ]
+     }
+    ],
+    "loopback": [],
+    "nameserver": [],
+    "nome": "rgf5",
+    "riepilogo": {
+     "bgp_networks": [],
+     "costi": [],
+     "igp": [
+      {
+       "auto_cost": null,
+       "protocollo": "RIP",
+       "redistribute": [
+        "connected"
+       ],
+       "voci": [
+        "100.0.0.0/8"
+       ]
+      }
+     ],
+     "neighbor": [],
+     "redistribute_bgp": []
+    },
+    "riferimenti_frr": [],
+    "tipo": "router",
+    "zone": []
+   },
+   {
+    "asn": "7",
+    "demoni": [
+     "bgpd"
+    ],
+    "gateway": null,
+    "gruppo": "7",
+    "immagine": "kathara/frr",
+    "interfacce": [
+     {
+      "avvisi": [],
+      "bgp": [],
+      "costo": null,
+      "dev": "eth0",
+      "igp": [],
+      "ip": "7.7.7.7/25",
+      "lan": "X",
+      "vicini": []
+     },
+     {
+      "avvisi": [],
+      "bgp": [
+       {
+        "asn": "100",
+        "chi": "rabe1",
+        "ip": "50.7.1.1",
+        "policy": [],
+        "tipo": "eBGP"
+       }
+      ],
+      "costo": null,
+      "dev": "eth1",
+      "igp": [],
+      "ip": "50.7.1.7/24",
+      "lan": "A",
+      "vicini": [
+       {
+        "ip": "50.7.1.1/24",
+        "nome": "rabe1"
+       }
+      ]
+     }
+    ],
+    "loopback": [],
+    "nameserver": [],
+    "nome": "rxa4",
+    "riepilogo": {
+     "bgp_networks": [
+      "7.7.7.0/25",
+      "50.7.1.0/24",
+      "7.7.7.0/24"
+     ],
+     "costi": [],
+     "igp": [],
+     "neighbor": [
+      {
+       "asn": "100",
+       "chi": "rabe1",
+       "ip": "50.7.1.1",
+       "policy": [],
+       "tipo": "eBGP"
+      }
+     ],
+     "redistribute_bgp": []
+    },
+    "riferimenti_frr": [],
+    "tipo": "router",
+    "zone": []
+   }
+  ],
+  "lan": [
+   {
+    "membri": [
+     "rabe1",
+     "rxa4"
+    ],
+    "nome": "A",
+    "subnet": "50.7.1.0/24"
+   },
+   {
+    "membri": [
+     "rabe1",
+     "rbc2"
+    ],
+    "nome": "B",
+    "subnet": "100.1.2.0/24"
+   },
+   {
+    "membri": [
+     "rbc2",
+     "rcdf3"
+    ],
+    "nome": "C",
+    "subnet": "100.2.3.0/24"
+   },
+   {
+    "membri": [
+     "rcdf3",
+     "rdy8"
+    ],
+    "nome": "D",
+    "subnet": "50.3.8.0/24"
+   },
+   {
+    "membri": [
+     "rabe1",
+     "reg4"
+    ],
+    "nome": "E",
+    "subnet": "100.1.4.0/24"
+   },
+   {
+    "membri": [
+     "rcdf3",
+     "rgf5"
+    ],
+    "nome": "F",
+    "subnet": "100.3.5.0/24"
+   },
+   {
+    "membri": [
+     "reg4",
+     "rgf5"
+    ],
+    "nome": "G",
+    "subnet": "100.4.5.0/24"
+   },
+   {
+    "membri": [
+     "rxa4"
+    ],
+    "nome": "X",
+    "subnet": "7.7.7.0/25"
+   },
+   {
+    "membri": [
+     "rdy8"
+    ],
+    "nome": "Y",
+    "subnet": "8.8.8.0/25"
+   }
+  ],
+  "nome": "smile_test",
+  "xml": true
+ },
+ "leggi_dispositivi": {
+  "rabe1": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": "100",
+   "demoni": [
+    "ripd",
+    "bgpd"
+   ],
+   "frr": true,
+   "gateway": null,
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "100.1.4.1/24",
+     "lan": "E"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "50.7.1.1/24",
+     "lan": "A"
+    },
+    {
+     "dev": "eth2",
+     "idx": 2,
+     "ip": "100.1.2.1/24",
+     "lan": "B"
+    }
+   ],
+   "loopback": [
+    "2.2.2.2/32"
+   ],
+   "nameserver": [],
+   "nome": "rabe1",
+   "tipo": "router",
+   "zone": []
+  },
+  "rbc2": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": null,
+   "demoni": [
+    "ripd"
+   ],
+   "frr": true,
+   "gateway": null,
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "100.1.2.2/24",
+     "lan": "B"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "100.2.3.2/24",
+     "lan": "C"
+    }
+   ],
+   "loopback": [],
+   "nameserver": [],
+   "nome": "rbc2",
+   "tipo": "router",
+   "zone": []
+  },
+  "rcdf3": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": "100",
+   "demoni": [
+    "ripd",
+    "bgpd"
+   ],
+   "frr": true,
+   "gateway": null,
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "100.3.5.3/24",
+     "lan": "F"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "100.2.3.3/24",
+     "lan": "C"
+    },
+    {
+     "dev": "eth2",
+     "idx": 2,
+     "ip": "50.3.8.3/24",
+     "lan": "D"
+    }
+   ],
+   "loopback": [
+    "3.3.3.3/32"
+   ],
+   "nameserver": [],
+   "nome": "rcdf3",
+   "tipo": "router",
+   "zone": []
+  },
+  "rdy8": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": "8",
+   "demoni": [
+    "bgpd"
+   ],
+   "frr": true,
+   "gateway": null,
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "8.8.8.8/25",
+     "lan": "Y"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "50.3.8.8/24",
+     "lan": "D"
+    }
+   ],
+   "loopback": [],
+   "nameserver": [],
+   "nome": "rdy8",
+   "tipo": "router",
+   "zone": []
+  },
+  "reg4": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": null,
+   "demoni": [
+    "ripd"
+   ],
+   "frr": true,
+   "gateway": null,
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "100.1.4.4/24",
+     "lan": "E"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "100.4.5.4/24",
+     "lan": "G"
+    }
+   ],
+   "loopback": [],
+   "nameserver": [],
+   "nome": "reg4",
+   "tipo": "router",
+   "zone": []
+  },
+  "rgf5": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": null,
+   "demoni": [
+    "ripd"
+   ],
+   "frr": true,
+   "gateway": null,
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "100.4.5.5/24",
+     "lan": "G"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "100.3.5.5/24",
+     "lan": "F"
+    }
+   ],
+   "loopback": [],
+   "nameserver": [],
+   "nome": "rgf5",
+   "tipo": "router",
+   "zone": []
+  },
+  "rxa4": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": "7",
+   "demoni": [
+    "bgpd"
+   ],
+   "frr": true,
+   "gateway": null,
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "7.7.7.7/25",
+     "lan": "X"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "50.7.1.7/24",
+     "lan": "A"
+    }
+   ],
+   "loopback": [],
+   "nameserver": [],
+   "nome": "rxa4",
+   "tipo": "router",
+   "zone": []
+  }
+ },
+ "rebuild_lab_metadata_and_export": {
+  "hosts": [],
+  "lab_conf": "rxa4[0]=X\nrxa4[1]=A\nrxa4[image]=\"kathara/frr\"\n\nrdy8[0]=Y\nrdy8[1]=D\nrdy8[image]=\"kathara/frr\"\n\nrabe1[0]=E\nrabe1[1]=A\nrabe1[2]=B\nrabe1[image]=\"kathara/frr\"\n\nrbc2[0]=B\nrbc2[1]=C\nrbc2[image]=\"kathara/frr\"\n\nrcdf3[0]=F\nrcdf3[1]=C\nrcdf3[2]=D\nrcdf3[image]=\"kathara/frr\"\n\nreg4[0]=E\nreg4[1]=G\nreg4[image]=\"kathara/frr\"\n\nrgf5[0]=G\nrgf5[1]=F\nrgf5[image]=\"kathara/frr\"\n",
+  "routers": {
+   "rabe1": {
+    "asn": "100",
+    "interfaces": [
+     {
+      "ip": "100.1.4.1/24",
+      "lan": "E",
+      "name": "eth0"
+     },
+     {
+      "ip": "50.7.1.1/24",
+      "lan": "A",
+      "name": "eth1"
+     },
+     {
+      "ip": "100.1.2.1/24",
+      "lan": "B",
+      "name": "eth2"
+     }
+    ],
+    "protocols": [
+     "bgp",
+     "rip"
+    ]
+   },
+   "rbc2": {
+    "asn": "",
+    "interfaces": [
+     {
+      "ip": "100.1.2.2/24",
+      "lan": "B",
+      "name": "eth0"
+     },
+     {
+      "ip": "100.2.3.2/24",
+      "lan": "C",
+      "name": "eth1"
+     }
+    ],
+    "protocols": [
+     "rip"
+    ]
+   },
+   "rcdf3": {
+    "asn": "100",
+    "interfaces": [
+     {
+      "ip": "100.3.5.3/24",
+      "lan": "F",
+      "name": "eth0"
+     },
+     {
+      "ip": "100.2.3.3/24",
+      "lan": "C",
+      "name": "eth1"
+     },
+     {
+      "ip": "50.3.8.3/24",
+      "lan": "D",
+      "name": "eth2"
+     }
+    ],
+    "protocols": [
+     "bgp",
+     "rip"
+    ]
+   },
+   "rdy8": {
+    "asn": "8",
+    "interfaces": [
+     {
+      "ip": "8.8.8.8/25",
+      "lan": "Y",
+      "name": "eth0"
+     },
+     {
+      "ip": "50.3.8.8/24",
+      "lan": "D",
+      "name": "eth1"
+     }
+    ],
+    "protocols": [
+     "bgp"
+    ]
+   },
+   "reg4": {
+    "asn": "",
+    "interfaces": [
+     {
+      "ip": "100.1.4.4/24",
+      "lan": "E",
+      "name": "eth0"
+     },
+     {
+      "ip": "100.4.5.4/24",
+      "lan": "G",
+      "name": "eth1"
+     }
+    ],
+    "protocols": [
+     "rip"
+    ]
+   },
+   "rgf5": {
+    "asn": "",
+    "interfaces": [
+     {
+      "ip": "100.4.5.5/24",
+      "lan": "G",
+      "name": "eth0"
+     },
+     {
+      "ip": "100.3.5.5/24",
+      "lan": "F",
+      "name": "eth1"
+     }
+    ],
+    "protocols": [
+     "rip"
+    ]
+   },
+   "rxa4": {
+    "asn": "7",
+    "interfaces": [
+     {
+      "ip": "7.7.7.7/25",
+      "lan": "X",
+      "name": "eth0"
+     },
+     {
+      "ip": "50.7.1.7/24",
+      "lan": "A",
+      "name": "eth1"
+     }
+    ],
+    "protocols": [
+     "bgp"
+    ]
+   }
+  },
+  "wwws": []
+ }
+}

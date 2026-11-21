@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lab name="dns_root_auth_resolver">
+  <routers>
+    <router name="r1">
+      <protocols>
+        <protocol>rip</protocol>
+      </protocols>
+      <interfaces>
+        <interface name="eth0" lan="A" ip="10.0.0.1/24"/>
+        <interface name="eth1" lan="B" ip="10.0.1.1/24"/>
+        <interface name="eth2" lan="Z" ip="10.0.2.1/24"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>10.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+  </routers>
+  <hosts>
+    <host name="host1" ip="10.0.0.10/24" gateway="10.0.0.1" lan="A" gw_dev="eth0">
+      <interfaces>
+        <interface name="eth0" lan="A" ip="10.0.0.10/24"/>
+      </interfaces>
+    </host>
+    <host name="root" ip="10.0.2.2/24" gateway="10.0.2.1" lan="Z">
+      <dns>1</dns>
+      <root_type>master</root_type>
+      <delegations>
+        <delegation zone="com" ns="dns.com" ip="10.0.2.3"/>
+      </delegations>
+    </host>
+    <host name="dns_com" ip="10.0.2.3/24" gateway="10.0.2.1" lan="Z">
+      <dns>1</dns>
+      <root_type>hint</root_type>
+      <zones>
+        <zone name="com">
+          <record name="www">10.0.1.80</record>
+          <record name="web">
+            <type>CNAME</type>
+            <target>www</target>
+          </record>
+          <record name="@">
+            <type>NS</type>
+            <ns>dns.com.</ns>
+            <glue>10.0.2.3</glue>
+          </record>
+        </zone>
+      </zones>
+      <dnssec_validation>1</dnssec_validation>
+    </host>
+    <host name="resolver" ip="10.0.1.53/24" gateway="10.0.1.1" lan="B">
+      <dns>1</dns>
+      <root_type>hint</root_type>
+      <allow_recursion>any</allow_recursion>
+      <dnssec_validation>1</dnssec_validation>
+    </host>
+  </hosts>
+  <www>
+    <server name="www1" ip="10.0.1.80/24" gateway="10.0.1.1" lan="B"/>
+  </www>
+  <lab_conf>r1[0]=A
+r1[1]=B
+r1[2]=Z
+r1[image]="kathara/frr"
+
+host1[0]=A
+host1[image]="kathara/base"
+
+www1[0]=B
+www1[image]="kathara/base"
+
+root[0]=Z
+root[image]="kathara/base"
+
+dns_com[0]=Z
+dns_com[image]="kathara/base"
+
+resolver[0]=B
+resolver[image]="kathara/base"
+</lab_conf>
+</lab>

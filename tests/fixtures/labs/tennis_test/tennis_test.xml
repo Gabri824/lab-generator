@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lab name="tennis_test">
+  <routers>
+    <router name="as1r1">
+      <protocols>
+        <protocol>bgp</protocol>
+      </protocols>
+      <asn>1</asn>
+      <interfaces>
+        <interface name="eth0" lan="N" ip="1.0.0.1/24"/>
+        <interface name="eth1" lan="M" ip="10.1.0.2/30"/>
+        <interface name="eth2" lan="K" ip="1.20.0.1/30"/>
+      </interfaces>
+    </router>
+    <router name="as2r1">
+      <protocols>
+        <protocol>bgp</protocol>
+        <protocol>rip</protocol>
+      </protocols>
+      <asn>2</asn>
+      <interfaces>
+        <interface name="eth0" lan="E" ip="2.20.4.5/30"/>
+        <interface name="eth1" lan="C" ip="2.1.0.1/24"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>2.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+    <router name="as2r2">
+      <protocols>
+        <protocol>bgp</protocol>
+        <protocol>rip</protocol>
+      </protocols>
+      <asn>2</asn>
+      <interfaces>
+        <interface name="eth0" lan="D" ip="2.20.0.2/30"/>
+        <interface name="eth1" lan="B" ip="2.0.0.2/24"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>2.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+    <router name="as2r3">
+      <protocols>
+        <protocol>rip</protocol>
+      </protocols>
+      <interfaces>
+        <interface name="eth0" lan="C" ip="2.1.0.3/24"/>
+        <interface name="eth1" lan="B" ip="2.0.0.3/24"/>
+        <interface name="eth2" lan="A" ip="2.2.0.3/24"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>2.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+    <router name="as20r1">
+      <protocols>
+        <protocol>bgp</protocol>
+        <protocol>ospf</protocol>
+      </protocols>
+      <asn>20</asn>
+      <ospf_area>0.0.0.0</ospf_area>
+      <interfaces>
+        <interface name="eth0" lan="G" ip="20.1.0.1/24"/>
+        <interface name="eth1" lan="F" ip="20.4.0.1/24"/>
+        <interface name="eth2" lan="D" ip="2.20.0.1/30"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>20.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+    <router name="as20r2">
+      <protocols>
+        <protocol>bgp</protocol>
+        <protocol>ospf</protocol>
+      </protocols>
+      <asn>20</asn>
+      <ospf_area>0.0.0.0</ospf_area>
+      <interfaces>
+        <interface name="eth0" lan="G" ip="20.1.0.2/24"/>
+        <interface name="eth1" lan="J" ip="20.2.0.2/24"/>
+        <interface name="eth2" lan="K" ip="1.20.0.2/30"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>20.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+    <router name="as20r3">
+      <protocols>
+        <protocol>bgp</protocol>
+        <protocol>ospf</protocol>
+      </protocols>
+      <asn>20</asn>
+      <ospf_area>0.0.0.0</ospf_area>
+      <interfaces>
+        <interface name="eth0" lan="H" ip="20.3.0.3/24"/>
+        <interface name="eth1" lan="J" ip="20.2.0.3/24"/>
+        <interface name="eth2" lan="L" ip="10.20.0.2/30"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>20.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+    <router name="as20r4">
+      <protocols>
+        <protocol>bgp</protocol>
+        <protocol>ospf</protocol>
+      </protocols>
+      <asn>20</asn>
+      <ospf_area>0.0.0.0</ospf_area>
+      <interfaces>
+        <interface name="eth0" lan="E" ip="2.20.4.6/30"/>
+        <interface name="eth1" lan="F" ip="20.4.0.4/24"/>
+        <interface name="eth2" lan="H" ip="20.3.0.4/24"/>
+      </interfaces>
+      <igp_networks>
+        <igp_network>20.0.0.0/8</igp_network>
+      </igp_networks>
+    </router>
+    <router name="as10r1">
+      <protocols>
+        <protocol>bgp</protocol>
+      </protocols>
+      <asn>10</asn>
+      <interfaces>
+        <interface name="eth0" lan="L" ip="10.20.0.1/30"/>
+        <interface name="eth1" lan="M" ip="10.1.0.1/30"/>
+        <interface name="eth2" lan="P" ip="10.0.0.1/24"/>
+      </interfaces>
+    </router>
+  </routers>
+  <hosts>
+    <host name="pc" ip="10.0.0.2/24" gateway="10.0.0.1" lan="P" gw_dev="eth0">
+      <interfaces>
+        <interface name="eth0" lan="P" ip="10.0.0.2/24"/>
+      </interfaces>
+    </host>
+    <host name="root" ip="20.3.0.2/24" gateway="20.3.0.3" lan="H">
+      <dns>1</dns>
+      <root_type>master</root_type>
+    </host>
+    <host name="ns_com" ip="20.1.0.3/24" gateway="20.1.0.1" lan="G">
+      <dns>1</dns>
+      <root_type>hint</root_type>
+      <zones>
+        <zone name="com">
+          <record name="dns.com">20.1.0.3</record>
+          <record name="web.com">2.2.0.2</record>
+        </zone>
+      </zones>
+    </host>
+    <host name="ns_local" ip="1.0.0.2/24" gateway="1.0.0.1" lan="N">
+      <dns>1</dns>
+      <root_type>hint</root_type>
+      <allow_recursion>any</allow_recursion>
+      <dnssec_validation>1</dnssec_validation>
+    </host>
+  </hosts>
+  <www>
+    <server name="web_srv" ip="2.2.0.2/24" gateway="2.2.0.3" lan="A"/>
+  </www>
+  <lab_conf>as1r1[0]=N
+as1r1[1]=M
+as1r1[2]=K
+as1r1[image]=&quot;kathara/frr&quot;
+
+as2r1[0]=E
+as2r1[1]=C
+as2r1[image]=&quot;kathara/frr&quot;
+
+as2r2[0]=D
+as2r2[1]=B
+as2r2[image]=&quot;kathara/frr&quot;
+
+as2r3[0]=C
+as2r3[1]=B
+as2r3[2]=A
+as2r3[image]=&quot;kathara/frr&quot;
+
+as20r1[0]=G
+as20r1[1]=F
+as20r1[2]=D
+as20r1[image]=&quot;kathara/frr&quot;
+
+as20r2[0]=G
+as20r2[1]=J
+as20r2[2]=K
+as20r2[image]=&quot;kathara/frr&quot;
+
+as20r3[0]=H
+as20r3[1]=J
+as20r3[2]=L
+as20r3[image]=&quot;kathara/frr&quot;
+
+as20r4[0]=E
+as20r4[1]=F
+as20r4[2]=H
+as20r4[image]=&quot;kathara/frr&quot;
+
+as10r1[0]=L
+as10r1[1]=M
+as10r1[2]=P
+as10r1[image]=&quot;kathara/frr&quot;
+
+pc[0]=P
+pc[image]=&quot;kathara/base&quot;
+
+web_srv[0]=A
+web_srv[image]=&quot;kathara/base&quot;
+
+root[0]=H
+root[image]=&quot;kathara/base&quot;
+
+ns_com[0]=G
+ns_com[image]=&quot;kathara/base&quot;
+
+ns_local[0]=N
+ns_local[image]=&quot;kathara/base&quot;
+</lab_conf>
+</lab>

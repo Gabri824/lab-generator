@@ -1,0 +1,68 @@
+--- rigenerato/as1r1/etc/frr/frr.conf
++++ reale/as1r1/etc/frr/frr.conf
+@@ -24,3 +24,4 @@
+     neighbor 1.0.0.2 description Router as1r2
+     neighbor 10.0.0.2 remote-as 2
+     neighbor 10.0.0.2 description Router as2r1
++    network 1.0.0.0/24
+--- rigenerato/as1r2/etc/frr/frr.conf
++++ reale/as1r2/etc/frr/frr.conf
+@@ -24,3 +24,8 @@
+     neighbor 1.0.0.1 description Router as1r1
+     neighbor 10.0.0.6 remote-as 2
+     neighbor 10.0.0.6 description Router as2r2
++    network 1.0.0.0/24
++    neighbor 10.0.0.6 route-map LOCALMED_OUT_10_0_0_6 out
++
++route-map LOCALMED_OUT_10_0_0_6 permit 10
++    set metric 20
+--- rigenerato/as2r1/etc/frr/frr.conf
++++ reale/as2r1/etc/frr/frr.conf
+@@ -27,3 +27,8 @@
+     neighbor 2.0.0.2 description Router as2r2
+     neighbor 10.0.0.10 remote-as 3
+     neighbor 10.0.0.10 description Router as3r1
++    network 2.0.0.0/24
++    neighbor 10.0.0.10 route-map LOCALMED_OUT_10_0_0_10 out
++
++route-map LOCALMED_OUT_10_0_0_10 permit 10
++    set metric 20
+--- rigenerato/as2r2/etc/frr/frr.conf
++++ reale/as2r2/etc/frr/frr.conf
+@@ -27,3 +27,4 @@
+     neighbor 2.0.0.1 description Router as2r1
+     neighbor 10.0.0.14 remote-as 3
+     neighbor 10.0.0.14 description Router as3r2
++    network 2.0.0.0/24
+--- rigenerato/as3r1/etc/frr/frr.conf
++++ reale/as3r1/etc/frr/frr.conf
+@@ -27,3 +27,4 @@
+     neighbor 3.0.0.2 description Router as3r2
+     neighbor 10.0.0.18 remote-as 4
+     neighbor 10.0.0.18 description Router as4r1
++    network 3.0.0.0/24
+--- rigenerato/as3r2/etc/frr/frr.conf
++++ reale/as3r2/etc/frr/frr.conf
+@@ -27,3 +27,8 @@
+     neighbor 3.0.0.1 description Router as3r1
+     neighbor 10.0.0.22 remote-as 4
+     neighbor 10.0.0.22 description Router as4r2
++    network 3.0.0.0/24
++    neighbor 10.0.0.22 route-map LOCALMED_OUT_10_0_0_22 out
++
++route-map LOCALMED_OUT_10_0_0_22 permit 10
++    set metric 20
+--- rigenerato/as4r1/etc/frr/frr.conf
++++ reale/as4r1/etc/frr/frr.conf
+@@ -24,3 +24,4 @@
+     neighbor 10.0.0.17 description Router as3r1
+     neighbor 4.0.0.2 remote-as 4
+     neighbor 4.0.0.2 description Router as4r2
++    network 4.0.0.0/24
+--- rigenerato/as4r2/etc/frr/frr.conf
++++ reale/as4r2/etc/frr/frr.conf
+@@ -24,3 +24,4 @@
+     neighbor 10.0.0.21 description Router as3r2
+     neighbor 4.0.0.1 remote-as 4
+     neighbor 4.0.0.1 description Router as4r1
++    network 4.0.0.0/24

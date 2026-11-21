@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lab name="candy_test">
+  <routers>
+    <router name="as10r1">
+      <protocols>
+        <protocol>bgp</protocol>
+      </protocols>
+      <asn>10</asn>
+      <interfaces>
+        <interface name="eth0" lan="A" ip="192.168.0.1/30"/>
+        <interface name="eth1" lan="L" ip="110.0.0.1/24"/>
+      </interfaces>
+    </router>
+    <router name="as20r1">
+      <protocols>
+        <protocol>bgp</protocol>
+      </protocols>
+      <asn>20</asn>
+      <interfaces>
+        <interface name="eth0" lan="C" ip="192.168.0.9/30"/>
+        <interface name="eth1" lan="B" ip="192.168.0.5/30"/>
+      </interfaces>
+    </router>
+    <router name="as30r1">
+      <protocols>
+        <protocol>bgp</protocol>
+      </protocols>
+      <asn>30</asn>
+      <interfaces>
+        <interface name="eth0" lan="D" ip="192.168.0.13/30"/>
+        <interface name="eth1" lan="M" ip="130.0.0.1/24"/>
+      </interfaces>
+    </router>
+    <router name="as40r1">
+      <protocols>
+        <protocol>bgp</protocol>
+      </protocols>
+      <asn>40</asn>
+      <interfaces>
+        <interface name="eth0" lan="A" ip="192.168.0.2/30"/>
+        <interface name="eth1" lan="B" ip="192.168.0.6/30"/>
+        <interface name="eth2" lan="F" ip="192.168.0.26/30"/>
+        <interface name="eth3" lan="E" ip="192.168.0.30/30"/>
+      </interfaces>
+    </router>
+    <router name="as50r1">
+      <protocols>
+        <protocol>bgp</protocol>
+      </protocols>
+      <asn>50</asn>
+      <interfaces>
+        <interface name="eth0" lan="H" ip="192.168.0.18/30"/>
+        <interface name="eth1" lan="G" ip="192.168.0.22/30"/>
+        <interface name="eth2" lan="C" ip="192.168.0.10/30"/>
+        <interface name="eth3" lan="D" ip="192.168.0.14/30"/>
+      </interfaces>
+    </router>
+    <router name="as60r1">
+      <protocols>
+        <protocol>bgp</protocol>
+      </protocols>
+      <asn>60</asn>
+      <interfaces>
+        <interface name="eth0" lan="H" ip="192.168.0.17/30"/>
+        <interface name="eth1" lan="N" ip="160.0.0.1/24"/>
+      </interfaces>
+    </router>
+    <router name="as70r1">
+      <protocols>
+        <protocol>bgp</protocol>
+      </protocols>
+      <asn>70</asn>
+      <interfaces>
+        <interface name="eth0" lan="F" ip="192.168.0.25/30"/>
+        <interface name="eth1" lan="G" ip="192.168.0.21/30"/>
+      </interfaces>
+    </router>
+    <router name="as80r1">
+      <protocols>
+        <protocol>bgp</protocol>
+      </protocols>
+      <asn>80</asn>
+      <interfaces>
+        <interface name="eth0" lan="E" ip="192.168.0.29/30"/>
+        <interface name="eth1" lan="I" ip="180.0.0.1/24"/>
+      </interfaces>
+    </router>
+  </routers>
+  <hosts/>
+  <www/>
+  <lab_conf>as10r1[0]=A
+as10r1[1]=L
+as10r1[image]="kathara/frr"
+
+as20r1[0]=C
+as20r1[1]=B
+as20r1[image]="kathara/frr"
+
+as30r1[0]=D
+as30r1[1]=M
+as30r1[image]="kathara/frr"
+
+as40r1[0]=A
+as40r1[1]=B
+as40r1[2]=F
+as40r1[3]=E
+as40r1[image]="kathara/frr"
+
+as50r1[0]=H
+as50r1[1]=G
+as50r1[2]=C
+as50r1[3]=D
+as50r1[image]="kathara/frr"
+
+as60r1[0]=H
+as60r1[1]=N
+as60r1[image]="kathara/frr"
+
+as70r1[0]=F
+as70r1[1]=G
+as70r1[image]="kathara/frr"
+
+as80r1[0]=E
+as80r1[1]=I
+as80r1[image]="kathara/frr"
+</lab_conf>
+</lab>
