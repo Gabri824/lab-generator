@@ -1,8 +1,7 @@
 """Lettura di un lab Kathará dai suoi file (lab.conf, *.startup, frr.conf, bind).
 
 Non modifica nulla: produce i dati che la pagina usa per disegnare la topologia,
-il riepilogo e i controlli. Le funzioni di analisi di frr.conf e i controlli
-sono quelli del generatore (`gen` = modulo labGenerator).
+il riepilogo, i controlli e i moduli interattivi di modifica/validazione.
 """
 import ipaddress
 import os
@@ -51,7 +50,6 @@ def _demoni(lab_path, nome):
 
 
 def _zone_dns(lab_path, nome):
-    """[(zona, tipo)] da named.conf (anche se include named.conf.local)."""
     zone = []
     bind = os.path.join(lab_path, nome, 'etc', 'bind')
     for f in ('named.conf', 'named.conf.local'):
@@ -62,8 +60,26 @@ def _zone_dns(lab_path, nome):
     return zone
 
 
+def _isole_ospf_info(gen, lab_path):
+    out = []
+    try:
+        for et, rs, cfgs in gen.isole_ospf(lab_path):
+            con = [r for r in rs if cfgs[r].get('auto_cost')]
+            costi = [f"{r} {c}" for r in rs for c in cfgs[r].get('costi', [])]
+            out.append({
+                'etichetta': et,
+                'router': rs,
+                'auto_cost_tutti': len(con) == len(rs),
+                'auto_cost_count': len(con),
+                'costi': costi,
+            })
+    except Exception:
+        pass
+    return out
+
+
 def leggi_lab(gen, lab_path):
-    """Dispositivi, LAN, riepilogo e controlli di un lab."""
+    """Dispositivi, LAN, riepilogo, controlli, isole OSPF e backup di un lab."""
     nodi, _ = gen.parse_lab_conf_for_nodes(lab_path)
     dispositivi = {}
     for nome, meta in sorted(nodi.items()):
@@ -79,10 +95,10 @@ def leggi_lab(gen, lab_path):
         cfg, riferimenti = None, []
         frr = os.path.join(lab_path, nome, 'etc', 'frr', 'frr.conf')
         if os.path.exists(frr):
-            cfg = gen._analizza_frr(gen._leggi_righe(frr))
-            riferimenti = gen.riferimenti_frr(gen._leggi_righe(frr))
+            righe_frr = gen._leggi_righe(frr)
+            cfg = gen._analizza_frr(righe_frr)
+            riferimenti = gen.riferimenti_frr(righe_frr)
         interfacce = []
-        # solo le chiavi numeriche: le altre sono opzioni di lab.conf (es. r1[ipv6]=...)
         for idx, lan in sorted((k, v) for k, v in meta.get('interfaces', {}).items() if isinstance(k, int)):
             dev = f"eth{idx}"
             interfacce.append({'dev': dev, 'lan': lan, 'ip': (ips.get(dev) or [''])[0]})
@@ -91,8 +107,10 @@ def leggi_lab(gen, lab_path):
             m = re.match(r'as(\d+)r', nome, re.I)
             asn = m.group(1) if m else None
         resolv = _leggi(os.path.join(lab_path, nome, 'etc', 'resolv.conf')) or ''
+        zone = _zone_dns(lab_path, nome)
         dispositivi[nome] = {
             'nome': nome,
+            'nome_valido_kathara': gen.nome_kathara_valido(nome),
             'immagine': meta.get('image') or '',
             'tipo': _tipo(lab_path, nome, meta.get('image'), startup),
             'asn': asn,
@@ -101,16 +119,17 @@ def leggi_lab(gen, lab_path):
             'gateway': gw,
             'demoni': _demoni(lab_path, nome),
             'nameserver': re.findall(r'^\s*nameserver\s+(\S+)', resolv, re.M),
-            'zone': _zone_dns(lab_path, nome),
+            'zone': zone,
+            'is_dns_root': any(z[0] == '.' and z[1] == 'master' for z in zone),
+            'has_frr': os.path.exists(frr),
             'riferimenti_frr': riferimenti,
             '_cfg': cfg,
         }
 
-    # LAN: membri e subnet
     lan = {}
     for d in dispositivi.values():
         for it in d['interfacce']:
-            l = lan.setdefault(it['lan'], {'nome': it['lan'], 'subnet': '', 'membri': []})
+            l = lan.setdefault(it['lan'], {'nome': it['lan'], 'subnet': '', 'membri': [], 'avvisi': []})
             l['membri'].append(d['nome'])
             if it['ip'] and not l['subnet']:
                 try:
@@ -118,8 +137,6 @@ def leggi_lab(gen, lab_path):
                 except ValueError:
                     pass
 
-    # router interni senza BGP e senza "asN" nel nome (es. r1..r7 di hour-glass): prendono
-    # l'AS di un vicino sulla stessa LAN che usa lo stesso IGP, a catena
     cambiato = True
     while cambiato:
         cambiato = False
@@ -134,7 +151,6 @@ def leggi_lab(gen, lab_path):
                     d['asn'], cambiato = v['asn'], True
                     break
 
-    # gruppo (AS) degli host: quello dell'unico AS dei router sulle loro LAN
     for d in dispositivi.values():
         if d['tipo'] == 'router' or d['asn']:
             continue
@@ -150,21 +166,71 @@ def leggi_lab(gen, lab_path):
         d['riepilogo'] = _riepilogo(gen, d, owner)
     for d in dispositivi.values():
         _dettaglio_interfacce(d, dispositivi, lan, owner)
+
+    avvisi_top = gen.controlla_topologia(lab_path)
+    avvisi_cfg = gen.controlli_configurazione(lab_path)
+    tutti_avvisi = avvisi_top + avvisi_cfg
+
     for d in dispositivi.values():
+        prob = []
+        grav = 'ok'
+        for it in d['interfacce']:
+            for a in it.get('avvisi', []):
+                msg = f"{it['dev']} ({it['lan']}): {a}"
+                if msg not in prob:
+                    prob.append(msg)
+                grav = 'errore'
+        for x in d.get('riferimenti_frr', []):
+            msg = f"frr.conf riga {x['riga']}: {x['messaggio']}"
+            prob.append(msg)
+            if x.get('gravita') == 'errore':
+                grav = 'errore'
+            elif grav == 'ok':
+                grav = 'avviso'
+        for a in gen._problemi_di(d['nome'], tutti_avvisi):
+            if a not in prob and not any(a in p for p in prob):
+                prob.append(a)
+                if grav == 'ok':
+                    grav = 'avviso'
+        if not d['nome_valido_kathara']:
+            grav = 'errore'
+        d['problemi'] = prob
+        d['stato_val'] = grav
         del d['_cfg']
+
+    for l in lan.values():
+        for a in avvisi_top:
+            if re.search(rf'\bLAN\s+{re.escape(l["nome"])}\b', a):
+                l['avvisi'].append(a)
+        for m in l['membri']:
+            for it in dispositivi[m]['interfacce']:
+                if it['lan'] == l['nome']:
+                    for a in it.get('avvisi', []):
+                        if 'subnet diversa' in a or 'senza l\'altro estremo' in a or 'senza IP' in a:
+                            msg = f"{m} {it['dev']}: {a}"
+                            if msg not in l['avvisi']:
+                                l['avvisi'].append(msg)
+
+    nomi_non_validi = [
+        {'attuale': n, 'proposto': gen.correggi_nome_kathara(n)}
+        for n in sorted(dispositivi)
+        if not dispositivi[n]['nome_valido_kathara']
+    ]
 
     return {
         'nome': os.path.basename(os.path.normpath(lab_path)),
         'dispositivi': list(dispositivi.values()),
         'lan': sorted(lan.values(), key=lambda l: l['nome']),
-        'avvisi_topologia': gen.controlla_topologia(lab_path),
-        'avvisi_config': gen.controlli_configurazione(lab_path),
+        'avvisi_topologia': avvisi_top,
+        'avvisi_config': avvisi_cfg,
+        'isole_ospf': _isole_ospf_info(gen, lab_path),
+        'nomi_non_validi': nomi_non_validi,
+        'backups': gen.ops_api.list_backups(lab_path) if hasattr(gen, 'ops_api') else [],
         'xml': os.path.exists(os.path.join(lab_path, os.path.basename(os.path.normpath(lab_path)) + '.xml')),
     }
 
 
 def indirizzi(dispositivi):
-    """IP (senza maschera) -> nome del dispositivo, loopback comprese."""
     owner = {}
     for d in dispositivi.values():
         for ip in [it['ip'] for it in d['interfacce'] if it['ip']] + d['loopback']:
@@ -181,7 +247,6 @@ def lan_di_ip(dispositivi, ip):
 
 
 def _riepilogo(gen, d, owner):
-    """Configurazione in chiaro di un router (come la voce Riepilogo del menu Opzioni)."""
     cfg = d['_cfg']
     if not cfg:
         return None
@@ -204,7 +269,8 @@ def _riepilogo(gen, d, owner):
                 cosa = f"{t} {nome}"
             policy.append({'direzione': direz, 'nome': nome, 'testo': cosa})
         r['neighbor'].append({'ip': ip, 'chi': owner.get(ip) or cfg['descr'].get(ip, '?'), 'asn': asn,
-                              'tipo': 'iBGP' if asn == cfg['asn'] else 'eBGP', 'policy': policy})
+                              'tipo': 'iBGP' if asn == cfg['asn'] else 'eBGP', 'policy': policy,
+                              'default_originate': ip in cfg.get('default_orig', {})})
     return r
 
 
@@ -216,9 +282,6 @@ def _rete(testo):
 
 
 def _dettaglio_interfacce(d, dispositivi, lan, owner):
-    """Per la tabella delle interfacce aggiunge a ogni interfaccia: chi c'è dall'altra
-    parte della LAN, IGP che la copre e costo OSPF, neighbor BGP raggiunti da lì con le
-    loro policy, e gli avvisi (subnet diversa dal vicino, neighbor inesistente, ...)."""
     cfg = d['_cfg'] or {}
     reti_igp = [(p.upper(), _rete(v)) for p, voci in cfg.get('igp', {}).items()
                 for v in voci if not v.startswith('area')]
@@ -264,9 +327,9 @@ def _dettaglio_interfacce(d, dispositivi, lan, owner):
 
 
 def file_dispositivo(lab_path, nome):
-    """Testo dei file di configurazione principali di un dispositivo."""
     rel = [f"{nome}.startup",
            os.path.join(nome, 'etc', 'frr', 'frr.conf'),
+           os.path.join(nome, 'etc', 'frr', 'daemons'),
            os.path.join(nome, 'etc', 'resolv.conf'),
            os.path.join(nome, 'etc', 'bind', 'named.conf'),
            os.path.join(nome, 'etc', 'bind', 'named.conf.options')]

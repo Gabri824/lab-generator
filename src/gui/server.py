@@ -1,8 +1,8 @@
 """Server web locale della GUI (solo libreria standard, funziona senza internet).
 
-Ascolta solo su 127.0.0.1. Le richieste che eseguono comandi devono avere
-l'intestazione X-Lab-Gen (una pagina di un altro sito non può aggiungerla) e un
-Host locale (contro il DNS rebinding).
+Ascolta solo su 127.0.0.1. Le richieste che eseguono comandi o modificano file
+devono avere l'intestazione X-Lab-Gen: 1 (una pagina di un altro sito non può
+aggiungerla) e un Host locale (contro il DNS rebinding).
 """
 import ipaddress
 import json
@@ -39,7 +39,6 @@ def open_browser(url):
             os.environ.pop(lp_key, None)
 
 
-
 class Errore(Exception):
     pass
 
@@ -51,12 +50,11 @@ class Stato:
         self.kathara = kathara.trova_kathara()
         self.versione = None
         self.lavori = kathara.Lavori()
-        self.archivi = set()        # nomi dei file che si possono scaricare
-        self.spenti = {}            # lab -> {'avvio': ora di avvio del lab, 'lan': LAN spente}
+        self.archivi = set()
+        self.spenti = {}
         self.server = None
 
     def link_spenti(self, nome):
-        """LAN spente dalla GUI; l'elenco vale finché il lab non viene fermato o riavviato."""
         s = self.spenti.get(nome)
         if s and kathara.avvio_lab(self.base, nome) != s['avvio']:
             self.spenti.pop(nome, None)
@@ -91,7 +89,6 @@ def _ip(valore):
 
 
 def _rete(valore):
-    """Rete (100.0.0.0/8) o indirizzo (100.0.0.1): normalizzata, quindi sicura nei comandi."""
     v = str(valore or '').strip()
     try:
         return str(ipaddress.ip_network(v, strict=False)) if '/' in v else str(ipaddress.ip_address(v))
@@ -100,7 +97,6 @@ def _rete(valore):
 
 
 def azione(st, dati_rich):
-    """POST /api/azione: ritorna un dizionario JSON (con 'lavoro' se parte un comando)."""
     tipo = dati_rich.get('azione')
     nome_lab = dati_rich.get('lab', '')
     lab_path = st.lab_path(nome_lab)
@@ -115,8 +111,6 @@ def azione(st, dati_rich):
 
     if tipo == 'lstart':
         st.serve_kathara()
-        # lstart su un lab già acceso fallisce ("already exists") e su Windows
-        # Kathará va anche in crash mentre stampa l'errore: prima si chiede di riavviarlo
         accesi = kathara.stato_lab(k, st.base, [nome_lab])[nome_lab]
         if accesi and not dati_rich.get('riavvia'):
             return {'gia_acceso': len(accesi)}
@@ -244,7 +238,6 @@ def azione(st, dati_rich):
         return {'lavoro': lid}
 
     if tipo == 'riapplica':
-        # la riga viene dai file del lab, non dal browser
         dev = _dispositivo(lab, dati_rich.get('dev'))['nome']
         proto = dati_rich.get('igp')
         righe = kathara.righe_redistribute(lab, dev, proto) if proto in ('RIP', 'OSPF') else []
@@ -277,12 +270,57 @@ def azione(st, dati_rich):
     raise Errore('Azione non prevista')
 
 
+def _gestisci_edit(st, path, corpo):
+    ops = st.gen.ops_api
+    try:
+        if path == '/api/edit/create_lab':
+            r = ops.create_lab(st.base, corpo)
+            st.lavori.annota(f"crea lab {r['lab']}", "creazione lab da GUI", "OK")
+            return r
+        if path == '/api/edit/delete_lab':
+            nome = corpo.get('lab', '')
+            r = ops.delete_lab(st.base, nome)
+            st.lavori.annota(f"elimina lab {nome}", f"rimozione lab (backup: {r['backup']})", "OK")
+            return r
+        if path == '/api/edit/import':
+            r = ops.import_lab_content(
+                st.base, corpo.get('filename', ''), corpo.get('content', ''),
+                overwrite=bool(corpo.get('overwrite')), custom_name=corpo.get('custom_name') or None,
+            )
+            if r.get('ok'):
+                st.lavori.annota(f"importa {r['lab']}", f"import da {corpo.get('filename', 'file')}", "OK")
+            return r
+        if path == '/api/edit/preview':
+            return ops.preview_op(st.base, corpo.get('lab', ''), corpo.get('op', ''), corpo.get('params') or {})
+        if path == '/api/edit/commit':
+            lab = corpo.get('lab', '')
+            op = corpo.get('op', '')
+            r = ops.commit_op(st.base, lab, op, corpo.get('params') or {})
+            st.lavori.annota(f"modifica {lab}: {r['titolo']}", f"op={op}" + (f" (backup: {r['backup']})" if r.get('backup') else ""), "OK")
+            return r
+        if path == '/api/edit/restore':
+            lab = corpo.get('lab', '')
+            lp = st.lab_path(lab)
+            r = ops.restore_backup(lp, corpo.get('backup', ''))
+            st.lavori.annota(f"ripristina {lab}", f"backup {r['ripristinato']}", "OK")
+            return r
+        if path == '/api/edit/ping_oneliner':
+            return ops.ping_oneliner(st.lab_path(corpo.get('lab', '')))
+        if path == '/api/edit/check_frr':
+            return {'problemi': ops.check_frr_content(corpo.get('content', ''))}
+        if path == '/api/edit/suggest_ip':
+            return {'ip': ops.suggerisci_ip_lan(st.lab_path(corpo.get('lab', '')), corpo.get('lan', ''))}
+    except ops.OpError as e:
+        raise Errore(str(e))
+    raise Errore('Endpoint edit non previsto')
+
+
 class Gestore(BaseHTTPRequestHandler):
-    st = None           # impostato da avvia()
+    st = None
     host_ok = set()
 
     def log_message(self, *a):
-        pass            # niente log di ogni richiesta nel terminale
+        pass
 
     def _manda(self, codice, corpo, tipo='application/json; charset=utf-8', extra=None):
         if not isinstance(corpo, bytes):
@@ -322,6 +360,9 @@ class Gestore(BaseHTTPRequestHandler):
                 lab = st.leggi_lab(q.get('lab', ''))
                 dev = _dispositivo(lab, q.get('dev'))['nome']
                 return self._manda(200, dati.file_dispositivo(st.lab_path(q['lab']), dev))
+            if u.path == '/api/backups':
+                lp = st.lab_path(q.get('lab', ''))
+                return self._manda(200, {'backups': st.gen.ops_api.list_backups(lp)})
             if u.path == '/api/modificati':
                 st.lab_path(q.get('lab', ''))
                 return self._manda(200, kathara.file_modificati(st.base, q['lab']))
@@ -353,13 +394,16 @@ class Gestore(BaseHTTPRequestHandler):
         try:
             n = int(self.headers.get('Content-Length', '0') or 0)
             corpo = json.loads(self.rfile.read(n).decode('utf-8') or '{}')
-            if urlparse(self.path).path == '/api/esci':
+            p = urlparse(self.path).path
+            if p == '/api/esci':
                 self._manda(200, {'ok': True})
                 threading.Thread(target=self.st.server.shutdown, daemon=True).start()
                 return
-            if urlparse(self.path).path != '/api/azione':
-                return self._manda(404, {'errore': 'pagina non trovata'})
-            return self._manda(200, azione(self.st, corpo))
+            if p == '/api/azione':
+                return self._manda(200, azione(self.st, corpo))
+            if p.startswith('/api/edit/'):
+                return self._manda(200, _gestisci_edit(self.st, p, corpo))
+            return self._manda(404, {'errore': 'pagina non trovata'})
         except Errore as e:
             return self._manda(400, {'errore': str(e)})
         except Exception as e:
@@ -367,8 +411,7 @@ class Gestore(BaseHTTPRequestHandler):
 
 
 def avvia(base, gen, porta=8765, apri_browser=True):
-    """Avvia la GUI e blocca finché non si chiude (Ctrl+C o pulsante 'Chiudi GUI')."""
-    for stream in (sys.stdout, sys.stderr):     # come in main(): niente crash sulle emoji
+    for stream in (sys.stdout, sys.stderr):
         try:
             stream.reconfigure(errors='replace')
         except Exception:
@@ -401,7 +444,7 @@ def avvia(base, gen, porta=8765, apri_browser=True):
     print(f"\n🌐 GUI avviata: {url}")
     print(f"   Lab letti da: {st.base}")
     if not st.kathara:
-        print("   ⚠️ 'kathara' non trovato nel PATH: si vedono topologia e riepilogo, ma non si avvia nulla.")
+        print("   ⚠️ 'kathara' non trovato nel PATH: creazione, modifica e validazione funzionano; i test live richiedono Kathará.")
     print("   Per chiuderla: pulsante 'Chiudi GUI' nella pagina oppure Ctrl+C qui.\n")
     if apri_browser:
         threading.Timer(0.5, lambda: open_browser(url)).start()

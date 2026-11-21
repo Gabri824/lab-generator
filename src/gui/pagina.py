@@ -1,87 +1,17 @@
-# Pagina della GUI: HTML, CSS e JavaScript in un'unica stringa, senza file
-# esterni né CDN, così funziona offline e dentro l'eseguibile PyInstaller.
-PAGINA = r"""<!doctype html>
+"""Pagina HTML principale della GUI web, assemblata da moduli Python interni
+(`ui_css.py`, `ui_edit_js.py`) così da funzionare offline e dentro l'eseguibile PyInstaller.
+"""
+from .ui_css import UI_CSS
+from .ui_edit_js import UI_EDIT_JS
+
+_BODY_HTML = r"""<!doctype html>
 <html lang="it">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lab Generator GUI</title>
 <style>
-:root{--bg:#f1f5f9;--pan:#fff;--txt:#0f172a;--mut:#64748b;--bor:#e2e8f0;--acc:#2563eb;--ok:#16a34a;--ko:#dc2626;--warn:#d97706;--okbg:#dcfce7;--kobg:#fee2e2;--warnbg:#fef3c7;--code:#0b1220;--codetxt:#e2e8f0}
-@media (prefers-color-scheme: dark){:root{--bg:#0b1220;--pan:#111a2e;--txt:#e2e8f0;--mut:#94a3b8;--bor:#22304a;--acc:#60a5fa;--ok:#4ade80;--ko:#f87171;--warn:#fbbf24;--okbg:#14321f;--kobg:#3b1515;--warnbg:#3a2a0b;--code:#050912;--codetxt:#cbd5e1}}
-*{box-sizing:border-box}
-body{margin:0;font:14px/1.45 system-ui,-apple-system,"Segoe UI",Ubuntu,sans-serif;background:var(--bg);color:var(--txt)}
-button{font:inherit;border:1px solid var(--acc);background:var(--acc);color:#fff;border-radius:7px;padding:6px 12px;cursor:pointer}
-button:hover{filter:brightness(1.08)}
-button:disabled{opacity:.5;cursor:default}
-button.ghost{background:transparent;color:var(--acc)}
-button.danger{background:var(--ko);border-color:var(--ko)}
-button.small{padding:3px 8px;font-size:12.5px}
-input,select{font:inherit;padding:5px 8px;border:1px solid var(--bor);border-radius:7px;background:var(--pan);color:var(--txt)}
-code,pre{font-family:ui-monospace,"Cascadia Mono",Consolas,"DejaVu Sans Mono",monospace;font-size:12.5px}
-.muted{color:var(--mut)}.small{font-size:12.5px}
-.sp{flex:1}
-header.top{height:50px;display:flex;align-items:center;gap:14px;padding:0 16px;background:var(--pan);border-bottom:1px solid var(--bor)}
-.brand{font-weight:700;font-size:16px}.brand span{color:var(--acc)}
-.wrap{display:grid;grid-template-columns:220px 1fr;height:calc(100vh - 50px)}
-aside{background:var(--pan);border-right:1px solid var(--bor);overflow:auto;padding:12px}
-.aside-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-#base{overflow-wrap:anywhere}
-#labs{list-style:none;margin:0 0 12px;padding:0}
-#labs li{padding:7px 9px;border-radius:7px;cursor:pointer;display:flex;align-items:center;gap:8px}
-#labs li:hover{background:var(--bg)}
-#labs li.on{background:var(--acc);color:#fff}
-.dot{width:9px;height:9px;border-radius:50%;background:var(--mut);opacity:.5;flex:none}
-.dot.acceso{background:var(--ok);opacity:1}
-main{display:flex;flex-direction:column;min-width:0;min-height:0}
-#scorri{flex:1;overflow:auto;padding:14px 18px}
-.vuoto{padding:40px;color:var(--mut)}
-.labhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.labhead h1{font-size:20px;margin:0}
-.badge{font-size:12px;padding:2px 9px;border-radius:20px;background:var(--bor);color:var(--mut)}
-.badge.ok{background:var(--okbg);color:var(--ok)}.badge.ko{background:var(--kobg);color:var(--ko)}.badge.warn{background:var(--warnbg);color:var(--warn)}
-.nota{margin:10px 0 0;padding:8px 12px;border-radius:8px;background:var(--warnbg);color:var(--txt);border:1px solid var(--warn)}
-nav.tabs{display:flex;gap:4px;margin:14px 0 12px;border-bottom:1px solid var(--bor);flex-wrap:wrap}
-nav.tabs button{background:transparent;color:var(--mut);border:none;border-bottom:2px solid transparent;border-radius:0;padding:8px 12px}
-nav.tabs button.on{color:var(--acc);border-bottom-color:var(--acc);font-weight:600}
-.card{background:var(--pan);border:1px solid var(--bor);border-radius:10px;padding:14px;margin-bottom:14px}
-.card h2{font-size:15px;margin:0 0 10px}
-.card h3{font-size:14px;margin:0 0 6px}
-.topo{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px}
-.canvas{background:#fff;border:1px solid var(--bor);border-radius:10px;height:max(420px,calc(100vh - 420px));display:flex;flex-direction:column;overflow:hidden}
-.toolbar{display:flex;gap:10px;align-items:center;padding:7px 10px;border-bottom:1px solid #e2e8f0;flex-wrap:wrap;color:#334155}
-.toolbar .muted{color:#64748b}
-.toolbar button.ghost{color:#2563eb;border-color:#2563eb}
-svg.mappa{flex:1;width:100%;min-height:0;touch-action:none;user-select:none}
-.side{background:var(--pan);border:1px solid var(--bor);border-radius:10px;padding:12px;max-height:max(420px,calc(100vh - 420px));overflow:auto}
-a{color:var(--acc)}
-.side h3{margin:0 0 4px;font-size:16px}
-.btns{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
-table{border-collapse:collapse;width:100%}
-th,td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--bor);vertical-align:top}
-th{font-weight:600;color:var(--mut);font-size:12.5px}
-.griglia{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:14px}
-ul.avvisi{margin:4px 0 0;padding-left:20px}
-ul.avvisi li{margin:3px 0}
-.okline{color:var(--ok)}.koline{color:var(--ko)}.warnline{color:var(--warn)}
-details{margin:6px 0}summary{cursor:pointer;color:var(--acc)}
-pre.file{background:var(--code);color:var(--codetxt);padding:8px 10px;border-radius:8px;overflow:auto;max-height:300px;margin:6px 0}
-.output{height:170px;flex:none;border-top:1px solid var(--bor);background:var(--code);color:var(--codetxt);display:flex;flex-direction:column}
-.out-h{display:flex;align-items:center;gap:10px;padding:5px 12px;border-bottom:1px solid #1e293b}
-.out-h button.ghost{color:#93c5fd;border-color:#334155}
-#outTesto{flex:1;overflow:auto;margin:0;padding:8px 12px;white-space:pre-wrap}
-.mat td,.mat th{text-align:center;padding:3px 5px;font-size:12.5px;border:1px solid var(--bor)}
-.mat th.v{vertical-align:bottom;height:110px}
-.mat th.v span{writing-mode:vertical-rl;transform:rotate(180deg)}
-.mat td.ok{background:var(--okbg);color:var(--ok)}.mat td.ko{background:var(--kobg);color:var(--ko);font-weight:600}
-tr.sosp td{background:var(--warnbg)}tr.best td{background:var(--okbg)}table.intf td{font-size:13px}
-.mat td.mezzo{background:var(--warnbg);color:var(--warn);font-weight:600}.mat td.self{color:var(--mut)}
-.mat th:first-child,.mat tr th{text-align:left}
-.scroll{overflow:auto}
-.riga{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
-.hop{display:flex;gap:10px;padding:3px 0}.hop b{min-width:22px}
-@media (max-width:1100px){.topo{grid-template-columns:1fr}.side{max-height:none}}
-@media (max-width:700px){.wrap{grid-template-columns:1fr}aside{max-height:160px}}
+__UI_CSS__
 </style>
 </head>
 <body>
@@ -93,26 +23,34 @@ tr.sosp td{background:var(--warnbg)}tr.best td{background:var(--okbg)}table.intf
 </header>
 <div class="wrap">
   <aside>
-    <div class="aside-h"><b>Lab</b><button id="bAggiorna" class="ghost small">Aggiorna</button></div>
+    <div class="aside-h"><b>Laboratori</b><button id="bAggiorna" class="ghost small">Aggiorna</button></div>
+    <div class="aside-actions">
+      <button id="bNuovoLab" class="small">＋ Nuovo Lab</button>
+      <button id="bImporta" class="ghost small">⬆ Importa</button>
+    </div>
     <ul id="labs"></ul>
     <div class="muted small" id="base"></div>
   </aside>
   <main>
     <div id="scorri">
-      <div id="vuoto" class="vuoto">Scegli un lab dall'elenco a sinistra.</div>
+      <div id="vuoto" class="vuoto">Scegli un lab dall'elenco a sinistra, oppure clicca <b>＋ Nuovo Lab</b> / <b>⬆ Importa</b> per iniziare.</div>
       <div id="vista" hidden>
         <div class="labhead">
-          <h1 id="labNome"></h1><span id="labStato" class="badge"></span>
+          <h1 id="labNome"></h1>
+          <span id="labStato" class="badge"></span>
+          <span id="labVal" class="badge click" title="Clicca per vedere il riepilogo controlli"></span>
           <div class="sp"></div>
+          <button id="bStrumenti" class="ghost">⚙ Strumenti Lab</button>
           <button id="bStart">▶ Avvia (lstart)</button>
           <button id="bClean" class="danger">■ Ferma (lclean)</button>
-          <button id="bRileggi" class="ghost">Rileggi i file</button>
+          <button id="bRileggi" class="ghost">Rileggi</button>
         </div>
+        <div id="nomiNota" class="nota err" hidden></div>
         <div id="xmlNota" class="nota" hidden></div>
         <div id="modNota" class="nota" hidden></div>
         <div id="linkNota" class="nota" hidden></div>
         <nav class="tabs" id="tabs">
-          <button data-tab="topo" class="on">Topologia</button>
+          <button data-tab="topo" class="on">Topologia (Editor)</button>
           <button data-tab="riep">Riepilogo e controlli</button>
           <button data-tab="intf">Interfacce</button>
           <button data-tab="test">Test</button>
@@ -126,9 +64,9 @@ tr.sosp td{background:var(--warnbg)}tr.best td{background:var(--okbg)}table.intf
                 <button id="bRiordina" class="ghost small">Riordina</button>
                 <button id="bAdatta" class="ghost small">Adatta</button>
                 <label class="small"><input type="checkbox" id="cIface" checked> interfacce</label>
-                <button id="bSvg" class="ghost small">Scarica immagine (SVG)</button>
+                <button id="bSvg" class="ghost small">Scarica SVG</button>
                 <button id="bTogli" class="ghost small" hidden>Togli evidenziazione</button>
-                <span class="muted small">Trascina i nodi o lo sfondo · rotellina per lo zoom · clic su un dispositivo per i comandi</span>
+                <span class="muted small"><b>Tasto destro</b> su sfondo, nodo o link per creare/modificare · trascina col sinistro · rotellina = zoom · pallino sul nodo = validazione (verde/giallo/rosso)</span>
               </div>
               <svg id="svg" class="mappa"></svg>
             </div>
@@ -164,7 +102,7 @@ tr.sosp td{background:var(--warnbg)}tr.best td{background:var(--okbg)}table.intf
           </div>
           <div class="card">
             <h2>Rotta verso una rete</h2>
-            <div class="muted small">Come un router raggiunge una rete: next-hop scelto e tutti i percorsi BGP ricevuti con local-preference, MED e AS-path. Serve per "prefers…", "local preference", "MED", "filters out…".</div>
+            <div class="muted small">Come un router raggiunge una rete: next-hop scelto e tutti i percorsi BGP ricevuti con local-preference, MED e AS-path.</div>
             <div class="riga">
               <label>Router <select id="rDev"></select></label>
               <label>rete o IP <input id="rRete" list="retiList" placeholder="es. 100.0.0.0/8" size="18"></label>
@@ -174,14 +112,13 @@ tr.sosp td{background:var(--warnbg)}tr.best td{background:var(--okbg)}table.intf
           </div>
           <div class="card">
             <h2>Tabelle di routing</h2>
-            <div class="muted small">Per ogni router, quali reti del lab sono nella tabella e verso chi. È il controllo "kernel_routes" della correzione automatica.</div>
+            <div class="muted small">Per ogni router, quali reti del lab sono nella tabella e verso chi.</div>
             <div class="riga"><button id="bTabelle">Leggi le tabelle</button></div>
             <div id="rTabelle"></div>
           </div>
           <div class="card">
             <h2>Ping</h2>
-            <div class="muted small">Ping da un dispositivo verso un IP del lab (dall'elenco) o uno qualsiasi. L'output compare in diretta nel riquadro Output.
-              "Origine" sceglie l'IP da cui parte il ping (<code>ping -I</code>): da un router, in automatico parte dall'interfaccia di uscita.</div>
+            <div class="muted small">Ping da un dispositivo verso un IP del lab (dall'elenco) o uno qualsiasi.</div>
             <div class="riga">
               <label>Da <select id="pnSrc"></select></label>
               <label>verso <input id="pnDst" list="ipList" placeholder="IP di destinazione" size="18"></label>
@@ -192,7 +129,7 @@ tr.sosp td{background:var(--warnbg)}tr.best td{background:var(--okbg)}table.intf
           </div>
           <div class="card">
             <h2>Verifica percorso</h2>
-            <div class="muted small">Traceroute da un dispositivo verso un IP: gli hop diventano router e LAN, evidenziati sulla topologia. Serve per le richieste del tipo "i pacchetti devono attraversare ...".</div>
+            <div class="muted small">Traceroute da un dispositivo verso un IP: gli hop diventano router e LAN, evidenziati sulla topologia.</div>
             <div class="riga">
               <label>Da <select id="pSrc"></select></label>
               <label>verso <input id="pDst" list="ipList" placeholder="IP di destinazione" size="18"></label>
@@ -207,14 +144,11 @@ tr.sosp td{background:var(--warnbg)}tr.best td{background:var(--okbg)}table.intf
               <label><input type="checkbox" id="pRit"> anche il ritorno</label>
               <label>atteso al ritorno <input id="pAttR" placeholder="es. H F" size="26"></label>
             </div>
-            <div class="muted small">"Atteso" è facoltativo: nomi delle LAN (le lettere della figura) oppure dei dispositivi, separati da spazi.
-              "Deve passare per" = quei link in quell'ordine, anche con altri in mezzo; "sequenza esatta" = tutto il percorso.</div>
             <div id="rPercorso"></div>
           </div>
           <div class="card">
             <h2>Guasto di un link</h2>
-            <div class="muted small">Spegne un link (<code>ip link set ethX down</code> su tutti i dispositivi della LAN) per vedere il percorso di riserva:
-              "se il link X si guasta, il traffico deve passare per…". Vale solo a lab acceso, i file non cambiano; "Riaccendi" (o un riavvio del lab) rimette tutto com'era.</div>
+            <div class="muted small">Spegne un link (<code>ip link set ethX down</code> su tutti i dispositivi della LAN) per vedere il percorso di riserva.</div>
             <div class="riga">
               <label>LAN <select id="gLan"></select></label>
               <button id="gGiu" class="danger">Spegni</button>
@@ -251,9 +185,33 @@ tr.sosp td{background:var(--warnbg)}tr.best td{background:var(--okbg)}table.intf
     </div>
   </main>
 </div>
+<div id="ctxMenu" class="ctxmenu" hidden></div>
+<div id="modalBg" class="modal-bg" hidden><div id="modalBox" class="modal"></div></div>
+<div id="toastWrap"></div>
 <datalist id="ipList"></datalist>
 <datalist id="retiList"></datalist>
 <script>
+__CORE_JS__
+__UI_EDIT_JS__
+</script>
+</body>
+</html>
+"""
+
+_CORE_JS = r"""function confermaAzione(titolo, msg, etichettaOk, clsBtn) {
+  return new Promise(resolve => {
+    let done = false;
+    const fin = v => { if (!done) { done = true; chiudiModal(); resolve(v); } };
+    apriModal(titolo, `<div class="fwarn">${esc(msg)}</div>`,
+      `<button class="ghost" id="cfNo">Annulla</button><button class="${clsBtn || ''}" id="cfOk">${esc(etichettaOk || 'Conferma')}</button>`,
+      {onMount: () => {
+        $('#cfNo').onclick = () => fin(false);
+        $('#mClose').onclick = () => fin(false);
+        $('#cfOk').onclick = () => fin(true);
+      }});
+  });
+}
+
 "use strict";
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -334,7 +292,14 @@ async function apriLab(nome, mantieni) {
     $('#vuoto').hidden = true; $('#vista').hidden = false;
     $('#labNome').textContent = nome;
     $('#xmlNota').hidden = !lab.xml;
-    $('#xmlNota').innerHTML = `Nel lab c'è <code>${esc(nome)}.xml</code> del generatore: <b>cancellalo prima della consegna</b> (l'archivio creato da qui lo esclude già).`;
+    $('#xmlNota').innerHTML = `<span>Nel lab c'è <code>${esc(nome)}.xml</code> del generatore: <b>cancellalo prima della consegna</b> (l'archivio creato da qui lo esclude già).</span> <button class="small danger" id="bDelXmlTop">Rimuovi XML ora</button>`;
+    const inv = lab.nomi_non_validi || [];
+    $('#nomiNota').hidden = !inv.length;
+    if (inv.length) $('#nomiNota').innerHTML = `<span><b>⚠ Nomi non validi per Kathará:</b> ${inv.map(x => `<code>${esc(x.attuale)}</code> → <code>${esc(x.proposto)}</code>`).join(', ')}</span> <button class="small danger" id="bFixNomiTop">Correggi nomi ora</button>`;
+    const nErr = (lab.avvisi_topologia || []).length + (lab.avvisi_config || []).length;
+    const lv = $('#labVal');
+    lv.textContent = nErr ? ('⚠ ' + nErr + ' avvisi') : '✔ 0 avvisi';
+    lv.className = 'badge click ' + (nErr ? 'warn' : 'ok');
     S.colori = colori(lab); S.G = grafo(lab);
     const salvate = mem('pos:' + nome);
     S.varianti = null; S.variante = 0;
@@ -602,6 +567,10 @@ function posizionaEtichette(G, pos, iface, extra) {
 }
 function svgContenuto(G, pos) {
   let h = STILE_SVG, etichetteAS = '';
+  if (!G.nodes.length) {
+    return h + `<text x="50" y="46" text-anchor="middle" style="font:600 13px system-ui,sans-serif;fill:#64748b">Lab vuoto</text>
+      <text x="50" y="64" text-anchor="middle" style="font:11px system-ui,sans-serif;fill:#94a3b8">Fai clic destro qui per aggiungere Router, Host, WWW o DNS</text>`;
+  }
   const ostAS = [];      // scritte degli AS: ostacoli per le etichette
   const gruppi = [...new Set(G.nodes.map(n => n.gruppo).filter(g => g && g !== '_'))];
   for (const g of gruppi) {
@@ -613,16 +582,19 @@ function svgContenuto(G, pos) {
     ostAS.push({x: top.x, y: top.y - 69, w: largh('AS' + g, 16) + (igp ? largh('· ' + igp, 12) + 6 : 0) + 6, h: 22});
     etichetteAS += `<text class="ga" x="${top.x}" y="${top.y - 64}" text-anchor="middle" fill="${c}">AS${esc(g)}${igp ? `<tspan class="gp" dx="6">· ${esc(igp)}</tspan>` : ''}</text>`;
   }
+  const lanWarn = new Set((S.lab.lan || []).filter(x => (x.avvisi || []).length).map(x => x.nome));
   for (const l of G.links) { const a = pos[l.a], b = pos[l.b];
     const cls = S.spenti && S.spenti.has(l.lan) ? ' off' : evidLink(l) ? ' ev' : (S.evid && S.evid.manca && S.evid.manca.has(l.lan)) ? ' manca' : '';
-    h += `<line class="lk${cls}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`; }
+    h += `<line class="lk${cls}" data-lan="${esc(l.lan)}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"${lanWarn.has(l.lan) && !cls ? ' style="stroke:#d97706;stroke-width:3"' : ''}/>`;
+    h += `<line data-lan="${esc(l.lan)}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="transparent" stroke-width="14" style="cursor:context-menu"/>`; }
   const {et, nomi} = posizionaEtichette(G, pos, $('#cIface').checked, ostAS);
   const ord = (S.evid && S.evid.ordine) || {};
   for (const n of G.nodes) { const p = pos[n.id];
     h += `<g class="nodo" data-id="${esc(n.id)}" transform="translate(${p.x},${p.y})">`;
     if (n.tipo === 'lan') {
       const w = Math.max(34, 9 * n.nome.length + 16);
-      h += `<rect x="${-w / 2}" y="-12" width="${w}" height="24" rx="12" fill="#f8fafc" stroke="#64748b" stroke-width="1.5"/><text class="t" y="4" text-anchor="middle">${esc(n.nome)}</text>`;
+      const lw = lanWarn.has(n.nome);
+      h += `<rect x="${-w / 2}" y="-12" width="${w}" height="24" rx="12" fill="${lw ? '#fef3c7' : '#f8fafc'}" stroke="${lw ? '#d97706' : '#64748b'}" stroke-width="${lw ? '2.2' : '1.5'}"/><text class="t" y="4" text-anchor="middle">${esc(n.nome)}</text>`;
       if (n.subnet) h += `<text class="ts" y="27" text-anchor="middle">${esc(n.subnet)}</text>`;
     } else {
       const c = n.tipo === 'router' ? (S.colori[n.gruppo] || '#64748b') : {host: '#475569', www: '#0d9488', dns: '#7c3aed'}[n.tipo];
@@ -637,6 +609,12 @@ function svgContenuto(G, pos) {
       }
       const t = nomi[n.id];
       h += `<text class="t" x="${(t.x - p.x).toFixed(1)}" y="${(t.y - p.y).toFixed(1)}" text-anchor="${t.anc}">${esc(n.nome)}</text>`;
+      const sv = n.dev && n.dev.stato_val;
+      if (sv) {
+        const sc = sv === 'errore' ? '#dc2626' : (sv === 'avviso' ? '#d97706' : '#16a34a');
+        const stitle = (n.dev.problemi || []).length ? n.dev.problemi.join(' · ') : 'Nessun problema rilevato';
+        h += `<circle cx="-17" cy="-17" r="6" fill="${sc}" stroke="#fff" stroke-width="1.8"><title>${esc(stitle)}</title></circle>`;
+      }
       if (ord[n.nome] != null) h += `<circle cx="20" cy="-20" r="10" fill="#f59e0b"/><text class="ord" x="20" y="-16" text-anchor="middle">${esc(ord[n.nome])}</text>`;
     }
     h += '</g>';
@@ -644,8 +622,11 @@ function svgContenuto(G, pos) {
   // etichette sopra a tutto: link punto-punto (nome e subnet) e interfacce
   const col = id => { const n = G.nodes.find(x => x.id === id); return (n && S.colori[n.gruppo]) || '#475569'; };
   for (const e of et) {
-    if (e.tipo === 'lan') h += `<rect x="${e.x - e.w / 2}" y="${e.y - 9}" width="${e.w}" height="18" rx="9" fill="#f8fafc" stroke="#cbd5e1"/>`
-      + `<text class="lt" x="${e.x}" y="${e.y + 4}" text-anchor="middle"><tspan class="lb">${esc(e.l.lan)}</tspan> ${esc(e.l.subnet || '')}</text>`;
+    if (e.tipo === 'lan') {
+      const lw = lanWarn.has(e.l.lan);
+      h += `<g data-lan="${esc(e.l.lan)}" style="cursor:context-menu"><rect x="${e.x - e.w / 2}" y="${e.y - 9}" width="${e.w}" height="18" rx="9" fill="${lw ? '#fef3c7' : '#f8fafc'}" stroke="${lw ? '#d97706' : '#cbd5e1'}" stroke-width="${lw ? '1.6' : '1'}"/>`
+        + `<text class="lt" x="${e.x}" y="${e.y + 4}" text-anchor="middle"><tspan class="lb">${esc(e.l.lan)}</tspan> ${esc(e.l.subnet || '')}</text></g>`;
+    }
     else h += etichettaIface(e.it, e.x, e.y, col(e.nodo));
   }
   return h + etichetteAS;
@@ -666,6 +647,7 @@ let trascina = null;
 function puntoSvg(e) { const m = $('#svg').getScreenCTM().inverse(); const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m); return {x: p.x, y: p.y}; }
 // trascinando un nodo lo si sposta, trascinando lo sfondo si sposta la vista; rotellina = zoom
 $('#svg').addEventListener('pointerdown', e => {
+  if (e.button !== 0) return;
   const g = e.target.closest('[data-id]');
   trascina = g ? {id: g.dataset.id, x: e.clientX, y: e.clientY, mosso: false}
                : {sfondo: true, x: e.clientX, y: e.clientY, vb: S.vb.split(' ').map(Number), scala: 1 / $('#svg').getScreenCTM().a};
@@ -715,8 +697,13 @@ function dispositivo(nome) { return S.lab && S.lab.dispositivi.find(d => d.nome 
 function lato() {
   const d = dispositivo(S.sel), el = $('#side');
   if (!d) {
-    el.innerHTML = `<h3>Dispositivi</h3><div class="muted small">Clic su un dispositivo nella topologia per vedere la sua configurazione e lanciare i comandi.</div>
-      <table style="margin-top:8px"><tr><th>Nome</th><th>Tipo</th><th>AS</th></tr>${S.lab.dispositivi.map(x => `<tr><td><a href="#" data-sel="${esc(x.nome)}">${esc(x.nome)}</a></td><td>${esc(x.tipo)}</td><td>${esc(x.asn || '')}</td></tr>`).join('')}</table>`;
+    el.innerHTML = `<div class="riga" style="margin:0 0 6px"><h3 style="margin:0">Dispositivi</h3><div class="sp"></div><button class="small" id="sideAddR">＋ Router</button><button class="small ghost" id="sideAddH">＋ Host</button></div>
+      <div class="muted small"><b>Clic sinistro</b> per selezionare · <b>Clic destro</b> su sfondo, nodo o link per modificare, aggiungere policy o diagnosticare errori.</div>
+      <table style="margin-top:8px"><tr><th>Stato</th><th>Nome</th><th>Tipo</th><th>AS</th></tr>${S.lab.dispositivi.map(x => {
+        const sc = x.stato_val === 'errore' ? 'ko' : (x.stato_val === 'avviso' ? 'warn' : 'ok');
+        const sym = x.stato_val === 'errore' ? '✘' : (x.stato_val === 'avviso' ? '⚠' : '✔');
+        return `<tr><td><span class="badge ${sc}" title="${esc((x.problemi || []).join(' · ') || 'OK')}">${sym}</span></td><td><a href="#" data-sel="${esc(x.nome)}">${esc(x.nome)}</a></td><td>${esc(x.tipo)}</td><td>${esc(x.asn || '')}</td></tr>`;
+      }).join('')}</table>`;
     return;
   }
   const cmd = [];
@@ -728,7 +715,14 @@ function lato() {
     cmd.push('running');
   }
   cmd.push('ip_route', 'ip_addr');
+  const probs = d.problemi || [];
   el.innerHTML = `<div class="riga" style="margin:0"><h3>${esc(d.nome)}</h3><span class="badge">${esc(d.tipo)}</span>${d.asn ? `<span class="badge">AS${esc(d.asn)}</span>` : ''}<div class="sp"></div><a href="#" data-sel="">elenco</a></div>
+    ${probs.length ? `<div class="fwarn" style="margin:8px 0;padding:6px 8px;font-size:12.5px"><b>⚠ ${probs.length} avvisi su ${esc(d.nome)}</b> <button class="small" id="sDiag" style="margin-left:6px">Diagnostica &amp; Correggi</button></div>` : ''}
+    <div class="btns">
+      <button class="small" id="sMenu">⚙ Modifica dispositivo…</button>
+      <button class="small ghost" id="sEditF">✎ Editor file</button>
+      ${d.tipo === 'router' && d.demoni.includes('bgpd') ? '<button class="small ghost" id="sBgpPol">🛡 Policy BGP</button>' : ''}
+    </div>
     <table><tr><th>Interf.</th><th>IP</th><th>LAN</th></tr>${d.interfacce.map(i => `<tr><td>${esc(i.dev)}</td><td>${esc(i.ip || '-')}</td><td>${esc(i.lan)}</td></tr>`).join('')}
     ${d.loopback.map(ip => `<tr><td>lo</td><td>${esc(ip)}</td><td></td></tr>`).join('')}</table>
     ${d.gateway ? `<div class="small" style="margin-top:6px">Gateway: <code>${esc(d.gateway)}</code></div>` : ''}
@@ -754,6 +748,16 @@ $('#side').addEventListener('click', async e => {
     return;
   }
   if (e.target.id === 'sPerc') { const ip = $('#sIp').value.trim(); if (!ip) { $('#sIp').focus(); return; } percorso(S.sel, ip, e.target); }
+  if (e.target.id === 'sideAddR') { modalAddRouter(); return; }
+  if (e.target.id === 'sideAddH') { modalAddHost(); return; }
+  if (e.target.id === 'sDiag') { const d = dispositivo(S.sel); if (d) modalDiagnostica(d); return; }
+  if (e.target.id === 'sEditF') { const d = dispositivo(S.sel); if (d) modalEditorFile(d); return; }
+  if (e.target.id === 'sBgpPol') { const d = dispositivo(S.sel); if (d) modalBgpPolicy(d); return; }
+  if (e.target.id === 'sMenu') {
+    const d = dispositivo(S.sel);
+    if (d) { const r = e.target.getBoundingClientRect(); apriCtxDispositivo(r.left, r.bottom + 4, d); }
+    return;
+  }
   if (e.target.id === 'sTerm') {
     try { const r = await azione({azione: 'terminale', dev: S.sel});
       $('#sTermMsg').innerHTML = `<div class="${r.ok ? 'okline' : 'warnline'}">${esc(r.messaggio)}</div><code>${esc(r.comando)}</code>`;
@@ -1265,7 +1269,7 @@ $('#bStart').onclick = async e => {
   try {
     let j = await azione({azione: 'lstart'});
     if (j.gia_acceso) {
-      if (!confirm(`Il lab ${S.nome} è già acceso (${j.gia_acceso} dispositivi). Riavviarlo da capo (lclean + lstart)?`)) return;
+      if (!(await confermaAzione('Riavvio lab', `Il lab ${S.nome} è già acceso (${j.gia_acceso} dispositivi). Riavviarlo da capo (lclean + lstart)?`, 'Riavvia (lclean + lstart)'))) return;
       j = await azione({azione: 'lstart', riavvia: true});
     }
     const r = await segui(j.lavoro, 'lstart ' + S.nome);
@@ -1276,11 +1280,11 @@ $('#bStart').onclick = async e => {
   finally { b.disabled = false; aggiornaStato(); }
 };
 $('#bClean').onclick = async e => {
-  if (!confirm('Fermare e cancellare i container del lab ' + S.nome + '?')) return;
+  if (!(await confermaAzione('Ferma lab', 'Fermare e cancellare i container del lab ' + S.nome + '?', 'Ferma (lclean)', 'danger'))) return;
   await esegui({azione: 'lclean'}, 'lclean ' + S.nome, e.target); aggiornaStato();
 };
 $('#bEsci').onclick = async () => {
-  if (!confirm('Chiudere la GUI? I lab avviati restano accesi.')) return;
+  if (!(await confermaAzione('Chiudi GUI', 'Chiudere la GUI? I lab avviati restano accesi.', 'Chiudi GUI'))) return;
   try { await fetch('/api/esci', {method: 'POST', headers: {'X-Lab-Gen': '1', 'Content-Type': 'application/json'}, body: '{}'}); } catch (e) {}
   document.body.innerHTML = '<div class="vuoto">GUI chiusa. Puoi chiudere questa scheda.</div>';
 };
@@ -1298,8 +1302,11 @@ $('#bEsci').onclick = async () => {
   const h = new URLSearchParams(location.hash.slice(1));
   if (h.get('lab') && S.labs.includes(h.get('lab'))) { await apriLab(h.get('lab')); if (h.get('tab')) scheda(h.get('tab')); }
   setInterval(aggiornaStato, 10000);
-})();
-</script>
-</body>
-</html>
-"""
+})();"""
+
+PAGINA = (
+    _BODY_HTML
+    .replace("__UI_CSS__", UI_CSS)
+    .replace("__CORE_JS__", _CORE_JS)
+    .replace("__UI_EDIT_JS__", UI_EDIT_JS)
+)
