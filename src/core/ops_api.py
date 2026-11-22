@@ -94,6 +94,7 @@ from .persistence import (
     rebuild_lab_metadata_and_export,
     recreate_lab_from_data,
 )
+from . import frr_autofix
 from .templates import DAEMONS_TMPL, FRR_HEADER, VTYSH_TMPL, _RE_GW, _RE_IP_ADD, _RE_TOKEN_IP
 
 
@@ -2571,6 +2572,112 @@ def _op_reset_topology(lab_path, p, note):
     return "Resetta topologia (routing e policy azzerati)"
 
 
+def _op_apply_diag_fix(lab_path, p, note):
+    """Applica una correzione diagnostica strutturata (cross-file o FRR) attraverso preview/commit."""
+    kind = str(p.get('kind') or '').strip()
+    if not kind:
+        raise OpError("Parametro 'kind' mancante per apply_diag_fix.")
+
+    if kind == 'enable_daemon':
+        nome = str(p.get('nome') or '').strip()
+        daemon = str(p.get('daemon') or '').strip()
+        if daemon not in ('zebra', 'bgpd', 'ospfd', 'ripd'):
+            raise OpError(f"Demone FRR non valido: '{daemon}'.")
+        disp = leggi_dispositivi(lab_path)
+        if nome not in disp:
+            raise OpError(f"Dispositivo '{nome}' non trovato.")
+        etc_frr = os.path.join(lab_path, nome, 'etc', 'frr')
+        os.makedirs(etc_frr, exist_ok=True)
+        dpath = os.path.join(etc_frr, 'daemons')
+        if os.path.exists(dpath):
+            righe = _righe_file(dpath)
+        else:
+            righe = DAEMONS_TMPL.format(zebra='yes', ripd='no', ospfd='no', bgpd='no').rstrip('\n').split('\n')
+        righe = _set_demone(righe, 'zebra', 'yes')
+        righe = _set_demone(righe, daemon, 'yes')
+        _scrivi_esatte(dpath, righe)
+        return f"Abilita {daemon}=yes su {nome}"
+
+    if kind == 'add_startup_frr':
+        nome = str(p.get('nome') or '').strip()
+        disp = leggi_dispositivi(lab_path)
+        if nome not in disp:
+            raise OpError(f"Dispositivo '{nome}' non trovato.")
+        st_path = os.path.join(lab_path, f"{nome}.startup")
+        righe = _righe_file(st_path) if os.path.exists(st_path) else []
+        if not any(re.match(r'^\s*(?:systemctl\s+start\s+frr|/etc/init\.d/frr\s+start|service\s+frr\s+start)\b', l) for l in righe if not l.lstrip().startswith('#')):
+            if righe and righe[-1].strip():
+                righe.append('')
+            righe.append('systemctl start frr')
+            _scrivi_esatte(st_path, righe)
+            try:
+                os.chmod(st_path, 0o755)
+            except Exception:
+                pass
+        return f"Aggiungi 'systemctl start frr' in {nome}.startup"
+
+    if kind == 'add_startup_apache':
+        nome = str(p.get('nome') or '').strip()
+        disp = leggi_dispositivi(lab_path)
+        if nome not in disp:
+            raise OpError(f"Dispositivo '{nome}' non trovato.")
+        st_path = os.path.join(lab_path, f"{nome}.startup")
+        righe = _righe_file(st_path) if os.path.exists(st_path) else []
+        if not any(re.match(r'^\s*(?:systemctl\s+start\s+apache2|/etc/init\.d/apache2\s+start|service\s+apache2\s+start)\b', l) for l in righe if not l.lstrip().startswith('#')):
+            righe.append('systemctl start apache2')
+            _scrivi_esatte(st_path, righe)
+            try:
+                os.chmod(st_path, 0o755)
+            except Exception:
+                pass
+        return f"Aggiungi 'systemctl start apache2' in {nome}.startup"
+
+    if kind == 'add_peer_neighbor':
+        peer = str(p.get('peer') or '').strip()
+        nb_ip = _valida_ip_solo(p.get('neighbor_ip'))
+        ras = str(p.get('remote_as') or '').strip()
+        if not asn_valido(ras):
+            raise OpError(f"remote-as non valido: '{ras}'.")
+        fpath = os.path.join(lab_path, peer, 'etc', 'frr', 'frr.conf')
+        if not os.path.exists(fpath):
+            raise OpError(f"frr.conf non trovato per '{peer}'.")
+        lines_to_add = []
+        if not _neighbor_presente(fpath, nb_ip):
+            lines_to_add.append(f"neighbor {nb_ip} remote-as {ras}")
+            desc = str(p.get('description') or '').strip()
+            if desc:
+                lines_to_add.append(f"neighbor {nb_ip} description {desc}")
+        upd = str(p.get('update_source') or '').strip()
+        if upd and not any(re.match(rf'^\s*neighbor\s+{re.escape(nb_ip)}\s+update-source\b', l) for l in _leggi_righe(fpath)):
+            lines_to_add.append(f"neighbor {nb_ip} update-source {upd}")
+        if not lines_to_add:
+            raise OpError(f"Neighbor {nb_ip} è già configurato su {peer}.")
+        if not insert_lines_into_protocol_block(fpath, proto='bgp', asn=None, lines=lines_to_add):
+            raise OpError(f"Impossibile inserire il neighbor in router bgp di {peer}.")
+        return f"Aggiungi neighbor {nb_ip} (AS{ras}) su {peer}"
+
+    if kind == 'frr_text_fix':
+        nome = str(p.get('nome') or '').strip()
+        fix = p.get('fix')
+        if not isinstance(fix, dict):
+            raise OpError("Parametro 'fix' non valido.")
+        fpath = os.path.join(lab_path, nome, 'etc', 'frr', 'frr.conf')
+        if not os.path.exists(fpath):
+            raise OpError(f"frr.conf non trovato per '{nome}'.")
+        with open(fpath, 'r', encoding='utf-8') as fh:
+            prima = fh.read()
+        dopo = frr_autofix.applica_fix_testo(prima, fix)
+        if dopo == prima:
+            raise OpError("La correzione richiesta non produce modifiche su frr.conf.")
+        righe = dopo.replace('\r\n', '\n').replace('\r', '\n').split('\n')
+        if righe and righe[-1] == '':
+            righe.pop()
+        _scrivi_esatte(fpath, righe)
+        return f"Auto-fix FRR su {nome}: {fix.get('etichetta', fix.get('tipo', 'modifica'))}"
+
+    raise OpError(f"Tipo di fix diagnostico non previsto: '{kind}'.")
+
+
 _LAB_OPS = {
     'add_router': _op_add_router,
     'add_host': _op_add_host,
@@ -2602,6 +2709,7 @@ _LAB_OPS = {
     'reorder_interfaces': _op_reorder_interfaces,
     'edit_router': _op_edit_router,
     'reset_topology': _op_reset_topology,
+    'apply_diag_fix': _op_apply_diag_fix,
 }
 
 
@@ -2801,19 +2909,12 @@ def restore_backup(lab_path, backup_name):
     return {'ok': True, 'ripristinato': backup_name, 'salvato_prima': os.path.basename(prima)}
 
 
-def check_frr_content(content):
-    righe = str(content or '').replace('\r\n', '\n').replace('\r', '\n').split('\n')
-    refs = riferimenti_frr(righe)
-    out = []
-    for x in refs:
-        row_idx = (x.get('riga') or 0) - 1
-        suggerita = None
-        if 0 <= row_idx < len(righe):
-            suggerita = _correzione_suggerita(righe[row_idx], x['messaggio'])
-        item = dict(x)
-        item['correzione'] = suggerita
-        out.append(item)
-    return out
+def check_frr_content(content, lab_path=None, dev=None):
+    return frr_autofix.analizza_frr_avanzato(content, lab_path=lab_path, dev=dev)
+
+
+def diagnose_device(lab_path, dev):
+    return frr_autofix.diagnosi_dispositivo(lab_path, dev)
 
 
 def suggerisci_ip_lan(lab_path, lan, exclude=None):

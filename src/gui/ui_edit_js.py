@@ -1870,15 +1870,87 @@ function modalEliminaDispositivo(d) {
   );
 }
 
+function _escRegExp(s) {
+  return String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function applicaFixTestoJs(text, fix) {
+  if (!fix) return text;
+  const raw = String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const hadNl = raw.endsWith('\n');
+  const lines = raw.split('\n');
+  if (hadNl && lines.length && lines[lines.length - 1] === '') lines.pop();
+
+  if (fix.tipo === 'replace_line') {
+    const idx = (fix.riga || 0) - 1;
+    if (idx >= 0 && idx < lines.length && fix.nuova_riga != null) {
+      lines[idx] = String(fix.nuova_riga);
+    }
+  } else if (fix.tipo === 'insert_after') {
+    const pos = Math.max(0, Math.min(lines.length, fix.riga || 0));
+    const nuove = Array.isArray(fix.righe) ? fix.righe.map(String) : [];
+    if (nuove.length) lines.splice(pos, 0, ...nuove);
+  } else if (fix.tipo === 'delete_line') {
+    if (Array.isArray(fix.righe_num) && fix.righe_num.length) {
+      const uniq = [...new Set(fix.righe_num.map(Number).filter(n => n >= 1 && n <= lines.length))].sort((a, b) => b - a);
+      for (const n of uniq) lines.splice(n - 1, 1);
+    } else {
+      const idx = (fix.riga || 0) - 1;
+      if (idx >= 0 && idx < lines.length) lines.splice(idx, 1);
+    }
+  } else if (fix.tipo === 'rename_symbol') {
+    const da = fix.da || '', a = fix.a || '', ts = fix.tipo_simbolo || '';
+    if (da && a && da !== a) {
+      const eDa = _escRegExp(da);
+      for (let i = 0; i < lines.length; i++) {
+        let l = lines[i];
+        if (ts === 'route-map') {
+          l = l.replace(new RegExp('(\\broute-map\\s+)' + eDa + '(?=\\s|$)', 'g'), '$1' + a);
+        } else if (ts === 'prefix-list') {
+          l = l.replace(new RegExp('(\\bprefix-list\\s+)' + eDa + '(?=\\s|$)', 'g'), '$1' + a);
+          l = l.replace(new RegExp('(\\bdistribute-list\\s+prefix\\s+)' + eDa + '(?=\\s|$)', 'g'), '$1' + a);
+        } else if (ts === 'access-list') {
+          l = l.replace(new RegExp('(\\baccess-list\\s+)' + eDa + '(?=\\s|$)', 'g'), '$1' + a);
+          l = l.replace(new RegExp('(\\bdistribute-list\\s+)' + eDa + '(?=\\s|$)', 'g'), '$1' + a);
+          l = l.replace(new RegExp('(\\bmatch\\s+ip\\s+address\\s+)' + eDa + '(?=\\s|$)', 'g'), '$1' + a);
+        }
+        lines[i] = l;
+      }
+    }
+  }
+
+  let out = lines.join('\n');
+  if (hadNl && out) out += '\n';
+  return out;
+}
+
+function vaiARigaEditor(ta, nums, riga) {
+  if (!ta || !riga || riga < 1) return;
+  const lines = ta.value.split('\n');
+  const idx = Math.min(Math.max(1, riga), lines.length) - 1;
+  let pos = 0;
+  for (let i = 0; i < idx; i++) pos += lines[i].length + 1;
+  const end = pos + lines[idx].length;
+  ta.focus();
+  ta.setSelectionRange(pos, end);
+  const lineH = parseFloat(getComputedStyle(ta).lineHeight) || 19;
+  ta.scrollTop = Math.max(0, idx * lineH - ta.clientHeight / 3);
+  if (nums) nums.scrollTop = ta.scrollTop;
+}
+
+function badgeConfidenzaHtml(conf) {
+  return conf === 'sicuro'
+    ? '<span class="badge fix-safe">Fix sicuro</span>'
+    : '<span class="badge fix-prop">Proposta</span>';
+}
+
 function modalDiagnostica(d) {
   const probs = d.problemi || [];
   apriModal(
     'Diagnostica & Validazione: ' + d.nome,
-    (probs.length
-      ? `<div class="fwarn">Trovati <b>${probs.length}</b> problemi/avvisi su <b>${esc(d.nome)}</b>:</div>
-         <ul class="avvisi">${probs.map(p => `<li class="koline">${esc(p)}</li>`).join('')}</ul>`
-      : `<div class="delta-ok">✔ Nessun errore o avviso rilevato su <b>${esc(d.nome)}</b>.</div>`) +
-    `<div style="margin-top:12px" class="btns">
+    `<div id="dgStruct"><div class="muted small">Analisi diagnostica avanzata in corso…</div></div>
+    <div id="dgExtra"></div>
+    <div style="margin-top:12px" class="btns">
       ${!d.nome_valido_kathara ? '<button class="small danger" id="dgFixN">Correggi nome Kathará</button>' : ''}
       ${d.tipo !== 'router' && !d.gateway ? '<button class="small" id="dgGw">Imposta Default Gateway</button>' : ''}
       ${d.has_frr ? '<button class="small" id="dgEd">Apri frr.conf nell\'editor (con auto-fix)</button>' : '<button class="small" id="dgEd">Apri file nell\'editor</button>'}
@@ -1888,6 +1960,7 @@ function modalDiagnostica(d) {
     </div>`,
     `<button class="ghost" id="mCancel">Chiudi</button>`,
     {
+      wide: true,
       onMount: () => {
         const b1 = $('#dgFixN'); if (b1) b1.onclick = () => eseguiModifica('fix_names', {});
         const b2 = $('#dgGw'); if (b2) b2.onclick = () => modalGateway(d);
@@ -1895,12 +1968,69 @@ function modalDiagnostica(d) {
         $('#dgIf').onclick = () => modalInterfacce(d);
         const b3 = $('#dgAc'); if (b3) b3.onclick = modalAutoCost;
         const b4 = $('#dgIbgp'); if (b4) b4.onclick = modalIbgpMesh;
+
+        apiPost('/api/edit/diagnose', {lab: S.nome, dev: d.nome}).then(r => {
+          const box = $('#dgStruct'), extra = $('#dgExtra');
+          if (!box) return;
+          const list = r.problemi || [];
+          if (!list.length && !probs.length) {
+            box.innerHTML = `<div class="delta-ok">✔ Nessun errore o avviso rilevato su <b>${esc(d.nome)}</b>.</div>`;
+            return;
+          }
+          if (list.length) {
+            box.innerHTML = `<div class="finfo">Rilevati <b>${list.length}</b> controlli diagnostici su <b>${esc(d.nome)}</b> (ogni fix passa dall'<b>Anteprima Diff</b> con backup automatico):</div>
+              <div class="diag-list">${list.map((x, idx) => {
+                const fixes = x.fixes || [];
+                const isFrr = x.file && x.file.endsWith('frr/frr.conf') && x.riga;
+                return `<div class="diag-item ${x.gravita === 'errore' ? 'err' : 'warn'}">
+                  <div class="ed-issue-head">
+                    ${x.file ? `<code>${esc(x.file)}${x.riga ? ':' + x.riga : ''}</code>` : ''}
+                    ${badgeConfidenzaHtml(x.confidenza)}
+                    <span>${esc(x.messaggio)}</span>
+                  </div>
+                  ${(fixes.length || isFrr) ? `<div class="ed-issue-acts">
+                    ${fixes.map((fx, fi) => `<button type="button" class="small ${fx.confidenza === 'sicuro' ? 'okbtn' : 'ghost'}" data-dgi="${idx}" data-dgf="${fi}">⇄ ${esc(fx.etichetta || 'Applica fix')}</button>`).join('')}
+                    ${isFrr ? `<button type="button" class="small ghost" data-dged="${x.riga}">✎ Apri riga ${x.riga}</button>` : ''}
+                  </div>` : ''}
+                </div>`;
+              }).join('')}</div>`;
+            box.onclick = e => {
+              const bed = e.target.closest('[data-dged]');
+              if (bed) {
+                modalEditorFile(d, `${d.nome}/etc/frr/frr.conf`, +bed.dataset.dged);
+                return;
+              }
+              const b = e.target.closest('[data-dgi]');
+              if (!b) return;
+              const item = list[+b.dataset.dgi];
+              const fx = item && (item.fixes || [])[+b.dataset.dgf];
+              if (fx && fx.tipo === 'lab_op') {
+                eseguiModifica(fx.op, fx.params || {});
+              }
+            };
+          } else {
+            box.innerHTML = '';
+          }
+          const covered = new Set(list.map(x => x.messaggio));
+          const residui = probs.filter(p => !covered.has(p) && !list.some(x => x.riga && p.includes('riga ' + x.riga)));
+          if (extra && residui.length) {
+            extra.innerHTML = `<div class="fwarn" style="margin-top:8px"><b>Altri avvisi di topologia/configurazione:</b>
+              <ul class="avvisi">${residui.map(p => `<li>${esc(p)}</li>`).join('')}</ul></div>`;
+          }
+        }).catch(() => {
+          const box = $('#dgStruct');
+          if (!box) return;
+          box.innerHTML = probs.length
+            ? `<div class="fwarn">Trovati <b>${probs.length}</b> problemi/avvisi su <b>${esc(d.nome)}</b>:</div>
+               <ul class="avvisi">${probs.map(p => `<li class="koline">${esc(p)}</li>`).join('')}</ul>`
+            : `<div class="delta-ok">✔ Nessun errore o avviso rilevato su <b>${esc(d.nome)}</b>.</div>`;
+        });
       }
     }
   );
 }
 
-async function modalEditorFile(d, preFile) {
+async function modalEditorFile(d, preFile, preLine) {
   let files = [];
   try { files = await api('/api/file?lab=' + encodeURIComponent(S.nome) + '&dev=' + encodeURIComponent(d.nome)); }
   catch (e) { toast(e.message, 'err'); return; }
@@ -1925,53 +2055,160 @@ async function modalEditorFile(d, preFile) {
       onMount: () => {
         const ta = $('#edTxt'), nums = $('#edNums'), sel = $('#edSel'), iss = $('#edIssues');
         let timer = null;
+        let origContent = '';
+        let undoStack = [];
+        let lastList = [];
+
         function aggiornaNumeri() {
           const n = Math.max(1, ta.value.split('\n').length);
           let s = ''; for (let i = 1; i <= n; i++) s += i + '\n';
           nums.textContent = s;
         }
         ta.onscroll = () => { nums.scrollTop = ta.scrollTop; };
+
+        function raccogliFixSicuriLocali(list) {
+          const out = [];
+          const seenRD = new Set();
+          const seenIns = new Set();
+          for (const item of list) {
+            for (const fx of (item.fixes || [])) {
+              if (fx.confidenza !== 'sicuro') continue;
+              if (fx.tipo !== 'replace_line' && fx.tipo !== 'insert_after' && fx.tipo !== 'delete_line') continue;
+              const riga = Number(fx.riga || 0);
+              if (fx.tipo === 'replace_line' || fx.tipo === 'delete_line') {
+                if (seenRD.has(riga)) continue;
+                seenRD.add(riga);
+              } else if (fx.tipo === 'insert_after') {
+                const k = riga + '|' + JSON.stringify(fx.righe || []);
+                if (seenIns.has(k)) continue;
+                seenIns.add(k);
+              }
+              out.push(fx);
+              break;
+            }
+          }
+          const prio = {insert_after: 2, replace_line: 1, delete_line: 0};
+          out.sort((a, b) => (Number(b.riga || 0) - Number(a.riga || 0)) || ((prio[b.tipo] || 0) - (prio[a.tipo] || 0)));
+          return out;
+        }
+
         async function controllaFrr() {
           const fn = files[curIdx].file;
           if (!fn.endsWith('frr/frr.conf')) { iss.innerHTML = ''; return; }
           try {
-            const r = await apiPost('/api/edit/check_frr', {content: ta.value});
+            const r = await apiPost('/api/edit/check_frr', {lab: S.nome, dev: d.nome, content: ta.value});
             const list = r.problemi || [];
+            lastList = list;
+            const safeLocal = raccogliFixSicuriLocali(list);
+
+            let barHtml = '';
+            if (safeLocal.length || undoStack.length || list.length) {
+              const nErr = list.filter(x => x.gravita === 'errore').length;
+              const nWarn = list.length - nErr;
+              barHtml = `<div class="ed-bar">
+                <span>${list.length ? `<b>${nErr}</b> errori · <b>${nWarn}</b> avvisi` : '<span class="okline">✔ Nessun problema rilevato</span>'}</span>
+                <div class="sp"></div>
+                ${safeLocal.length ? `<button type="button" class="small okbtn" id="edFixAllSafe">✔ Applica tutti i fix sicuri (${safeLocal.length})</button>` : ''}
+                ${undoStack.length ? `<button type="button" class="small ghost" id="edUndoFix">↺ Annulla ultimo fix (${undoStack.length})</button>` : ''}
+              </div>`;
+            }
+
             if (!list.length) {
-              iss.innerHTML = '<div class="okline small">✔ Nessun errore nei riferimenti FRR (route-map / prefix-list / access-list).</div>';
+              iss.innerHTML = barHtml || '<div class="okline small">✔ Nessun errore o anomalia rilevata in frr.conf.</div>';
               return;
             }
-            iss.innerHTML = list.map((x, idx) => `<div class="ed-issue ${x.gravita === 'errore' ? 'err' : 'warn'}">
-              <span><b>Riga ${x.riga}</b>: ${esc(x.messaggio)}</span><div class="sp"></div>
-              ${x.correzione ? `<button class="small okbtn" data-fix="${idx}">Applica fix</button>` : ''}
-            </div>`).join('');
-            iss.onclick = e => {
-              const b = e.target.closest('[data-fix]'); if (!b) return;
-              const item = list[+b.dataset.fix];
-              const lines = ta.value.split('\n');
-              if (item && item.correzione && item.riga >= 1 && item.riga <= lines.length) {
-                lines[item.riga - 1] = item.correzione;
-                ta.value = lines.join('\n');
-                aggiornaNumeri();
-                controllaFrr();
-                toast('Correzione applicata alla riga ' + item.riga);
-              }
-            };
+
+            iss.innerHTML = barHtml + list.map((x, idx) => {
+              const fixes = x.fixes || [];
+              const actsHtml = fixes.length
+                ? `<div class="ed-issue-acts">${fixes.map((fx, fi) =>
+                    `<button type="button" class="small ${fx.confidenza === 'sicuro' ? 'okbtn' : 'ghost'}" data-iidx="${idx}" data-fidx="${fi}">${fx.tipo === 'lab_op' ? '⇄ ' : ''}${esc(fx.etichetta || 'Applica fix')}</button>`
+                  ).join('')}</div>`
+                : '';
+              return `<div class="ed-issue ${x.gravita === 'errore' ? 'err' : 'warn'}">
+                <div class="ed-issue-head">
+                  ${x.riga ? `<button type="button" class="ed-line-link" data-jump="${x.riga}" title="Vai alla riga ${x.riga}">Riga ${x.riga}</button>` : ''}
+                  ${badgeConfidenzaHtml(x.confidenza)}
+                  <span>${esc(x.messaggio)}</span>
+                </div>
+                ${actsHtml}
+              </div>`;
+            }).join('');
           } catch (e) {}
         }
-        function carica(idx) {
+
+        iss.onclick = async e => {
+          const bJump = e.target.closest('[data-jump]');
+          if (bJump) {
+            vaiARigaEditor(ta, nums, +bJump.dataset.jump);
+            return;
+          }
+          if (e.target.id === 'edUndoFix') {
+            if (!undoStack.length) return;
+            ta.value = undoStack.pop();
+            aggiornaNumeri();
+            controllaFrr();
+            toast('Annullato ultimo fix locale');
+            return;
+          }
+          if (e.target.id === 'edFixAllSafe') {
+            const safeLocal = raccogliFixSicuriLocali(lastList);
+            if (!safeLocal.length) return;
+            undoStack.push(ta.value);
+            let txt = ta.value;
+            for (const fx of safeLocal) txt = applicaFixTestoJs(txt, fx);
+            ta.value = txt;
+            aggiornaNumeri();
+            controllaFrr();
+            toast(`Applicati ${safeLocal.length} fix sicuri`);
+            return;
+          }
+          const bFix = e.target.closest('[data-fidx]');
+          if (!bFix) return;
+          const item = lastList[+bFix.dataset.iidx];
+          const fx = item && (item.fixes || [])[+bFix.dataset.fidx];
+          if (!fx) return;
+
+          if (fx.tipo === 'lab_op') {
+            if (ta.value !== origContent) {
+              const ok = await confermaAzione(
+                'Modifiche non salvate nell\'editor',
+                'Hai modifiche non salvate nel file aperto: applicando questo fix cross-file l\'editor verrà chiuso e le modifiche locali non salvate andranno perse. Salva prima il file, oppure continua con Anteprima Diff.',
+                'Continua comunque →'
+              );
+              if (!ok) return;
+            }
+            eseguiModifica(fx.op, fx.params || {});
+            return;
+          }
+
+          const prima = ta.value;
+          const dopo = applicaFixTestoJs(prima, fx);
+          if (dopo !== prima) {
+            undoStack.push(prima);
+            ta.value = dopo;
+            aggiornaNumeri();
+            controllaFrr();
+            toast('Fix applicato: ' + (fx.etichetta || fx.tipo));
+          }
+        };
+
+        function carica(idx, jumpLine) {
           curIdx = idx;
-          ta.value = files[curIdx].testo;
+          origContent = files[curIdx].testo;
+          undoStack = [];
+          ta.value = origContent;
           aggiornaNumeri();
           controllaFrr();
+          if (jumpLine) setTimeout(() => vaiARigaEditor(ta, nums, jumpLine), 30);
         }
         ta.oninput = () => {
           aggiornaNumeri();
           clearTimeout(timer);
           timer = setTimeout(controllaFrr, 350);
         };
-        sel.onchange = () => carica(+sel.value);
-        carica(curIdx);
+        sel.onchange = () => carica(+sel.value, null);
+        carica(curIdx, preLine || null);
         $('#edSave').onclick = () => eseguiModifica('save_file', {file: files[curIdx].file, content: ta.value});
       }
     }

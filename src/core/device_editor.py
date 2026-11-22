@@ -8,6 +8,7 @@ import re
 import subprocess
 
 from .analyzer import _problemi_di, _proprietari, leggi_dispositivi, riferimenti_frr
+from . import frr_autofix
 from .cli_io import (
     _si,
     asn_valido,
@@ -92,20 +93,27 @@ def _indenta(righe, dopo, testo, frr):
 
 
 def _correzione_suggerita(riga, messaggio):
-    """Riga corretta secondo il 'Forse intendevi ...' del controllo, oppure None."""
-    m = re.search(r"(?:route-map|prefix-list|access-list) (\S+) non è definita.*Forse intendevi (\S+) \(riga", messaggio)
+    """Riga corretta secondo il 'Forse intendevi ...' del controllo (o fix singolo da frr_autofix), oppure None."""
+    m = re.search(r"(?:route-map|prefix-list|access-list) (\S+) non è definita.*Forse intendevi (\S+) \(riga", messaggio or '')
     if not m:
-        m = re.search(r"'([^']+)' non è valido in una prefix-list.*Forse intendevi (\S+)\?", messaggio)
-    if not m:
-        return None
-    nuova = re.sub(rf'(?<!\S){re.escape(m.group(1))}(?!\S)', m.group(2), riga, count=1)
-    return nuova if nuova != riga else None
+        m = re.search(r"'([^']+)' non è valido in una prefix-list.*Forse intendevi (\S+)\?", messaggio or '')
+    if m:
+        nuova = re.sub(rf'(?<!\S){re.escape(m.group(1))}(?!\S)', m.group(2), riga, count=1)
+        return nuova if nuova != riga else None
+    try:
+        for item in frr_autofix.analizza_frr_avanzato(riga):
+            if item.get('riga') == 1 and item.get('correzione') and item['correzione'] != riga:
+                return item['correzione']
+    except Exception:
+        pass
+    return None
 
 
-def _note_frr(righe):
+def _note_frr(righe, lab_path=None, dev=None):
     note = {}
-    for x in riferimenti_frr(righe):
-        note.setdefault(x['riga'], []).append(x)
+    for x in frr_autofix.analizza_frr_avanzato('\n'.join(righe), lab_path=lab_path, dev=dev):
+        if x.get('riga'):
+            note.setdefault(x['riga'], []).append(x)
     return note
 
 
@@ -122,7 +130,8 @@ def editor_righe(lab_path, rel):
     )
     mostra = True
     while True:
-        note = _note_frr(righe) if frr else {}
+        dev_nome = rel.replace(os.sep, '/').split('/')[0] if frr else None
+        note = _note_frr(righe, lab_path=lab_path, dev=dev_nome) if frr else {}
         if mostra:
             stato_mod = ', modificato, non salvato' if righe != originali else ''
             print(f"\n=== {rel.replace(os.sep, '/')} ({len(righe)} righe{stato_mod}) ===")
@@ -203,17 +212,33 @@ def editor_righe(lab_path, rel):
                 righe.insert(n + j, _indenta(righe, n + j - 1, t, frr))
         elif cmd == 'C':
             prop = None
+            local_fix = None
             for x in note.get(n, []):
+                if x.get('correzione') and x['correzione'] != righe[n - 1]:
+                    prop = x['correzione']
+                    break
                 prop = _correzione_suggerita(righe[n - 1], x['messaggio'])
                 if prop:
                     break
-            if not prop:
+                for fx in x.get('fixes') or []:
+                    if fx.get('tipo') in ('insert_after', 'delete_line') and fx.get('confidenza') == 'sicuro':
+                        local_fix = fx
+                        break
+                if local_fix:
+                    break
+            if prop:
+                print(f"  prima: {righe[n - 1].strip()}\n  dopo:  {prop.strip()}")
+                storia.append(list(righe))
+                righe[n - 1] = prop
+            elif local_fix:
+                storia.append(list(righe))
+                nuovo_testo = frr_autofix.applica_fix_testo('\n'.join(righe), local_fix)
+                righe = nuovo_testo.split('\n') if nuovo_testo else []
+                print(f"  applicato: {local_fix.get('etichetta', local_fix.get('tipo'))}")
+            else:
                 print(f"Nessuna correzione automatica per la riga {n}: usa M {n}.")
                 mostra = False
                 continue
-            print(f"  prima: {righe[n - 1].strip()}\n  dopo:  {prop.strip()}")
-            storia.append(list(righe))
-            righe[n - 1] = prop
 
 
 def modifica_righe(lab_path, routers, nome):

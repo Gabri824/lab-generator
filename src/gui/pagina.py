@@ -791,13 +791,20 @@ function htmlControlloFrr() {
     <div class="riga"><button id="bSintassi">Controlla la sintassi (lab acceso)</button>
       <span class="small ${S.sintassi ? 'okline' : 'muted'}">${S.sintassi ? 'sintassi controllata' : 'sintassi non ancora controllata'}</span></div>`;
   if (!righe.length) h += `<div class="okline">✔ Nessun problema${S.sintassi ? '' : ' nei nomi'}.</div>`;
-  else h += `<table><tr><th>Router</th><th>Riga</th><th>Testo</th><th>Problema</th></tr>${righe.map(x =>
+  else h += `<table><tr><th>Router</th><th>Riga</th><th>Testo</th><th>Problema</th><th></th></tr>${righe.map(x =>
     `<tr class="${x.gravita === 'errore' ? 'sosp' : ''}"><td>${esc(x.router)}</td><td>${esc(x.riga)}</td><td><code>${esc(x.testo)}</code></td>
-     <td class="small ${x.gravita === 'errore' ? 'koline' : 'warnline'}">${x.gravita === 'errore' ? '✘ ' : '⚠ '}${esc(x.messaggio)}</td></tr>`).join('')}</table>
+     <td class="small ${x.gravita === 'errore' ? 'koline' : 'warnline'}">${x.gravita === 'errore' ? '✘ ' : '⚠ '}${esc(x.messaggio)}</td>
+     <td style="white-space:nowrap">${x.router && x.riga ? `<button class="small ghost" data-ed-dev="${esc(x.router)}" data-ed-line="${esc(x.riga)}">✎ Apri nell'editor</button>` : ''}</td></tr>`).join('')}</table>
     <div class="muted small">✘ = da correggere; ⚠ = da controllare (una lista definita e mai usata è spesso lo stesso nome scritto in due modi).</div>`;
   return h + '</div>';
 }
 $('#t-riep').addEventListener('click', async e => {
+  const bEd = e.target.closest('[data-ed-dev]');
+  if (bEd) {
+    const d = dispositivo(bEd.dataset.edDev);
+    if (d) modalEditorFile(d, `${d.nome}/etc/frr/frr.conf`, Number(bEd.dataset.edLine) || null);
+    return;
+  }
   if (e.target.id !== 'bSintassi') return;
   const r = await esegui({azione: 'sintassi_frr'}, 'Sintassi frr.conf ' + S.nome, e.target);
   if (r && r.risultato) { S.sintassi = r.risultato; riepilogo(); }

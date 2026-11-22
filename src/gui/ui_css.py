@@ -173,6 +173,20 @@ tr.sosp td{background:var(--warnbg)}tr.best td{background:var(--okbg)}table.intf
 .bgp-net-row{display:flex;gap:8px;align-items:center;padding:6px 8px;border:1px solid var(--bor);border-radius:8px;background:var(--bg)}
 .bgp-net-row input{flex:1;font-family:ui-monospace,"Cascadia Mono",Consolas,monospace}
 
+.ed-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 10px;border-radius:8px;background:var(--bg);border:1px solid var(--bor);font-size:12.5px}
+.ed-issue{flex-direction:column;align-items:stretch;gap:6px}
+.ed-issue-head{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.ed-issue-acts{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding-left:2px}
+.ed-line-link{background:var(--pan);color:var(--acc);border:1px solid var(--bor);border-radius:6px;padding:1px 7px;font-size:11.5px;font-weight:700;cursor:pointer}
+.ed-line-link:hover{border-color:var(--acc);filter:none}
+.badge.fix-safe{background:var(--okbg);color:var(--ok);font-weight:600}
+.badge.fix-prop{background:#dbeafe;color:#1d4ed8;font-weight:600}
+@media (prefers-color-scheme: dark){.badge.fix-prop{background:#1e3a5f;color:#93c5fd}}
+.diag-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.diag-item{padding:8px 10px;border-radius:8px;border:1px solid var(--bor);background:var(--bg);display:flex;flex-direction:column;gap:6px;font-size:13px}
+.diag-item.err{background:var(--kobg);border-color:var(--ko)}
+.diag-item.warn{background:var(--warnbg);border-color:var(--warn)}
+
 @media (max-width:1100px){.topo{grid-template-columns:1fr}.side{max-height:none}}
 @media (max-width:700px){.wrap{grid-template-columns:1fr}aside{max-height:190px}.fgrid,.fgrid.three{grid-template-columns:1fr}}
 """

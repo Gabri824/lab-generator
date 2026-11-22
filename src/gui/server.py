@@ -307,7 +307,16 @@ def _gestisci_edit(st, path, corpo):
         if path == '/api/edit/ping_oneliner':
             return ops.ping_oneliner(st.lab_path(corpo.get('lab', '')))
         if path == '/api/edit/check_frr':
-            return {'problemi': ops.check_frr_content(corpo.get('content', ''))}
+            lab = corpo.get('lab') or ''
+            dev = corpo.get('dev') or None
+            lp = st.lab_path(lab) if lab else None
+            return {'problemi': ops.check_frr_content(corpo.get('content', ''), lab_path=lp, dev=dev)}
+        if path == '/api/edit/diagnose':
+            lp = st.lab_path(corpo.get('lab', ''))
+            dev = str(corpo.get('dev') or '').strip()
+            if not dev:
+                raise Errore("Dispositivo non specificato.")
+            return {'problemi': ops.diagnose_device(lp, dev)}
         if path == '/api/edit/suggest_ip':
             return {'ip': ops.suggerisci_ip_lan(st.lab_path(corpo.get('lab', '')), corpo.get('lan', ''), exclude=corpo.get('exclude') or [])}
     except ops.OpError as e:

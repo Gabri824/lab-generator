@@ -808,18 +808,33 @@ def sintassi_frr(kathara, lab_path, lab, lav):
               and os.path.exists(os.path.join(lab_path, d['nome'], 'etc', 'frr', 'frr.conf'))]
 
     def leggi(r):
-        with open(os.path.join(lab_path, r, 'etc', 'frr', 'frr.conf'), 'rb') as f:
-            b64 = base64.b64encode(f.read()).decode('ascii')
+        frr_file = os.path.join(lab_path, r, 'etc', 'frr', 'frr.conf')
+        with open(frr_file, 'rb') as f:
+            raw_bytes = f.read()
+        frr_text = raw_bytes.decode('utf-8', errors='replace')
+        b64 = base64.b64encode(raw_bytes).decode('ascii')
         script = (f"echo {b64} | base64 -d > /tmp/controllo_frr.conf && "
                   f"vtysh --dryrun -f /tmp/controllo_frr.conf 2>&1; echo @@RC=$?")
         rc, out = esegui(kexec(kathara, lab_path, r, ['bash', '-c', script]), timeout=60)
         if '@@RC=' not in out:
             return {'errore': out.strip()[-300:]}
+        try:
+            from core import frr_autofix
+        except Exception:
+            frr_autofix = None
         righe = []
         for m in re.finditer(r'^line (\d+): % ([^\[:\n]+)(?:\[\d+\])?:\s*(.*)$', out, re.M):
             tipo = m.group(2).strip()
-            righe.append({'riga': int(m.group(1)), 'testo': ' '.join(m.group(3).split()), 'gravita': 'errore',
-                          'messaggio': TRADUZIONI_VTYSH.get(tipo, tipo)})
+            riga_n = int(m.group(1))
+            testo_r = ' '.join(m.group(3).split())
+            msg = TRADUZIONI_VTYSH.get(tipo, tipo)
+            if frr_autofix is not None:
+                sugg = frr_autofix.suggerisci_per_riga_vtysh(
+                    frr_text, riga_n, testo_r, lab_path=lab_path, dev=r
+                )
+                if sugg:
+                    msg = f"{msg} — {sugg}"
+            righe.append({'riga': riga_n, 'testo': testo_r, 'gravita': 'errore', 'messaggio': msg})
         return {'righe': righe}
 
     lav.scrivi(f"Controllo della sintassi di frr.conf su {len(router)} router (vtysh --dryrun)...")
