@@ -1,0 +1,133 @@
+{
+ "versione": 1,
+ "nome": "bgp_ibgp_due_as",
+ "resolver": null,
+ "blocco_subnet": "",
+ "_nota": "Ridisegno dello scenario del wizard bgp_ibgp_due_as. IP dei router automatici. AS 100 con BGP su tutti i router (r2 è interno ma ha BGP).",
+ "dispositivi": [
+  {
+   "id": "d1",
+   "tipo": "router",
+   "nome": "r1",
+   "x": 200,
+   "y": 80,
+   "router": {
+    "redistribuisci_bgp": false
+   }
+  },
+  {
+   "id": "d2",
+   "tipo": "router",
+   "nome": "r2",
+   "x": 100,
+   "y": 280
+  },
+  {
+   "id": "d3",
+   "tipo": "router",
+   "nome": "r3",
+   "x": 650,
+   "y": 80
+  },
+  {
+   "id": "d4",
+   "tipo": "host",
+   "nome": "pc1",
+   "x": 750,
+   "y": 450
+  }
+ ],
+ "lan": [
+  {
+   "id": "l1",
+   "nome": "A",
+   "subnet": "10.0.0.0/24",
+   "punto": false,
+   "x": 150,
+   "y": 220
+  },
+  {
+   "id": "l2",
+   "nome": "X",
+   "subnet": "192.168.0.0/30",
+   "punto": true
+  },
+  {
+   "id": "l3",
+   "nome": "Y",
+   "subnet": "200.0.0.0/24",
+   "punto": false,
+   "x": 750,
+   "y": 250
+  }
+ ],
+ "collegamenti": [
+  {
+   "id": "c1",
+   "dispositivo": "d1",
+   "lan": "l1",
+   "ip": ""
+  },
+  {
+   "id": "c2",
+   "dispositivo": "d1",
+   "lan": "l2",
+   "ip": ""
+  },
+  {
+   "id": "c3",
+   "dispositivo": "d2",
+   "lan": "l1",
+   "ip": ""
+  },
+  {
+   "id": "c4",
+   "dispositivo": "d3",
+   "lan": "l2",
+   "ip": ""
+  },
+  {
+   "id": "c5",
+   "dispositivo": "d3",
+   "lan": "l3",
+   "ip": ""
+  },
+  {
+   "id": "c6",
+   "dispositivo": "d4",
+   "lan": "l3",
+   "ip": "200.0.0.10/24"
+  }
+ ],
+ "zone": [
+  {
+   "id": "z1",
+   "tipo": "as",
+   "valore": "100",
+   "x": 0,
+   "y": 0,
+   "w": 420,
+   "h": 320,
+   "bgp": "tutti"
+  },
+  {
+   "id": "z2",
+   "tipo": "as",
+   "valore": "200",
+   "x": 500,
+   "y": 0,
+   "w": 400,
+   "h": 320
+  },
+  {
+   "id": "z3",
+   "tipo": "ospf",
+   "valore": "0.0.0.0",
+   "stub": false,
+   "x": 20,
+   "y": 150,
+   "w": 300,
+   "h": 150
+  }
+ ]
+}

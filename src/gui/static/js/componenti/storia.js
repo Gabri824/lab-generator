@@ -3,7 +3,8 @@
 //   const s = new Storia(statoIniziale)
 //   s.fai(nuovoStato)    dopo ogni modifica (svuota i "ripeti")
 //   s.annulla() / s.ripeti() -> lo stato da mostrare, oppure null se non c'è niente
-//   creaBarraStoria(el, s, applica)   pulsanti Annulla e Ripeti con Ctrl+Z e Ctrl+Y (o Ctrl+Maiusc+Z)
+//   creaBarraStoria(el, s, applica, attivo)   pulsanti Annulla e Ripeti con Ctrl+Z e Ctrl+Y (o Ctrl+Maiusc+Z);
+//                                              i tasti valgono solo quando attivo() è vero (es. editor aperto)
 
 const copia = x => (typeof structuredClone === 'function' ? structuredClone(x) : JSON.parse(JSON.stringify(x)));
 
@@ -48,7 +49,7 @@ function inScrittura(el) {
   return el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName));
 }
 
-export function creaBarraStoria(el, storia, applica) {
+export function creaBarraStoria(el, storia, applica, attivo = () => true) {
   el.classList.add('storia');
   el.innerHTML = `<button type="button" class="ghost small" data-storia="annulla" aria-keyshortcuts="Control+Z">Annulla</button>
     <button type="button" class="ghost small" data-storia="ripeti" aria-keyshortcuts="Control+Y">Ripeti</button>`;
@@ -58,7 +59,7 @@ export function creaBarraStoria(el, storia, applica) {
   el.addEventListener('click', e => { const b = e.target.closest('[data-storia]'); if (b) fai(b.dataset.storia); });
   // i tasti valgono quando non si sta scrivendo in un campo (lì Ctrl+Z annulla il testo)
   const tasti = e => {
-    if (!(e.ctrlKey || e.metaKey) || inScrittura(e.target)) return;
+    if (!(e.ctrlKey || e.metaKey) || inScrittura(e.target) || !attivo()) return;
     const k = e.key.toLowerCase();
     if (k === 'z' && !e.shiftKey) { e.preventDefault(); fai('annulla'); }
     else if (k === 'y' || (k === 'z' && e.shiftKey)) { e.preventDefault(); fai('ripeti'); }

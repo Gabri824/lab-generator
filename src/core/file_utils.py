@@ -417,6 +417,6 @@ def _esegui_piano(base_path, piano, routers=None):
         return False
     for m in piano.get('messaggi') or []:
         print(m)
-    from .persistence import rigenera_xml
-    rigenera_xml(base_path)            # XML dei metadati allineato ai file, fuori dal lab
+    from .operazioni import dopo_scrittura
+    dopo_scrittura(base_path, piano)   # XML dei metadati allineato ai file e disegno della GUI, fuori dal lab
     return True

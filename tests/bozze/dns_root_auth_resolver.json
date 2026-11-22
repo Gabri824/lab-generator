@@ -1,0 +1,192 @@
+{
+ "versione": 1,
+ "nome": "dns_root_auth_resolver",
+ "resolver": "d6",
+ "blocco_subnet": "",
+ "_nota": "Ridisegno dello scenario dns_root_auth_resolver: r1 in una zona RIP, root, autoritativo per com e resolver; gateway dei server proposti dal router della LAN.",
+ "dispositivi": [
+  {
+   "id": "d1",
+   "tipo": "router",
+   "nome": "",
+   "x": 300,
+   "y": 200
+  },
+  {
+   "id": "d2",
+   "tipo": "host",
+   "nome": "host1",
+   "x": 100,
+   "y": 350
+  },
+  {
+   "id": "d3",
+   "tipo": "www",
+   "nome": "www1",
+   "x": 250,
+   "y": 500
+  },
+  {
+   "id": "d4",
+   "tipo": "dns",
+   "nome": "root",
+   "x": 600,
+   "y": 100,
+   "dns": {
+    "forwarders": null,
+    "root_type": "master",
+    "allow_recursion": null,
+    "dnssec_validation": false,
+    "delegations": [
+     {
+      "zone": "com",
+      "ns": "dns.com",
+      "ip": "10.0.2.3"
+     }
+    ],
+    "zone": []
+   }
+  },
+  {
+   "id": "d5",
+   "tipo": "dns",
+   "nome": "dns_com",
+   "x": 650,
+   "y": 300,
+   "dns": {
+    "forwarders": null,
+    "root_type": "hint",
+    "allow_recursion": null,
+    "dnssec_validation": true,
+    "delegations": [],
+    "zone": [
+     {
+      "nome": "com",
+      "record": [
+       {
+        "nome": "www",
+        "tipo": "A",
+        "valore": "10.0.1.80",
+        "extra": ""
+       },
+       {
+        "nome": "web",
+        "tipo": "CNAME",
+        "valore": "www",
+        "extra": ""
+       },
+       {
+        "nome": "@",
+        "tipo": "NS",
+        "valore": "dns.com.",
+        "extra": "10.0.2.3"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "d6",
+   "tipo": "dns",
+   "nome": "resolver",
+   "x": 400,
+   "y": 500,
+   "dns": {
+    "forwarders": null,
+    "root_type": "hint",
+    "allow_recursion": "any",
+    "dnssec_validation": true,
+    "delegations": [],
+    "zone": []
+   }
+  }
+ ],
+ "lan": [
+  {
+   "id": "l1",
+   "nome": "A",
+   "subnet": "10.0.0.0/24",
+   "punto": false,
+   "x": 100,
+   "y": 200
+  },
+  {
+   "id": "l2",
+   "nome": "B",
+   "subnet": "10.0.1.0/24",
+   "punto": false,
+   "x": 300,
+   "y": 400
+  },
+  {
+   "id": "l3",
+   "nome": "Z",
+   "subnet": "10.0.2.0/24",
+   "punto": false,
+   "x": 500,
+   "y": 200
+  }
+ ],
+ "collegamenti": [
+  {
+   "id": "c1",
+   "dispositivo": "d1",
+   "lan": "l1",
+   "ip": ""
+  },
+  {
+   "id": "c2",
+   "dispositivo": "d1",
+   "lan": "l2",
+   "ip": ""
+  },
+  {
+   "id": "c3",
+   "dispositivo": "d1",
+   "lan": "l3",
+   "ip": ""
+  },
+  {
+   "id": "c4",
+   "dispositivo": "d2",
+   "lan": "l1",
+   "ip": "10.0.0.10/24"
+  },
+  {
+   "id": "c5",
+   "dispositivo": "d3",
+   "lan": "l2",
+   "ip": "10.0.1.80/24"
+  },
+  {
+   "id": "c6",
+   "dispositivo": "d4",
+   "lan": "l3",
+   "ip": "10.0.2.2/24"
+  },
+  {
+   "id": "c7",
+   "dispositivo": "d5",
+   "lan": "l3",
+   "ip": "10.0.2.3/24"
+  },
+  {
+   "id": "c8",
+   "dispositivo": "d6",
+   "lan": "l2",
+   "ip": "10.0.1.53/24"
+  }
+ ],
+ "zone": [
+  {
+   "id": "z1",
+   "tipo": "rip",
+   "valore": "",
+   "x": 200,
+   "y": 100,
+   "w": 200,
+   "h": 200
+  }
+ ]
+}

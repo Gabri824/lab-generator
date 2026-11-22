@@ -5,6 +5,7 @@ import { lato } from './dispositivo.js';
 import { interfacce } from './interfacce.js';
 import { registro } from './registro.js';
 import { riepilogo } from './riepilogo.js';
+import { apriEditor } from './editor/editor.js';
 import { attendiConvergenza, controllaSpenti, lanGuasto, origini } from './test.js';
 import { colori, grafo, ridisegna, varianti } from './topologia.js';
 
@@ -42,14 +43,20 @@ export async function apriLab(nome, mantieni) {
     S.lab = lab; S.nome = nome; S.sintassi = null;   // i file possono essere cambiati: sintassi da ricontrollare
     history.replaceState(null, '', '#lab=' + encodeURIComponent(nome) + '&tab=' + S.tab);
     if (cambiato) { S.sel = null; S.evid = null; $('#rPing').innerHTML = $('#rSessioni').innerHTML = $('#rPercorso').innerHTML = $('#rArchivio').innerHTML = ''; }
-    $('#vuoto').hidden = true; $('#vista').hidden = false;
+    $('#vuoto').hidden = true; $('#editor').hidden = true; $('#vista').hidden = false;
     $('#labNome').textContent = nome;
     $('#xmlNota').hidden = !lab.xml;
     $('#xmlNota').innerHTML = `Nel lab c'è <code>${esc(nome)}.xml</code> del generatore: <b>va tolto prima della consegna</b> (l'archivio creato da qui lo esclude già). Aprendo il lab dalle Opzioni del terminale puoi spostarlo in <code>.labgenerator/</code>, accanto ai lab.`;
     S.colori = colori(lab); S.G = grafo(lab);
-    const salvate = mem('pos:' + nome);
+    // posizioni: quelle spostate a mano nella Topologia, poi quelle del disegno dell'editor
+    // (.labgenerator/<lab>/disegno.json), altrimenti la disposizione automatica
+    let salvate = mem('pos:' + nome);
+    const tutte = p => p && S.G.nodes.every(n => p[n.id]);
+    if (!tutte(salvate)) {
+      try { const d = (await api('/api/disegno?lab=' + encodeURIComponent(nome))).disegno; salvate = d && d.posizioni; } catch (e) { salvate = null; }
+    }
     S.varianti = null; S.variante = 0;
-    S.pos = (salvate && S.G.nodes.every(n => salvate[n.id])) ? salvate : (S.varianti = varianti(S.G))[0];
+    S.pos = tutte(salvate) ? JSON.parse(JSON.stringify(salvate)) : (S.varianti = varianti(S.G))[0];
     if (!mantieni || cambiato) S.vb = null;
     $('#ipList').innerHTML = lab.dispositivi.flatMap(d => d.interfacce.filter(i => i.ip).map(i => `<option value="${esc(i.ip.split('/')[0])}">${esc(d.nome + ' ' + i.dev)}</option>`)
       .concat(d.loopback.map(ip => `<option value="${esc(ip.split('/')[0])}">${esc(d.nome + ' lo')}</option>`))).join('');
@@ -106,6 +113,7 @@ export function scheda(t) {
 $('#tabs').onclick = e => { const b = e.target.closest('button'); if (b) scheda(b.dataset.tab); };
 $('#labs').onclick = e => { const li = e.target.closest('[data-lab]'); if (li) apriLab(li.dataset.lab); };
 $('#bAggiorna').onclick = caricaLabs;
+$('#bNuovo').onclick = () => apriEditor();
 $('#bRileggi').onclick = () => apriLab(S.nome, true);
 $('#bPulisci').onclick = () => { $('#outTesto').textContent = ''; $('#outStato').textContent = ''; $('#outTitolo').textContent = 'Output'; };
 $('#bStart').onclick = async e => {
@@ -145,5 +153,6 @@ $('#bEsci').onclick = async () => {
   // indirizzo diretto: http://127.0.0.1:8765/#lab=<nome>&tab=<topo|riep|test|arch|reg>
   const h = new URLSearchParams(location.hash.slice(1));
   if (h.get('lab') && S.labs.includes(h.get('lab'))) { await apriLab(h.get('lab')); if (h.get('tab')) scheda(h.get('tab')); }
+  else if (location.hash === '#nuovo') apriEditor();
   setInterval(aggiornaStato, 10000);
 })();

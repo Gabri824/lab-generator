@@ -13,10 +13,10 @@
 //                                  in chiaro e in scuro, con il controllo di cosa esce dallo schermo
 //
 // Serve Node 22+ (WebSocket integrato) e Chrome/Chromium. Nessuna dipendenza.
-import { spawn } from 'node:child_process';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
+
+import { apriBrowser, pausa, trovaChrome } from './cdp.mjs';
 
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i > 0 ? process.argv[i + 1] : d; };
 const flag = k => process.argv.includes('--' + k);
@@ -27,57 +27,13 @@ const SHOTS = arg('shots');
 const LAB_PATH = arg('lab-path');
 const KATHARA = flag('kathara');
 const VISTE = (arg('viste') || '').split(',').filter(Boolean).map(Number);
-const CHROME = arg('chrome', ['/usr/bin/chromium', '/usr/bin/google-chrome', '/usr/bin/chromium-browser']
-  .find(p => fs.existsSync(p)));
+const CHROME = trovaChrome(arg('chrome'));
 if (!LAB || !CHROME) { console.error('servono --lab e Chrome/Chromium (--chrome)'); process.exit(2); }
 
-const pausa = ms => new Promise(r => setTimeout(r, ms));
-const profilo = fs.mkdtempSync(path.join(os.tmpdir(), 'prova-gui-'));
-const chrome = spawn(CHROME, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profilo}`,
-  '--no-first-run', '--no-default-browser-check', '--disable-gpu', '--window-size=1440,900', 'about:blank'],
-  { stdio: ['ignore', 'ignore', 'pipe'] });
-const fine = codice => { try { chrome.kill(); } catch (e) { /* già chiuso */ }
-  setTimeout(() => { fs.rmSync(profilo, { recursive: true, force: true }); process.exit(codice); }, 500); };
-
-const wsBrowser = await new Promise((ok, ko) => {
-  let buf = '';
-  chrome.stderr.on('data', d => { buf += d; const m = buf.match(/DevTools listening on (ws:\/\/\S+)/); if (m) ok(m[1]); });
-  setTimeout(() => ko(new Error('Chromium non risponde')), 20000);
-});
-const porta = new URL(wsBrowser).port;
-const pagina = await (await fetch(`http://127.0.0.1:${porta}/json/new?about:blank`, { method: 'PUT' })).json();
-const ws = new WebSocket(pagina.webSocketDebuggerUrl);
-await new Promise(r => ws.addEventListener('open', r));
-let nid = 0; const attese = new Map(); const errori = [];
-ws.addEventListener('message', ev => {
-  const m = JSON.parse(ev.data);
-  if (m.id && attese.has(m.id)) { const { ok, ko } = attese.get(m.id); attese.delete(m.id); m.error ? ko(new Error(m.error.message)) : ok(m.result); return; }
-  if (m.method === 'Page.javascriptDialogOpening') cdp('Page.handleJavaScriptDialog', { accept: true });
-  if (m.method === 'Runtime.exceptionThrown') errori.push(m.params.exceptionDetails.exception?.description || m.params.exceptionDetails.text);
-  if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error') errori.push(m.params.args.map(a => a.value ?? a.description).join(' '));
-  if (m.method === 'Log.entryAdded' && m.params.entry.level === 'error') errori.push(m.params.entry.text + ' ' + (m.params.entry.url || ''));
-});
-function cdp(method, params = {}) {
-  return new Promise((ok, ko) => { const id = ++nid; attese.set(id, { ok, ko }); ws.send(JSON.stringify({ id, method, params })); });
-}
-async function js(expr) {
-  const r = await cdp('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true });
-  if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text);
-  return r.result.value;
-}
-async function aspetta(cond, ms, cosa) {
-  const t0 = Date.now();
-  while (Date.now() - t0 < ms) { if (await js(cond)) return true; await pausa(500); }
-  throw new Error(`tempo scaduto (${Math.round(ms / 1000)} s): ${cosa}`);
-}
-const testo = sel => js(`(() => { const e = document.querySelector(${JSON.stringify(sel)}); return e ? e.innerText.trim() : null; })()`);
-const visibile = sel => js(`(() => { const e = document.querySelector(${JSON.stringify(sel)}); return !!e && !e.hidden && e.offsetParent !== null; })()`);
-async function scatta(nome) {
-  if (!SHOTS) return;
-  fs.mkdirSync(SHOTS, { recursive: true });
-  const r = await cdp('Page.captureScreenshot', { format: 'png' });
-  fs.writeFileSync(path.join(SHOTS, nome + '.png'), Buffer.from(r.data, 'base64'));
-}
+const B = await apriBrowser(CHROME);
+const { cdp, js, aspetta, testo, visibile, errori } = B;
+const fine = B.chiudi;
+const scatta = nome => B.scatta(SHOTS, nome);
 // premi un pulsante e aspetta che il risultato compaia in `risultato` (svuotato prima) e che il
 // pulsante torni attivo; senza `risultato` si aspetta la fine del lavoro nel riquadro Output
 async function premi(bottone, risultato, ms = 180000, pronto = null) {
@@ -102,8 +58,6 @@ async function passo(nome, f) {
 }
 
 try {
-  await cdp('Page.enable'); await cdp('Runtime.enable'); await cdp('Log.enable');
-  await cdp('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
   await cdp('Page.navigate', { url: `${URL_GUI}#lab=${encodeURIComponent(LAB)}&tab=topo` });
   await aspetta(`document.querySelector('#labNome')?.textContent === ${JSON.stringify(LAB)}`, 30000, 'apertura del lab');
   await pausa(800);
@@ -304,5 +258,4 @@ try {
 fs.writeFileSync(OUT, JSON.stringify(esito, null, 1));
 console.log(`\n${Object.keys(esito.passi).length} passi, ${errori.length} errori nella console -> ${OUT}`);
 for (const e of errori) console.log('  console: ' + e);
-ws.close();
 fine(esito.fatale ? 1 : 0);

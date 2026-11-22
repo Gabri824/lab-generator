@@ -8,7 +8,8 @@ La pagina della GUI (src/gui/static/) e come il server la consegna.
   giusto; ogni nome importato è esportato dal modulo da cui viene.
 - La pagina rispetta la regola di sicurezza: niente script in linea né attributi onclick=.
 - Gli elementi che il codice cerca per id ($('#...')) esistono nella pagina o nel codice che li crea.
-- Con Node: sintassi di ogni modulo e test dei componenti (tests/js/componenti.test.mjs).
+- Con Node: sintassi di ogni modulo, test dei componenti e delle etichette delle interfacce
+  (tests/js/componenti.test.mjs, tests/js/etichette.test.mjs).
 
 Le prove nel browser vero (schede, comandi Kathará, larghezze) sono in tests/strumenti/prova_gui.mjs.
 """
@@ -164,9 +165,11 @@ class TestJavaScript(unittest.TestCase):
                 self.assertEqual(0, r.returncode, r.stderr)
 
     def test_componenti(self):
-        r = subprocess.run(['node', '--test', os.path.join(TESTS, 'js', 'componenti.test.mjs')],
-                           capture_output=True, text=True, timeout=120)
-        self.assertEqual(0, r.returncode, r.stdout[-3000:] + r.stderr[-2000:])
+        for nome in ('componenti.test.mjs', 'etichette.test.mjs'):
+            with self.subTest(file=nome):
+                r = subprocess.run(['node', '--test', os.path.join(TESTS, 'js', nome)],
+                                   capture_output=True, text=True, timeout=120)
+                self.assertEqual(0, r.returncode, r.stdout[-3000:] + r.stderr[-2000:])
 
 
 if __name__ == '__main__':

@@ -1,0 +1,68 @@
+/* Editor grafico dei lab nuovi (fase 4). Stesse misure e colori della base; il foglio da disegno
+   resta bianco come la Topologia. */
+
+.aside-nuovo { width: 100%; margin-bottom: var(--s-3); }
+.ed-nome input { width: 220px; }
+
+.editor { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: var(--s-4); margin-top: var(--s-3); }
+.editor .canvas { height: max(460px, calc(100vh - 330px)); }
+.ed-strumenti { display: flex; flex-wrap: wrap; gap: 4px; }
+.ed-strumenti button[aria-pressed=true] { background: #2563eb; border-color: #2563eb; color: #fff; }
+@media (hover: hover) and (pointer: fine) {
+  .toolbar .ed-strumenti button[aria-pressed=true]:not(:disabled):hover { background: #1d4ed8; border-color: #1d4ed8; }
+}
+kbd { font: 600 11px/1 var(--mono); padding: 2px 4px; border-radius: 4px; border: 1px solid currentColor; opacity: .75; }
+.ed-aiuto { margin: 0; padding: 6px 10px; border-bottom: 1px solid #e2e8f0; color: #526074; background: #fff; min-height: 30px; }
+.ed-aiuto.warnline { color: #b45309; }
+#edSvg.ed-aggiungi { cursor: crosshair; }
+#edSvg.ed-collega { cursor: alias; }
+
+#edPannello h3 { margin: 0; font-size: 16px; }
+#edPannello .prop__campo { margin-bottom: var(--s-3); }
+#edPannello .prop__campo label { font-size: var(--t-small); font-weight: 500; color: var(--mut); }
+#edPannello .prop__campo input { width: 100%; }
+.ed-sotto { font-size: var(--t-small); margin: var(--s-4) 0 var(--s-2); color: var(--mut); font-weight: 600; }
+.ed-intf td { vertical-align: middle; padding: 4px 4px; }
+.ed-intf input { width: 100%; min-width: 0; min-height: var(--h-ctl-sm); }
+.ed-ord { white-space: nowrap; }
+.ed-ord button { min-height: 26px; padding: 0 6px; }
+.ed-membri, .ed-problemi { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.ed-problemi li { font-size: var(--t-small); }
+.ed-vai { white-space: normal; text-align: left; justify-content: flex-start; color: var(--txt); font-weight: 400; height: auto; padding: 4px 8px; }
+.ed-tasti { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 0; font-size: var(--t-small); }
+.ed-tasti dt { font-family: var(--mono); font-weight: 600; }
+.ed-tasti dd { margin: 0; color: var(--mut); }
+
+@media (max-width: 1100px) {
+  .editor { grid-template-columns: 1fr; }
+}
+
+/* pannello completo (4.4): tabelle di rotte statiche, deleghe e record DNS */
+.ed-tab { margin: 0 0 var(--s-2); }
+.ed-tab th { padding: 2px 4px; }
+.ed-tab td { padding: 2px 4px 2px 0; vertical-align: top; border-bottom: 0; }
+.ed-tab input, .ed-tab select { width: 100%; min-width: 0; min-height: var(--h-ctl-sm); padding: 0 6px; font-size: var(--t-small); }
+.ed-tab td:last-child { width: 1%; white-space: nowrap; }
+.ed-casella { margin: var(--s-1) 0 var(--s-2); }
+.ed-zona-dns { border-left: 3px solid var(--bor); padding-left: var(--s-3); margin-bottom: var(--s-3); }
+#edPannello .campo__errore { margin: 2px 0 0; }
+
+/* creazione (4.5): barra della bozza e anteprima dei file */
+.ed-bozza { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; margin-top: var(--s-2); }
+.ed-anteprima { margin-top: var(--s-4); }
+.ed-ant-corpo { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: var(--s-3); }
+.ed-ant-file { list-style: none; margin: 0; padding: 0; max-height: 420px; overflow: auto; border: 1px solid var(--bor); border-radius: var(--r-md); }
+.ed-ant-file button { width: 100%; justify-content: flex-start; border: 0; border-radius: 0; background: transparent; color: var(--txt);
+  font: var(--t-small)/1.3 var(--mono); padding: 6px 10px; min-height: 0; white-space: normal; text-align: left; overflow-wrap: anywhere; }
+.ed-ant-file button[aria-current=true] { background: var(--acc-tinta); color: var(--acc); font-weight: 600; }
+.ed-ant-testo { max-height: 420px; margin: 0; white-space: pre; }
+@media (hover: hover) and (pointer: fine) {
+  .ed-ant-file button:not(:disabled):hover { background: var(--pan-2); transform: none; }
+}
+@media (max-width: 860px) { .ed-ant-corpo { grid-template-columns: 1fr; } }
+
+/* IP con la parte fissa della subnet già scritta */
+.ed-ip { display: inline-flex; align-items: center; gap: 2px; font-family: var(--mono); font-size: var(--t-small); }
+.ed-ip__fisso { color: var(--mut); white-space: nowrap; }
+.ed-ip input { width: 5.5em; }
+.ed-intf select { min-height: var(--h-ctl-sm); padding: 0 4px; font-size: var(--t-small); }

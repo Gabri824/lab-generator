@@ -12,6 +12,9 @@ python -c "import sys; sys.path.insert(0, 'src'); import core; from gui import s
 node tests/strumenti/prova_gui.mjs --url http://127.0.0.1:8791/ --lab papillon_mio --out dopo.json \
      --kathara --lab-path /tmp/labs/papillon_mio --viste 1440,1024,768 --shots foto
 python tests/strumenti/confronta_gui.py prima.json dopo.json
+
+# editor grafico: disegna un lab con mouse e tastiera veri (circa un minuto)
+node tests/strumenti/prova_editor.mjs --url http://127.0.0.1:8791/ --shots foto
 ```
 
 `prova_gui.mjs` non preme "Apri terminale" (aprirebbe una finestra sul desktop): quello va
@@ -34,6 +37,8 @@ copia, non i lab veri.
 ## Topologia
 
 - [ ] Disegno con AS, LAN, interfacce; "Riordina", "Adatta", interfacce sì/no.
+- [ ] Costo OSPF `c<N>` accanto all'interfaccia solo dove `frr.conf` ha `ospf cost`; sparisce con
+      "interfacce" spento.
 - [ ] Trascinamento dei nodi e dello sfondo, rotellina per lo zoom; le posizioni restano dopo
       una nuova apertura.
 - [ ] Clic su un dispositivo: pannello con interfacce, file, comandi (`show ip route`,
@@ -65,6 +70,26 @@ copia, non i lab veri.
 - [ ] Con "riduci movimento" del sistema niente animazioni.
 - [ ] Pagina dei componenti `/static/prova.html`: anteprima, conflitto, errori sotto i campi,
       livelli, annulla/ripeti con Ctrl+Z e Ctrl+Y.
+
+## Editor grafico (lab nuovi)
+
+- [ ] "+ Nuovo lab" apre l'editor; "Chiudi editor" torna al lab o alla pagina iniziale.
+- [ ] R, H, W, D, N mettono router, host, WWW, DNS, nodo LAN con un clic; Esc torna a Seleziona.
+- [ ] L: dispositivo -> dispositivo (link diretto), -> nodo LAN, -> linea di un link diretto
+      (diventa nodo LAN).
+- [ ] Subnet sulla LAN, IP automatici sul disegno, IP scritto a mano nel pannello, frecce per
+      l'ordine delle interfacce.
+- [ ] Trascinamento con la griglia, selezione con Maiusc, Canc, Ctrl+Z e Ctrl+Y.
+- [ ] A, I, O: riquadro AS, zona RIP, area OSPF trascinando; valore da scrivere (prima area
+      0.0.0.0), stub, ridimensionamento dagli angoli; router colorati per AS, segno ABR.
+- [ ] Pannelli: ridistribuzione, network OSPF/RIP, rotte statiche; gateway; DNS (tipo per ".",
+      deleghe, zone e record, ricorsione, DNSSEC); resolver del lab e "Proponi subnet".
+- [ ] Controlli dal vivo: un errore (es. gateway fuori rete) compare dopo mezzo secondo sotto il
+      campo e sul disegno, e sparisce quando si corregge.
+- [ ] Anteprima file; Crea laboratorio (nome obbligatorio, conferma e copia di sicurezza se esiste);
+      il lab si apre con la Topologia disposta come nel disegno; l'editor riparte vuoto.
+- [ ] Bozza ripresa dopo aver chiuso la pagina; Nuova bozza; esporta e importa JSON.
+- [ ] Ctrl+D, Ctrl+A, frecce, F.
 
 ## Eseguibile
 

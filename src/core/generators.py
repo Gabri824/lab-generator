@@ -181,12 +181,17 @@ def crea_host_multi(base_path, hname, interfaces, gateway=None, gw_dev='eth0'):
         pass
 
 
+def pagina_www(name):
+    """index.html che il generatore scrive per il server web `name` (la rinomina la riconosce)."""
+    return f"<html><head><title>{name}</title></head><body><h1>Server {name}</h1></body></html>"
+
+
 def crea_www_file(base_path, name, ip_cidr, gateway_cidr, lan):
     www_dir = os.path.join(base_path, name, "var", "www", "html")
     os.makedirs(www_dir, exist_ok=True)
     index_path = os.path.join(www_dir, "index.html")
 
-    html_content = f"<html><head><title>{name}</title></head><body><h1>Server {name}</h1></body></html>"
+    html_content = pagina_www(name)
 
     with open(index_path, 'w', encoding='utf-8', newline='\n') as f:
         f.write(html_content)

@@ -1,6 +1,7 @@
 // Topologia: grafo del lab, disposizione automatica, disegno SVG, trascinamento e zoom.
 import { $, COL, esc, mem, S } from './comune.js';
 import { lato } from './dispositivo.js';
+import { etichettaIface, largh, largIface, largLan } from './etichette.js';
 
 // ---------- topologia ----------
 export function colori(lab) {
@@ -133,8 +134,8 @@ export const STILE_SVG = `<style>
 .ga{font:700 16px system-ui,sans-serif;paint-order:stroke;stroke:#fff;stroke-width:5px;stroke-linejoin:round}.gp{font:600 12px system-ui,sans-serif}.nodo{cursor:pointer}
 .sel{stroke:#0f172a;stroke-width:2.5;fill:none;stroke-dasharray:4 3}
 .ring{stroke:#f59e0b;stroke-width:5;fill:none}.ord{font:700 11px system-ui,sans-serif;fill:#fff}
+.cs{fill:#fef3c7;stroke:#d97706;stroke-width:1}.ct{font:700 11px system-ui,sans-serif;fill:#92400e}
 </style>`;
-export const largh = (testo, px) => testo.length * px * 0.62;
 // protocolli interni di un AS (dai demoni FRR dei suoi router)
 export function igpGruppo(G, g) {
   const p = new Set();
@@ -158,19 +159,6 @@ export function latoNome(G, pos, n) {
     if (dist > punti + 0.35) { punti = dist; meglio = a; }
   }
   return meglio;
-}
-// etichetta di interfaccia: [eth0|1] = nome dell'interfaccia + ultimo numero dell'IP
-export const numIp = it => it.ip ? it.ip.split('/')[0].split('.')[3] : '';
-export const largIface = it => largh(it.dev, 11) + 8 + (numIp(it) ? largh(numIp(it), 11) + 9 : 0);
-export const largLan = l => largh(l.lan + '  ' + (l.subnet || ''), 11) + 10;
-export function etichettaIface(it, x, y, colore) {
-  const num = numIp(it);
-  const w1 = largh(it.dev, 11) + 8, w2 = num ? largh(num, 11) + 9 : 0, w = w1 + w2, x0 = x - w / 2;
-  let h = `<rect class="pill" x="${x0}" y="${y - 9}" width="${w}" height="18" rx="4"/>`;
-  h += `<text class="pt" x="${x0 + w1 / 2}" y="${y + 4}" text-anchor="middle">${esc(it.dev)}</text>`;
-  if (num) h += `<rect x="${x0 + w1}" y="${y - 9}" width="${w2}" height="18" rx="4" fill="${colore}"/><rect x="${x0 + w1}" y="${y - 9}" width="4" height="18" fill="${colore}"/>`
-             + `<text class="nt" x="${x0 + w1 + w2 / 2}" y="${y + 4}" text-anchor="middle">${esc(num)}</text>`;
-  return h;
 }
 export const RAGGIO = {router: 22, host: 19, www: 19, dns: 19};
 // Posizione delle etichette senza sovrapposizioni. Ogni etichetta scivola lungo il

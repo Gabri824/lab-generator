@@ -729,9 +729,14 @@ def _piano_diretto(titolo, modifiche, note=None, vuoto=None, spostati=None):
 
 
 def dopo_scrittura(lab_path, piano=None, routers=None):
-    """Da chiamare dopo scrivi_piano (GUI): rigenera dai file l'XML dei metadati, fuori dal lab."""
+    """Da chiamare dopo la scrittura di un piano (GUI e terminale): rigenera dai file l'XML dei
+    metadati, fuori dal lab; dopo una rinomina sposta anche la posizione del dispositivo nel disegno
+    salvato dalla GUI (.labgenerator/<lab>/disegno.json), così la Topologia resta com'era."""
     from .persistence import rigenera_xml
+    from .supporto import rinomina_nel_disegno
     rigenera_xml(lab_path)
+    if piano and piano.get('rinomina'):
+        rinomina_nel_disegno(lab_path, *piano['rinomina'])
 
 
 def _calcola_sostituzione(stato, ip_map, iface_map, net_map, titolo, extra=None, note=None):
@@ -1155,8 +1160,10 @@ def _nuovo_percorso(rel, vecchio, nuovo):
 
 
 def calcola_rinomina(stato, vecchio, nuovo):
-    """Rinomina un dispositivo: lab.conf, cartella e file del dispositivo, hostname in vtysh.conf, le
-    'neighbor ... description' degli altri router che lo citano e, dopo la scrittura, l'XML."""
+    """Rinomina un dispositivo: lab.conf, cartella e file del dispositivo, hostname in vtysh.conf, la
+    pagina index.html del server web se è ancora quella del generatore, le 'neighbor ... description'
+    degli altri router che lo citano e, dopo la scrittura, l'XML."""
+    from .generators import pagina_www
     from .modello import correggi_nome_kathara, errore_nome_dispositivo
     lab = stato['percorso']
     nuovo = (nuovo or '').strip()
@@ -1172,7 +1179,8 @@ def calcola_rinomina(stato, vecchio, nuovo):
         raise ErroreOperazione(f"Nome '{nuovo}' già usato. Scegli un altro.")
 
     parola = re.compile(rf'(?<![\w.-]){re.escape(vecchio)}(?![\w-])')
-    modifiche, spostati = {}, {}
+    modifiche, spostati, note = {}, {}, []
+    pagina = f"{vecchio}/var/www/html/index.html"
     lc = 'lab.conf'
     v = _righe_file(os.path.join(lab, lc))
     modifiche[lc] = (v, [re.sub(rf"^(\s*){re.escape(vecchio)}(\s*\[)", rf"\g<1>{nuovo}\g<2>", l) for l in v])
@@ -1186,6 +1194,11 @@ def calcola_rinomina(stato, vecchio, nuovo):
         if rel.endswith(os.path.join('etc', 'frr', 'vtysh.conf')):
             nuove = [re.sub(rf'^(\s*hostname\s+){re.escape(vecchio)}(-frr)?\s*$',
                             lambda m: f"{m.group(1)}{nuovo}{m.group(2) or ''}", l) for l in nuove]
+        if rel.replace(os.sep, '/') == pagina:
+            if '\n'.join(righe).strip() == pagina_www(vecchio):
+                nuove = [pagina_www(nuovo)]
+            elif parola.search('\n'.join(righe)):
+                note.append(f"{pagina} non aggiornato: l'hai modificato tu, il nome {vecchio} scritto dentro resta com'è.")
         modifiche[rel] = (righe, None)
         modifiche[_nuovo_percorso(rel, vecchio, nuovo)] = (None, nuove)
         spostati[rel] = _nuovo_percorso(rel, vecchio, nuovo)
@@ -1202,10 +1215,11 @@ def calcola_rinomina(stato, vecchio, nuovo):
         nu = [parola.sub(nuovo, l) if re.match(r'\s*neighbor\s+\S+\s+description\s', l) else l for l in v]
         if nu != v:
             modifiche[rel] = (v, nu)
-    note = []
     if liste_col_nome:
         note.append(f"I nomi di prefix-list e route-map che contengono {vecchio} restano uguali: funzionano lo stesso.")
-    return _piano_diretto(f"Rinomina {vecchio} -> {nuovo}", modifiche, note, spostati=spostati)
+    piano = _piano_diretto(f"Rinomina {vecchio} -> {nuovo}", modifiche, note, spostati=spostati)
+    piano['rinomina'] = [vecchio, nuovo]     # dopo la scrittura: anche le posizioni del disegno della GUI
+    return piano
 
 
 # ----------------------------------------------------------------------------- 13. aggiungi / togli un dispositivo

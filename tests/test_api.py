@@ -143,6 +143,26 @@ class TestOperazioni(ServerDiProva):
                                 impronte=ant['impronte'], firma=ant['firma'])
         self.assertEqual((200, False), (codice, r['scritto']))
 
+    def test_costo_arriva_alla_topologia(self):
+        # la Topologia mostra solo i costi scritti nel frr.conf: dopo l'applica il dato c'è
+        p = self.lab('papillon_mio')
+        def costi(nome):
+            with c.silenzio():
+                lab = c.dati.leggi_lab(c.core, p)
+            d = next(x for x in lab['dispositivi'] if x['nome'] == nome)
+            return {it['dev']: it['costo'] for it in d['interfacce']}
+        self.assertEqual({'eth0': None, 'eth1': None, 'eth2': None}, costi('r1'))
+        self.anteprima_e_applica('papillon_mio', 'costo_ospf', {'router': 'r1', 'interfaccia': 'eth1', 'costo': 50})
+        self.assertEqual({'eth0': None, 'eth1': '50', 'eth2': None}, costi('r1'))
+        self.assertEqual('100', costi('r2')['eth0'])
+
+    def test_rinomina_del_server_web(self):
+        # dalla GUI: la pagina del generatore segue il nome nuovo
+        p = self.lab('papillon_mio')
+        self.anteprima_e_applica('papillon_mio', 'rinomina', {'vecchio': 'server', 'nuovo': 'web1'})
+        with open(os.path.join(p, 'web1', 'var', 'www', 'html', 'index.html'), encoding='utf-8') as f:
+            self.assertIn('<h1>Server web1</h1>', f.read())
+
     def test_registro(self):
         self.lab('papillon_mio')
         self.anteprima_e_applica('papillon_mio', 'costo_ospf', {'router': 'r2', 'interfaccia': 'eth0', 'costo': 7})
@@ -321,6 +341,8 @@ class TestLabNuovi(ServerDiProva):
         self.assertEqual({f['file']: c.normalizza(f['testo']) for f in ant['file']}, albero,
                          "si crea esattamente quello che l'anteprima mostra")
         self.assertEqual(disegno, self.richiesta('GET', '/api/stato_lab?nome=piccolo')[1]['disegno'])
+        self.assertEqual({'disegno': disegno}, self.richiesta('GET', '/api/disegno?lab=piccolo')[1])
+        self.assertEqual(400, self.richiesta('GET', '/api/disegno?lab=..')[0])
 
         codice, r = self.azione(azione='crea_lab', nome='piccolo', modello=MODELLO)
         self.assertEqual((200, False, True), (codice, r['creato'], r['esiste']))

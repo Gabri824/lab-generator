@@ -308,6 +308,17 @@ Primo traguardo usabile: **disegnare un lab e generarlo**.
 Una bozza non ancora generata esiste solo nella GUI. Dalla generazione in poi il lab è lo stesso
 per entrambe le interfacce.
 
+Decisioni (2026-11-22):
+- un elemento entra in una zona (AS, RIP, area OSPF) **per posizione**: si trascina dentro il
+  riquadro; il pannello mostra a quali zone appartiene;
+- nomi automatici dei router `as<AS>r<n>` dentro un riquadro AS, altrimenti `r<n>`; sempre
+  modificabili;
+- le subnet le scrive l'autore (sono date dalla traccia); "proponi subnet" riempie i link
+  punto-punto lasciati vuoti;
+- sottofasi: 4.1 modello della bozza, 4.2 editor di base, 4.3 zone, 4.4 pannello proprietà e
+  controlli dal vivo, 4.5 anteprima, creazione, bozza salvata, JSON/XML e tasti rapidi. Ogni
+  sottofase viene spiegata prima di farla.
+
 ### Fase 5: lab esistenti, modifica grafica e Opzioni nella GUI
 
 - Ogni gesto sul disegno diventa un'operazione con anteprima delle differenze, invece di una
@@ -795,9 +806,223 @@ Nuovo modulo `src/gui/api.py`; `server.py` gli passa le azioni e tiene i comandi
     sue opzioni, e passa al successivo se uno esce con errore (`tests/test_terminale.py`).
   - `--output` al posto di `--out` viene ignorato in silenzio: rimandato (sezione 8).
 
+## Fase 4: completata (2026-11-22) — editor grafico per i lab nuovi
+
+### Fase 4.1: completata (2026-11-22) — modello della bozza
+
+- `src/gui/static/js/editor/bozza.js`: la bozza (il disegno come dati, versione 1) e
+  `converti(bozza)`, che la traduce nel modello del wizard (`{routers, hosts, wwws, resolver}`).
+  Gira nel browser, senza internet (come il resto della pagina) e con Node per i test.
+  - Zone per posizione: AS e RIP sul centro del router, aree OSPF sul nodo della LAN o sul punto
+    di mezzo del link diretto; router di confine con l'area di ogni rete, la backbone come area
+    principale, le aree stub (mai la backbone).
+  - Automatici: IP (prima i router, poi gli altri; niente rete, broadcast e IP presi; /31 e /32
+    interi), subnet ricavata dal primo IP scritto, gateway dal primo router della LAN, nomi
+    `as<AS>r<n>` / `r<n>` / `host<n>` / `www<n>` / `root` / `dns<n>`, lettere delle LAN fino a
+    `AA`, `AB`...
+  - Network IGP come il wizard (decisione 4.1): sui router con una sola area restano quelle
+    proposte dal motore, sugli ABR le reti precise.
+  - Problemi del solo disegno, legati all'elemento: subnet mancante o non valida o sovrapposta,
+    IP fuori subnet, di rete/broadcast o doppio, link diretto senza due estremi, router in due AS,
+    LAN in due aree, server con più interfacce, resolver che non è un DNS, nomi non validi o
+    doppi, dispositivo non collegato (avviso).
+  - Strumenti per l'editor: `rinumera` (nuova subnet, stessa parte host), `proponiSubnet` (/30
+    libere dal blocco del lab, decisione 4.1: il pulsante funziona quando il blocco è scritto),
+    `elementoDelCampo` (dal campo di `valida_lab` all'elemento del disegno).
+- Scenario nuovo del wizard `ospf_abr_statiche`: `ospf_multiarea_statiche` non si può disegnare
+  (la LAN A sta in due aree diverse, che `valida_lab` segnala come avviso); la variante ha la LAN
+  A nella sola area 0 e r2 router di confine.
+- Verifiche: quattro bozze (`tests/bozze/`) ridisegnano gli scenari del wizard e, generate per la
+  strada della GUI (`api.crea_lab`), danno **esattamente** i file del wizard (`tests/test_bozza.py`);
+  18 test con Node delle regole (`tests/js/bozza.test.mjs`); ogni regola tolta apposta fa fallire
+  un test. 119 test Python (più quelli con Node).
+
+### Fase 4.2: completata (2026-11-22) — editor di base
+
+- "+ Nuovo lab" sopra l'elenco dei lab (o `#nuovo` nell'indirizzo) apre l'editor al posto della
+  vista del lab; "Chiudi editor" torna indietro. La bozza resta in memoria finché la pagina è
+  aperta (salvataggio nel browser: 4.5).
+- Strumenti con i tasti: Router `R`, Host `H`, WWW `W`, DNS `D`, nodo LAN `N`, Collega `L`, Esc
+  per Seleziona (e, su Seleziona, per togliere la selezione), Canc per eliminare, Ctrl+Z/Ctrl+Y.
+- Decisioni 4.2: trascinare lo sfondo sposta la vista, Maiusc+trascinamento seleziona un'area,
+  Maiusc+clic aggiunge alla selezione; un terzo dispositivo collegato a un link diretto lo
+  trasforma in nodo LAN (stessa subnet e lettera); griglia di 20 px, disattivabile.
+- Disegno con le icone e le etichette della Topologia (riusa le sue funzioni senza cambiarle); le
+  etichette delle interfacce appartengono al loro link (un clic lì vale come sul link); IP
+  automatici e lettere delle LAN dal vivo; elementi con errori cerchiati in rosso.
+- Pannello semplice: nome del dispositivo, interfacce con LAN e IP (vuoto = automatico) e ordine
+  eth0, eth1... (frecce); LAN con nome e subnet (cambiandola si rinumera); collegamento con IP;
+  problemi del disegno; tasti.
+- Codice: `js/editor/azioni.js` (azioni sulla bozza, solo dati), `disegno.js`, `editor.js`;
+  `componenti/storia.js` ora accetta quando i tasti valgono (solo a editor aperto).
+- Verifiche: 8 test con Node delle azioni (`tests/js/azioni.test.mjs`, ogni azione tolta apposta
+  fa fallire un test); `tests/strumenti/prova_editor.mjs` in Chromium con mouse e tastiera veri
+  disegna `ospf_abr`, scrive subnet e IP nel pannello e ottiene lo stesso modello della bozza di
+  riferimento (senza zone); poi trascinamento con griglia, selezione ad area, eliminazione,
+  terzo dispositivo, annulla e ripeti tutto, foto a 1440/1024/768 in chiaro e scuro. Le schede
+  di prima restano identiche (`prova_gui.mjs`, ora con le parti comuni in `cdp.mjs`).
+- Il pilota dell'editor si lancia a mano (circa un minuto): in Chromium senza finestra alcuni
+  movimenti del mouse simulati aspettano 5 secondi la conferma del browser. Non dipende
+  dall'editor (non cambia togliendo la cattura del puntatore) e non succede nel browser vero.
+
+### Fase 4.3: completata (2026-11-22) — zone
+
+- Strumenti AS (`A`), RIP (`I`), area OSPF (`O`): si trascina un rettangolo (un clic dà un
+  riquadro 240x160); poi si torna a Seleziona con il valore della zona pronto da scrivere.
+  Decisioni 4.3: AS da scrivere (errore finché manca), prima area proposta `0.0.0.0`, le altre da
+  scrivere; si ridimensiona dai 4 angoli (lato minimo 40), si sposta dall'etichetta o dal bordo.
+- Disegno: zone dietro a tutto (le più grandi sotto), il fondo lascia passare i clic; riquadri AS
+  nel colore dell'AS e router dello stesso colore; RIP tratteggiata marrone, aree a trattini con
+  "stub" nell'etichetta; segno "ABR" sui router di confine.
+- Pannelli: zona con valore, stub, elenco di router o LAN e router di confine; router con i
+  protocolli ricavati dalle zone; LAN con la sua area.
+- `converti`: ogni zona controllata una volta (AS o area mancanti o non validi: errore; zona
+  vuota: avviso); un AS non valido non dà BGP; restituisce i membri di ogni zona e i router di
+  confine.
+- Verifiche: test con Node delle zone (creazione, valori iniziali, ridimensionamento da ogni
+  angolo, lato minimo, valore e stub, spostamento ed eliminazione, controlli in `converti`);
+  ogni regola tolta apposta fa fallire un test. Il pilota disegna con mouse e tastiera le zone di
+  `ospf_abr` e il lab `bgp_ibgp_due_as` (due AS, un'area, nomi scritti nel pannello) e ottiene
+  **esattamente** il modello delle bozze di riferimento, che generano gli stessi file del wizard
+  (unica differenza voluta: "redistribute bgp: no" di r1, che arriva con il pannello completo
+  nella 4.4).
+
+### Fase 4.4: completata (2026-11-22) — pannelli completi e controlli dal vivo
+
+- Pannelli (`js/editor/pannelli.js`):
+  - router: "ridistribuisci BGP nell'IGP" (solo con BGP e OSPF/RIP); network OSPF/RIP proposte
+    dal motore e sovrascrivibili (decisione 4.4; vuoto = proposte, come Invio nel wizard; sui
+    router di confine le decidono le aree); rotte statiche (rete, via, interfaccia);
+  - host, WWW e DNS: gateway (vuoto = proposto dal router della LAN);
+  - DNS: tipo per "." (master, hint, nessuno), deleghe dal root, zone con la tabella dei record
+    (decisione 4.4: A, NS con glue, CNAME, DELEGATION), ricorsione e reti ammesse, "disattiva la
+    validazione DNSSEC" (stesso significato del wizard: `dnssec-validation no`);
+  - lab: resolver finale, blocco e "Proponi subnet".
+- Un DNS nuovo parte con le impostazioni iniziali del wizard; le deleghe valgono solo per chi è
+  master di "."; le zone DNS della bozza sono un elenco di righe, tradotto da `converti` nel
+  formato del wizard.
+- Controlli del motore dal vivo (decisione 4.4): 0,4 s dopo ogni modifica `valida_lab` (modalità
+  "lab in costruzione"); errori e avvisi nel pannello del lab (clic = vai all'elemento), sotto il
+  campo giusto e cerchiati sul disegno; le risposte vecchie si scartano e il testo che si sta
+  scrivendo non viene toccato.
+- Verifiche: test con Node delle proprietà e della traduzione (network scritte, record, deleghe,
+  impostazioni iniziali del DNS); ogni regola tolta apposta fa fallire un test. Il pilota disegna
+  con mouse e tastiera tre lab completi (`ospf_abr`, `bgp_ibgp_due_as` con la ridistribuzione
+  tolta, e il lab DNS con router in zona RIP, host e server web con gateway, root con delega,
+  autoritativo per `com` con i record, resolver con ricorsione e resolver del lab): i file che il
+  server genera sono **identici** a quelli del wizard (14, 14 e 26 file). Un gateway sbagliato
+  scritto apposta compare dal vivo con il messaggio del motore e sparisce dopo la correzione.
+- La prova con Kathará del lab DNS (avvio, ping, risoluzione dei nomi) si fa a Docker acceso,
+  insieme alla fase dei comandi web (sotto).
+
+### Proposta da confermare (2026-11-22): comandi web e apache2
+
+Idea dell'autore durante la 4.4, da fare dopo la fase 4 e la sua prova guidata, in GUI e
+terminale:
+- `links` sul client per vedere la pagina web (`links -dump http://<IP o nome>` nella GUI, che non
+  è un terminale interattivo; dal vivo con `kathara connect`): verifica insieme routing, gateway,
+  risoluzione dei nomi e server web;
+- a lab acceso, controllo che apache2 sia attivo sui server WWW e, se no, avvio con
+  `systemctl start apache2` senza cambiare i file (lo startup lo contiene già).
+Verifica fatta (2026-11-22, Docker acceso): il lab DNS generato dalla bozza dell'editor
+(`tests/bozze/dns_root_auth_resolver.json`, strada della GUI) si avvia con Kathará; dal client
+`host1` il ping al server web risponde, `dig`/`host` risolvono `www.com` e `web.com` (CNAME)
+tramite il resolver del lab, `dig +trace` mostra la catena root -> `com.` -> `www.com`, e
+`links -dump http://www.com/` (anche per IP e per `web.com`) mostra la pagina "Server www1";
+apache2 e bind attivi. In `kathara/base` ci sono `links`, `curl`, `wget`, `dig`, `host`,
+`nslookup` (non `lynx` né `w3m`).
+
+### Fase 4.5: completata (2026-11-22) — creare il lab
+
+Decisioni (2026-11-22):
+- alla creazione le posizioni del disegno e le zone vanno in `.labgenerator/<lab>/disegno.json`
+  (nessuna configurazione) e la Topologia del lab le usa al posto della disposizione automatica;
+- "partire da un XML" passa alla fase 5: trasformare un lab esistente in un disegno con le zone
+  giuste è lo stesso lavoro della modifica grafica dei lab esistenti;
+- dopo la creazione l'editor riparte da un foglio vuoto (il lab si modifica dalla sua vista;
+  il JSON si può esportare prima);
+- Ctrl+D duplica dispositivi e nodi LAN selezionati e i collegamenti tra loro, spostati di
+  40 px, con nomi e IP automatici.
+
+Fatto:
+- "Anteprima file" (elenco dei file e contenuto, senza scrivere; errori del motore se il lab non
+  si può creare) e "Crea laboratorio" (nome obbligatorio; se il lab esiste chiede conferma e fa
+  la copia di sicurezza; poi apre il lab e scrive l'esito nell'Output).
+- Bozza salvata nel browser a ogni modifica e ripresa alla riapertura; "Nuova bozza"
+  (annullabile); esporta e importa JSON.
+- `disegno.json` alla creazione (posizioni `d:<nome>` e `l:<LAN>`, zone); `GET /api/disegno`; la
+  Topologia usa nell'ordine le posizioni spostate a mano, quelle del disegno, la disposizione
+  automatica.
+- Tasti: Ctrl+D duplica, Ctrl+A seleziona tutto, frecce spostano di un passo della griglia, `F`
+  adatta la vista.
+- Verifiche: test con Node di `duplica`; test di `GET /api/disegno`; il pilota disegna il lab DNS,
+  apre l'anteprima (26 file), lo crea: i file su disco sono **gli stessi del wizard**, la
+  Topologia mostra i dispositivi dove sono stati disegnati, l'editor riparte vuoto; importa un
+  JSON e ricrea lo stesso lab (conferma e copia di sicurezza); bozza ripresa dopo il
+  ricaricamento; Ctrl+D, Ctrl+A, frecce, Nuova bozza e annulla. Il pilota avvia Chromium con
+  le opzioni che evitano il rallentamento delle schede "in sottofondo" (alcuni passi restano
+  lenti: tutto il pilota dura circa 10 minuti).
+
+## Fase 4: lavoro completato (2026-11-22) — prova guidata dell'autore fatta, fase chiusa
+
+L'editor disegna un lab nuovo, con zone, pannelli completi e controlli dal vivo, e lo crea: i
+file sono gli stessi del wizard (verificato su quattro lab e con Kathará sul lab DNS).
+
+### Correzioni dalla prova guidata della fase 4 (2026-11-22)
+
+Difficoltà trovate dall'autore ridisegnando papillon, e correzioni approvate:
+- **Interfacce:** un menu `eth0`, `eth1`... nei pannelli del router, della LAN e del collegamento;
+  scegliere un numero scambia le due interfacce (al posto delle frecce).
+- **IP veloci:** il pannello della LAN elenca i dispositivi con interfaccia e IP; la parte fissa
+  della subnet è già scritta e basta il numero finale (o le ultime due parti per le reti più
+  grandi di una /24); vale anche nel pannello del router, senza scrivere la maschera
+  (`completaIp`).
+- **Nomi stabili** (cambia la decisione 4.1): il nome si dà quando si mette il dispositivo (`r1`,
+  `host1`, `www1`, `dns1`, il primo libero) e non cambia più da solo, né entrando in un AS né
+  eliminando altri router; "Rinomina i router come as20r1, as20r2..." nel pannello del riquadro AS,
+  solo su richiesta.
+- **BGP solo dove serve** (cambia la decisione 4.3): il riquadro AS dà l'AS a tutti i suoi router,
+  BGP solo ai router di confine (collegati a un router fuori dal loro AS); "BGP su: tutti i
+  router" nel riquadro per i lab con iBGP; eccezione per router (automatico, sì, no); BGP senza
+  riquadro AS è un errore. Nel modello l'AS c'è solo con BGP, come nel wizard.
+- Verifiche: test con Node delle quattro regole (ogni regola tolta apposta fa fallire un test);
+  la bozza di riferimento `bgp_ibgp_due_as` usa "BGP su tutti i router" e le quattro bozze danno
+  ancora gli stessi file del wizard; il pilota prova le quattro funzioni nel browser.
+
+- Rinomina e Topologia: dopo la rinomina di un dispositivo (terminale o GUI) la sua posizione nel
+  disegno salvato (`disegno.json`, chiave `d:<nome>`) passa al nome nuovo, così la Topologia resta
+  disposta come nel disegno (`supporto.rinomina_nel_disegno`, chiamata da `dopo_scrittura`, che
+  ora usa anche il terminale). Emerso durante la prova: nomi di client e server sbagliati in un lab
+  già creato, corretti dal terminale.
+
+- Costo OSPF sulla Topologia (chiesto nella prova guidata): accanto all'etichetta dell'interfaccia
+  compare `c<N>` solo se il `frr.conf` ha `ospf cost` su quell'interfaccia; senza costo scritto
+  (quello predefinito) non compare niente. Segue la casella "interfacce"; il passaggio del mouse
+  spiega il valore. Le etichette stanno in `js/etichette.js`, senza legami con la pagina, provate
+  con Node (`tests/js/etichette.test.mjs`); `test_api` controlla che un costo applicato arrivi ai
+  dati della Topologia. Rotture apposta (costo sempre visibile, larghezza senza il costo) fanno
+  fallire i test.
+- Verificato con Kathará il costo predefinito: su questa macchina (kernel 7.2, veth a 10 Gbit/s)
+  è 10 senza `auto-cost` e 1 con `auto-cost reference-bandwidth 100`; i messaggi attuali dicono
+  10000 e 10, che valgono solo dove il kernel non dichiara la velocità delle veth (FRR usa allora
+  10 Mbit/s). Per questo la Topologia non confronta il costo con un valore predefinito fisso.
+  Testi da correggere: vedi la sezione 8.
+- Confronto `papillon_mio` / `papillon_gui` della prova: uguali tranne quello aggiunto dopo con
+  le Opzioni (auto-cost, costi, aggregati BGP), il costo della prova del punto 9 e la pagina
+  `index.html` del server rinominato, che diceva ancora `www1`.
+- Rinomina e pagina web: la rinomina (terminale e GUI, `calcola_rinomina`) riscrive anche
+  `<server>/var/www/html/index.html` se è ancora la pagina del generatore (`generators.pagina_www`,
+  ora unico modello); una pagina cambiata a mano resta com'è, con una nota se cita il nome vecchio.
+  Test sulle due strade e sui quattro casi; tre rotture apposta fanno fallire i test.
+
+### Fase 4 chiusa (2026-11-22)
+
+Prova guidata dell'autore fatta su `papillon_gui` (disegnato nell'editor, avviato con Kathará,
+modificato dal terminale e riletto nella GUI): ok dopo le correzioni sopra.
+
 ### Prossimo passo
 
-Fase 4: editor grafico per i lab nuovi (disegnare un lab e generarlo).
+Comandi web e apache2 (proposta sopra, da spiegare e confermare), poi fase 5.
 
 ---
 
@@ -815,4 +1040,5 @@ Cose trovate durante il lavoro e messe da parte di proposito. Non bloccano le fa
 | Riga di soli spazi prima di `redistribute bgp route-map eBGP` | `operazioni.calcola_redistribuzione_route_map` | Viene da `insert_lines_into_protocol_block` con una riga vuota. |
 | Quando le Opzioni aggiornano l'XML lo riscrivono per intero | `persistence._aggiorna_xml` | Cambia, per esempio, `&quot;` in `"` dentro `lab_conf`. Da decidere nella fase 1.7 (XML fuori dal lab, forse rigenerato dai file). |
 | `--output` (o un'opzione scritta male) viene ignorato in silenzio | `main` in [labGenerator.py](../src/labGenerator.py) (`parse_known_args`) | Visto nella prova guidata della fase 3: la GUI partiva sulla cartella corrente senza lab. Proposta: `--output` come sinonimo di `--out` e un avviso per le opzioni non riconosciute. |
+| Il costo OSPF predefinito citato nei messaggi (10000 senza auto-cost, 10 con) non vale ovunque | `analyzer` (avviso 6), `operazioni.calcola_auto_cost` | Misurato con Kathará il 2026-11-22: con veth a 10 Gbit/s è 10 senza auto-cost e 1 con `reference-bandwidth 100`. Proposta: dire che dipende dalla macchina e rimandare a `show ip ospf interface`. |
 | Circa 130 stampe con emoji | tutto il terminale | Protette all'avvio (`reconfigure(errors='replace')`); nessuna è più dentro una domanda. |

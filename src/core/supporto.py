@@ -12,6 +12,7 @@ i file della configurazione ed è sempre pronto da consegnare.
 
 È l'unico punto che decide questi percorsi.
 """
+import json
 import os
 import shutil
 
@@ -59,3 +60,23 @@ def sposta_xml_fuori(lab_path):
     else:
         shutil.move(dentro, fuori)
     return fuori, copia
+
+
+def rinomina_nel_disegno(lab_path, vecchio, nuovo):
+    """Dopo la rinomina di un dispositivo: la sua posizione nel disegno della GUI passa al nome
+    nuovo (chiave 'd:<nome>'). True se il disegno è cambiato; senza disegno non fa nulla."""
+    path = percorso_disegno(lab_path)
+    try:
+        with open(path, encoding='utf-8') as f:
+            disegno = json.load(f)
+    except (OSError, ValueError):
+        return False
+    pos = disegno.get('posizioni') if isinstance(disegno, dict) else None
+    if not isinstance(pos, dict) or f"d:{vecchio}" not in pos or f"d:{nuovo}" in pos:
+        return False
+    disegno['posizioni'] = {(f"d:{nuovo}" if k == f"d:{vecchio}" else k): v for k, v in pos.items()}
+    tmp = path + '.labgen-tmp'
+    with open(tmp, 'w', encoding='utf-8', newline='\n') as f:
+        f.write(json.dumps(disegno, ensure_ascii=False, indent=1) + '\n')
+    os.replace(tmp, path)
+    return True

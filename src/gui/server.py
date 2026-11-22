@@ -363,6 +363,8 @@ class Gestore(BaseHTTPRequestHandler):
                 return self._manda(200, api.stato_lab(st.lab_path(q.get('nome', ''))))
             if u.path == '/api/operazioni':
                 return self._manda(200, api.elenco_operazioni())
+            if u.path == '/api/disegno':
+                return self._manda(200, {'disegno': api.leggi_disegno(st.lab_path(q.get('lab', '')))})
             if u.path == '/api/file':
                 lab = st.leggi_lab(q.get('lab', ''))
                 dev = _dispositivo(lab, q.get('dev'))['nome']

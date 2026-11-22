@@ -1,0 +1,27 @@
+{
+ "versione": 1, "nome": "ospf_abr", "resolver": null, "blocco_subnet": "",
+ "_nota": "Ridisegno dello scenario ospf_abr. Nomi, lettere delle LAN e IP dei router automatici; r2 diventa router di confine per posizione.",
+ "dispositivi": [
+  {"id": "d1", "tipo": "router", "nome": "", "x": 100, "y": 100},
+  {"id": "d2", "tipo": "router", "nome": "", "x": 300, "y": 100},
+  {"id": "d3", "tipo": "router", "nome": "", "x": 500, "y": 100},
+  {"id": "d4", "tipo": "host", "nome": "", "x": 500, "y": 450}
+ ],
+ "lan": [
+  {"id": "l1", "nome": "", "subnet": "10.0.0.0/30", "punto": true},
+  {"id": "l2", "nome": "", "subnet": "10.1.0.0/30", "punto": true},
+  {"id": "l3", "nome": "", "subnet": "10.1.1.0/24", "punto": false, "x": 500, "y": 250}
+ ],
+ "collegamenti": [
+  {"id": "c1", "dispositivo": "d1", "lan": "l1", "ip": ""},
+  {"id": "c2", "dispositivo": "d2", "lan": "l1", "ip": ""},
+  {"id": "c3", "dispositivo": "d2", "lan": "l2", "ip": ""},
+  {"id": "c4", "dispositivo": "d3", "lan": "l2", "ip": ""},
+  {"id": "c5", "dispositivo": "d3", "lan": "l3", "ip": ""},
+  {"id": "c6", "dispositivo": "d4", "lan": "l3", "ip": "10.1.1.10/24"}
+ ],
+ "zone": [
+  {"id": "z1", "tipo": "ospf", "valore": "0.0.0.0", "stub": false, "x": 50, "y": 50, "w": 200, "h": 100},
+  {"id": "z2", "tipo": "ospf", "valore": "1.1.1.1", "stub": true, "x": 260, "y": 50, "w": 400, "h": 300}
+ ]
+}

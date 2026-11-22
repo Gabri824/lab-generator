@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="/static/css/base.css">
 <link rel="stylesheet" href="/static/css/app.css">
 <link rel="stylesheet" href="/static/css/componenti.css">
+<link rel="stylesheet" href="/static/css/editor.css">
 <script type="module" src="/static/js/main.js"></script>
 </head>
 <body>
@@ -22,13 +23,54 @@
 </header>
 <div class="wrap">
   <aside aria-label="Lab disponibili">
+    <button id="bNuovo" class="small aside-nuovo" type="button">+ Nuovo lab</button>
     <div class="aside-h"><h2 class="aside-t">Lab</h2><button id="bAggiorna" class="ghost small" type="button">Aggiorna</button></div>
     <ul id="labs"></ul>
     <div class="muted small" id="base"></div>
   </aside>
   <main>
     <div id="scorri" tabindex="-1">
-      <div id="vuoto" class="vuoto">Scegli un lab dall'elenco a sinistra.</div>
+      <div id="vuoto" class="vuoto">Scegli un lab dall'elenco a sinistra, oppure disegnane uno nuovo con "Nuovo lab".</div>
+      <div id="editor" hidden>
+        <div class="labhead">
+          <h1>Nuovo lab</h1>
+          <label class="campo ed-nome"><span>Nome del lab</span><input id="edNome" placeholder="es. rossimario" size="22" autocomplete="off" spellcheck="false"></label>
+          <div class="sp"></div>
+          <div id="edStoria"></div>
+          <button id="edAnteprimaBtn" type="button">Anteprima file</button>
+          <button id="edCrea" class="primario" type="button">Crea laboratorio</button>
+          <button id="edChiudi" class="ghost" type="button">Chiudi editor</button>
+        </div>
+        <div class="ed-bozza">
+          <span class="small muted" id="edStatoBozza">La bozza si salva da sola in questo browser.</span>
+          <div class="sp"></div>
+          <button id="edNuova" class="ghost small" type="button">Nuova bozza</button>
+          <button id="edEsporta" class="ghost small" type="button">Esporta JSON</button>
+          <button id="edImporta" class="ghost small" type="button">Importa JSON</button>
+          <input id="edFile" type="file" accept=".json,application/json" hidden>
+        </div>
+        <div class="editor">
+          <div class="canvas">
+            <div class="toolbar">
+              <div id="edStrumenti" class="ed-strumenti" role="toolbar" aria-label="Strumenti di disegno"></div>
+              <label class="scelta small"><input type="checkbox" id="edGriglia"> griglia</label>
+              <button id="edAdatta" class="ghost small" type="button">Adatta</button>
+            </div>
+            <p id="edAiuto" class="ed-aiuto small" aria-live="polite"></p>
+            <svg id="edSvg" class="mappa" role="img" aria-label="Disegno del lab"></svg>
+          </div>
+          <div id="edPannello" class="side" aria-live="polite"></div>
+        </div>
+        <section id="edAnteprima" class="card ed-anteprima" aria-labelledby="edAntTitolo" hidden>
+          <div class="riga" style="margin-top:0"><h2 id="edAntTitolo">Anteprima dei file</h2><span id="edAntConta" class="small muted"></span><div class="sp"></div>
+            <button id="edAntChiudi" class="ghost small" type="button">Chiudi anteprima</button></div>
+          <div id="edAntErrori"></div>
+          <div class="ed-ant-corpo">
+            <ul id="edAntFile" class="ed-ant-file" aria-label="File del lab"></ul>
+            <pre id="edAntTesto" class="file ed-ant-testo" tabindex="0" aria-label="Contenuto del file"></pre>
+          </div>
+        </section>
+      </div>
       <div id="vista" hidden>
         <div class="labhead">
           <h1 id="labNome"></h1><span id="labStato" class="badge"></span>

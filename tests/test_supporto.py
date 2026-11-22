@@ -1,18 +1,79 @@
 """
 tests/test_supporto.py
 File di supporto fuori dal lab (src/core/supporto.py): XML dei metadati in .labgenerator/<lab>/,
-rigenerato dai file dopo ogni scrittura; spostamento dell'XML dei lab vecchi.
+rigenerato dai file dopo ogni scrittura; spostamento dell'XML dei lab vecchi; posizioni del disegno
+della GUI che seguono la rinomina di un dispositivo.
 """
+import builtins
+import json
 import os
 import shutil
 import tempfile
 import unittest
+from unittest import mock
 
 import _comune as c
 from core import operazioni as op
 from core.modifiche import scrivi_piano
 from core.persistence import load_lab_from_xml
-from core.supporto import cartella_supporto, percorso_xml, sposta_xml_fuori, xml_nel_lab
+from core.file_utils import _esegui_piano
+from core.stato import leggi_stato
+from core.supporto import cartella_supporto, percorso_disegno, percorso_xml, rinomina_nel_disegno, sposta_xml_fuori, xml_nel_lab
+
+
+class TestDisegnoDopoLaRinomina(unittest.TestCase):
+    """La Topologia usa le posizioni del disegno salvate con i nomi ('d:<nome>'): una rinomina, dal
+    terminale o dalla GUI, sposta la posizione sul nome nuovo."""
+
+    DISEGNO = {'versione': 1, 'posizioni': {'d:as40r1': {'x': 1, 'y': 2}, 'd:as10r1': {'x': 3, 'y': 4}, 'l:A': {'x': 5, 'y': 6}}, 'zone': []}
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.lab = os.path.join(self._tmp.name, 'candy_test')
+        shutil.copytree(os.path.join(c.FIXTURE_LABS, 'candy_test'), self.lab)
+        os.makedirs(cartella_supporto(self.lab), exist_ok=True)
+        with open(percorso_disegno(self.lab), 'w', encoding='utf-8') as f:
+            json.dump(self.DISEGNO, f)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def posizioni(self):
+        with open(percorso_disegno(self.lab), encoding='utf-8') as f:
+            return json.load(f)['posizioni']
+
+    def test_strada_della_gui(self):
+        piano = op.calcola_rinomina(leggi_stato(self.lab), 'as40r1', 'core1')
+        scrivi_piano(self.lab, piano)
+        with c.silenzio():
+            op.dopo_scrittura(self.lab, piano)
+        self.assertEqual({'d:core1': {'x': 1, 'y': 2}, 'd:as10r1': {'x': 3, 'y': 4}, 'l:A': {'x': 5, 'y': 6}}, self.posizioni())
+
+    def test_strada_del_terminale(self):
+        piano = op.calcola_rinomina(leggi_stato(self.lab), 'as40r1', 'core1')
+        with c.silenzio(), mock.patch.object(builtins, 'input', lambda *a: 's'):
+            self.assertTrue(_esegui_piano(self.lab, piano))
+        self.assertIn('d:core1', self.posizioni())
+        self.assertNotIn('d:as40r1', self.posizioni())
+
+    def test_terminale_pagina_web(self):
+        # dal terminale (stessa conferma 's'): la pagina del generatore segue il nome nuovo
+        from core.generators import pagina_www
+        with tempfile.TemporaryDirectory() as tmp:
+            lab = os.path.join(tmp, 'papillon_mio')
+            shutil.copytree(os.path.join(c.FIXTURE_LABS, 'papillon_mio'), lab)
+            piano = op.calcola_rinomina(leggi_stato(lab), 'server', 'web1')
+            with c.silenzio(), mock.patch.object(builtins, 'input', lambda *a: 's'):
+                self.assertTrue(_esegui_piano(lab, piano))
+            with open(os.path.join(lab, 'web1', 'var', 'www', 'html', 'index.html'), encoding='utf-8') as f:
+                self.assertEqual(pagina_www('web1'), f.read().strip())
+
+    def test_casi_senza_effetto(self):
+        self.assertFalse(rinomina_nel_disegno(self.lab, 'nessuno', 'x'))
+        self.assertFalse(rinomina_nel_disegno(self.lab, 'as40r1', 'as10r1'), 'il nome nuovo ha già una posizione')
+        os.remove(percorso_disegno(self.lab))
+        self.assertFalse(rinomina_nel_disegno(self.lab, 'as40r1', 'core1'))
+        self.assertFalse(os.path.exists(percorso_disegno(self.lab)), 'senza disegno non se ne crea uno')
 
 
 class TestSupporto(unittest.TestCase):

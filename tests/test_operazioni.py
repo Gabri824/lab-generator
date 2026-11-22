@@ -175,6 +175,28 @@ class TestStessiFileDelTerminale(unittest.TestCase):
             self.assertFalse(os.path.exists(os.path.join(p, 'as40r1')), 'la cartella vecchia non resta')
             self.assertTrue(os.path.isfile(os.path.join(p, 'core1', 'etc', 'frr', 'frr.conf')))
 
+    def test_rinomina_della_pagina_web(self):
+        """La pagina index.html scritta dal generatore segue il nome nuovo del server web; una pagina
+        cambiata a mano resta com'è (con una nota se cita ancora il nome vecchio)."""
+        from core.generators import pagina_www
+        casi = [
+            (pagina_www('server'), pagina_www('web1'), False),                                  # del generatore
+            (pagina_www('server') + '\n', pagina_www('web1'), False),                          # con l'a capo finale
+            ('<html><body><h1>Benvenuti su server</h1></body></html>', None, True),         # scritta a mano, col nome
+            ('<html><body><h1>Benvenuti</h1></body></html>', None, False),                  # scritta a mano, senza nome
+        ]
+        for prima, attesa, nota in casi:
+            with self.subTest(pagina=prima), tempfile.TemporaryDirectory() as tmp:
+                p = os.path.join(tmp, 'papillon_mio')
+                shutil.copytree(os.path.join(c.FIXTURE_LABS, 'papillon_mio'), p)
+                with open(os.path.join(p, 'server', 'var', 'www', 'html', 'index.html'), 'w', encoding='utf-8') as f:
+                    f.write(prima)
+                piano = op.calcola_rinomina(c.core.leggi_stato(p), 'server', 'web1')
+                scrivi_piano(p, piano)
+                with open(os.path.join(p, 'web1', 'var', 'www', 'html', 'index.html'), encoding='utf-8') as f:
+                    self.assertEqual(attesa or prima.strip(), f.read().strip())
+                self.assertEqual(nota, any('index.html non aggiornato' in n for n in piano['note']), piano['note'])
+
     def test_correzione_dei_nomi_non_validi(self):
         """correggi_nomi_lab usa la rinomina: 'as60-r1' (non valido) diventa 'as60_r1' ovunque."""
         with tempfile.TemporaryDirectory() as tmp:

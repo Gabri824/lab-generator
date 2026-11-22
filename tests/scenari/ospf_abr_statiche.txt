@@ -1,0 +1,66 @@
+# Come ospf_multiarea_statiche, ma disegnabile nella GUI: la LAN A (r1-r2) sta in una sola area
+# (la 0), quindi r2 è router di confine tra l'area 0 e l'area 1.1.1.1 stub. Rotte statiche su r3,
+# host con due interfacce. Riferimento per la bozza tests/bozze/ospf_abr_statiche.json.
+# --- conteggi: router, host, www, dns, conferma
+3
+1
+0
+0
+
+# --- r1: bgp+ospf, AS 100, backbone, 2 interfacce
+
+bgp ospf
+100
+s
+2
+A
+10.0.0.1/30
+B
+10.0.1.1/30
+
+
+# conferma r1
+
+# --- r2: router di confine (area di default 0.0.0.0), A nell'area 0, C nell'area 1.1.1.1 stub
+
+ospf
+
+2
+A
+10.0.0.2/30
+C
+10.1.0.1/24
+10.0.0.0/30, 10.1.0.0/24
+n
+
+1.1.1.1
+s
+
+# --- r3: ospf + statico nell'area di default, 2 rotte statiche
+
+ospf statico
+
+1
+B
+10.0.1.2/30
+
+2
+default
+10.0.1.1
+
+30.0.0.0/24
+10.0.1.1
+eth0
+
+# --- host1: due interfacce, gateway sulla prima
+
+2
+10.1.0.10/24
+C
+192.168.5.10/24
+D
+10.1.0.1
+
+
+# --- menu post-creazione: termina
+0
