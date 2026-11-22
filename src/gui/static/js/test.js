@@ -1,4 +1,4 @@
-// Scheda Test: raggiungibilità, sessioni e convergenza, rotta, tabelle, ping, percorso, guasto di un link.
+// Scheda Test: raggiungibilità, sessioni e convergenza, server web, rotta, tabelle, ping, percorso, guasto di un link.
 import { $, api, esc, esegui, S } from './comune.js';
 import { dispositivo } from './dispositivo.js';
 import { scheda } from './main.js';
@@ -72,6 +72,41 @@ $('#rSessioni').addEventListener('click', async e => {
     S.sessioni.ridistribuzione = S.sessioni.ridistribuzione.map(x => nuove.find(n => n.router === x.router && n.igp === x.igp && n.riga === x.riga) || x);
     mostraSessioni(S.sessioni);
   }
+});
+// ---------- server web: apache2 e pagine con links ----------
+export function preparaWeb() {
+  const w = S.lab.web || {server: [], bersagli: [], client: []};
+  $('#webList').innerHTML = w.bersagli.map(b => `<option value="${esc(b.indirizzo)}">${esc(b.server + (b.via && b.via !== 'A' ? ' (' + b.via + ')' : ''))}</option>`).join('');
+  const prima = $('#wSrc').value;
+  $('#wSrc').innerHTML = w.client.map(n => `<option${n === prima ? ' selected' : ''}>${esc(n)}</option>`).join('');
+  $('#bWeb').disabled = !w.server.length || !w.client.length;
+  if (!w.server.length) $('#rWeb').innerHTML = '<div class="muted small">Nessun server web nel lab (dispositivi con apache2).</div>';
+}
+async function provaWeb(bottone) {
+  const dev = $('#wSrc').value; if (!dev) return;
+  const r = await esegui({azione: 'verifica_web', dev}, 'Pagine web da ' + dev, bottone);
+  if (r && r.risultato) mostraWeb(r.risultato);
+}
+$('#bWeb').onclick = e => provaWeb(e.target);
+const ESITO = {ok: 'ok', dns: 'DNS', apache: 'apache2', gateway: 'gateway', rete: 'routing', vuota: 'vuota', errore: 'errore'};
+export function mostraWeb(r) {
+  let h = `<table><tr><th>Server</th><th>IP</th><th>apache2</th><th></th></tr>${r.server.map(x => `<tr><td>${esc(x.nome)}</td><td><code>${esc(x.ip.join(', '))}</code></td>
+    <td>${x.attivo == null ? '<span class="badge">non letto</span>' : `<span class="badge ${x.attivo ? 'ok' : 'ko'}">${x.attivo ? 'attivo' : 'spento'}</span>`}</td>
+    <td>${x.attivo === false ? `<button class="small" data-avvia="${esc(x.nome)}">Avvia</button>` : ''}</td></tr>`).join('')}</table>`;
+  h += `<h3 style="margin-top:14px">Pagine da ${esc(r.client)}</h3>`;
+  h += r.pagine.length ? `<table><tr><th>Indirizzo</th><th>Server</th><th>Esito</th><th>Pagina o spiegazione</th></tr>${r.pagine.map(p => `<tr><td><code>${esc(p.indirizzo)}</code>${p.via && p.via !== 'A' ? `<div class="small muted">${esc(p.via)}</div>` : ''}</td>
+    <td>${esc(p.server)}</td><td><span class="badge ${p.esito === 'ok' ? 'ok' : 'ko'}">${esc(ESITO[p.esito] || p.esito)}</span></td>
+    <td>${p.esito === 'ok' ? esc(p.riga) : `<span class="small">${esc(p.spiegazione)}</span>`}</td></tr>`).join('')}</table>`
+    : '<div class="muted small">Nessun IP o nome da provare.</div>';
+  const ko = r.pagine.filter(p => p.esito !== 'ok').length + r.server.filter(x => x.attivo !== true).length;
+  h += ko ? `<div class="koline" style="margin-top:8px">${ko} ${ko === 1 ? 'problema' : 'problemi'}</div>` : '<div class="okline" style="margin-top:8px">✔ apache2 attivo e tutte le pagine arrivano.</div>';
+  $('#rWeb').innerHTML = h;
+}
+$('#rWeb').addEventListener('click', async e => {
+  const b = e.target.closest('[data-avvia]'); if (!b) return;
+  const dev = b.dataset.avvia;
+  const r = await esegui({azione: 'comando', dev, comando: 'apache_avvia'}, dev + ': avvia apache2', b);
+  if (r) provaWeb($('#bWeb'));
 });
 // ---------- ping ----------
 export function origini() {

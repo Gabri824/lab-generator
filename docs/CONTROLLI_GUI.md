@@ -56,6 +56,10 @@ copia, non i lab veri.
 - [ ] Ping con origine scelta; Verifica percorso con atteso, sequenza esatta e ritorno;
       evidenziazione sulla topologia e "Togli evidenziazione".
 - [ ] Guasto di un link: "Spegni" (tratteggio rosso, nota in alto), "Riaccendi".
+- [ ] Server web: "Prova le pagine" da un client (IP e nomi DNS dei server), stato di apache2,
+      "Avvia" quando è spento; spiegazione per DNS, apache2, gateway, routing.
+- [ ] Pannello di host, DNS e server: "links" verso un IP o un nome (proposti dall'elenco); sui
+      server "stato apache2" e "avvia apache2".
 
 ## Archivio e Registro
 

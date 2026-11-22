@@ -20,6 +20,8 @@ import sys
 import threading
 import time
 
+from core import web
+
 from . import dati
 
 ANSI = re.compile(r'\x1b\[[0-9;?]*[A-Za-z]')
@@ -40,6 +42,8 @@ COMANDI = {
     'traceroute': ('traceroute {ip}', ['traceroute', '-n', '-w', '1', '-q', '1', '-m', '20', '{ip}']),
     'bgp_ricevute': ('rotte accettate da {ip}', ['vtysh', '-c', 'show ip bgp neighbors {ip} routes']),
     'bgp_annunciate': ('rotte annunciate a {ip}', ['vtysh', '-c', 'show ip bgp neighbors {ip} advertised-routes']),
+    'apache_stato': ('stato apache2', ['systemctl', 'is-active', 'apache2']),
+    'apache_avvia': ('avvia apache2', ['systemctl', 'start', 'apache2']),
 }
 
 
@@ -152,6 +156,7 @@ def esegui(args, lav=None, timeout=600):
         p.wait()
     finally:
         timer.cancel()
+        p.stdout.close()
     return p.returncode, _pulisci(''.join(out))
 
 
@@ -1007,3 +1012,74 @@ def crea_archivio(base, lab, nome, formato):
     return crea(base, lab, nome, formato)
 
 
+
+
+# -------------------------
+# Pagine web e apache2 (spiegazioni e bersagli in core/web.py, uguali per il terminale)
+# -------------------------
+def _diagnosi_rete(kathara, lab_path, dev, ip, chi, lav=None):
+    """(esito, spiegazione) quando la pagina non arriva per la rete: prima `ip route get` sul client
+    (senza rotta = gateway), poi traceroute per sapere quale router ferma i pacchetti."""
+    rc, out = esegui(kexec(kathara, lab_path, dev, ['ip', 'route', 'get', ip]), timeout=40)
+    if rc != 0:
+        return ('gateway', web.SENZA_GATEWAY) if 'unreachable' in out.lower() else None
+    if lav is not None:
+        lav.scrivi(f"\ntraceroute -n {ip}:")
+    rc, out = esegui(kexec(kathara, lab_path, dev, ['traceroute', '-n', '-w', '1', '-q', '1', '-m', '12', ip]),
+                     lav, timeout=60)
+    return web.spiega_traceroute(out, ip, chi) if 'traceroute to' in out else None
+
+
+def _links(kathara, lab_path, dev, indirizzo, lav=None, stato=None):
+    """(esito, spiegazione, testo) di links -dump da dev verso indirizzo."""
+    rc, out = esegui(kexec(kathara, lab_path, dev, web.comando_links(indirizzo)), lav, timeout=web.ATTESA + 40)
+    s = suggerimento(out) if rc != 0 else None
+    if s:
+        return 'errore', s.lstrip('-> '), out
+    esito, spiegazione = web.spiega_links(rc, out, indirizzo)
+    ip = web.ip_del_bersaglio(stato, indirizzo) if stato else None
+    if esito == 'rete' and ip:
+        d = _diagnosi_rete(kathara, lab_path, dev, ip, web.proprietari(stato), lav)
+        if d:
+            esito, spiegazione = d
+    return esito, spiegazione, out
+
+
+def pagina_web(kathara, lab_path, dev, indirizzo, lav, stato=None):
+    """Pannello del dispositivo: la pagina in Output e, se non arriva, perché."""
+    esito, spiegazione, _ = _links(kathara, lab_path, dev, indirizzo, lav, stato)
+    lav.scrivi(('\n' if esito == 'ok' else '\n-> ') + spiegazione)
+    lav.risultato = {'esito': esito, 'spiegazione': spiegazione}
+    return 0 if esito == 'ok' else 1
+
+
+def apache_attivi(kathara, lab_path, nomi):
+    """{server: True/False/None}: None se non si è potuto chiedere (es. dispositivo spento)."""
+    def chiedi(n):
+        rc, out = esegui(kexec(kathara, lab_path, n, ['systemctl', 'is-active', 'apache2']), timeout=40)
+        ultima = (out.strip().splitlines() or [''])[-1].strip()
+        return True if ultima == 'active' else (False if ultima in ('inactive', 'failed', 'activating', 'deactivating') else None)
+    return _parallelo(chiedi, nomi) if nomi else {}
+
+
+def verifica_web(kathara, lab_path, stato, client, lav):
+    """Scheda Test: stato di apache2 su ogni server, poi links da `client` verso ogni IP e nome."""
+    server, bersagli = web.server_web(stato), web.bersagli_web(stato)
+    attivi = apache_attivi(kathara, lab_path, [x['nome'] for x in server])
+    for x in server:
+        a = attivi.get(x['nome'])
+        lav.scrivi(f"{x['nome']}: apache2 " + ('attivo' if a else 'spento' if a is False else 'stato non letto'))
+
+    def prova(i):
+        b = bersagli[i]
+        esito, spiegazione, out = _links(kathara, lab_path, client, b['indirizzo'], stato=stato)
+        if esito == 'apache' and attivi.get(b['server']) is False:
+            spiegazione = f"apache2 è spento su {b['server']}: va avviato (systemctl start apache2)"
+        return dict(b, esito=esito, spiegazione=spiegazione, riga=web.prima_riga(out) if esito == 'ok' else '')
+    pagine = list(_parallelo(prova, list(range(len(bersagli)))).values())
+    for p in pagine:
+        lav.scrivi(f"{client} -> {p['indirizzo']}: " + ('ok, ' + p['riga'] if p['esito'] == 'ok' else p['spiegazione']))
+    lav.risultato = {'client': client, 'server': [dict(x, attivo=attivi.get(x['nome'])) for x in server], 'pagine': pagine}
+    ko = sum(p['esito'] != 'ok' for p in pagine) + sum(attivi.get(x['nome']) is not True for x in server)
+    lav.scrivi(f"Fatto: {ko} {'problema' if ko == 1 else 'problemi'}." if ko else 'Fatto: tutte le pagine arrivano.')
+    return 0

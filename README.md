@@ -147,7 +147,7 @@ principale:
   1) Crea nuovo Laboratorio
   2) Importa file XML/JSON
   3) Genera file XML
-  4) Testa Funzionamento (PING)
+  4) Testa Funzionamento (PING, pagine web e apache2)
   5) Opzioni Laboratorio
   6) Interfaccia grafica (browser)
   0) Esci

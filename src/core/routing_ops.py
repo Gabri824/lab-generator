@@ -962,7 +962,8 @@ def menu_post_creazione(base_path, routers):
             'Genera file XML aggiornato',
             'Testa Funzionamento (PING)',
             'Opzioni Laboratorio',
-            'Crea archivio per la consegna'
+            'Crea archivio per la consegna',
+            'Pagine web e apache2 (links dal client, lab acceso)'
         ]
         print_menu('-------------- Menu post-creazione --------------', items, extra_options=[('0', 'Termina Programma')])
         print('\n--------------------------------------------------')
@@ -998,6 +999,9 @@ def menu_post_creazione(base_path, routers):
             menu_opzioni_laboratorio(base_path, routers)
         elif choice == '4':
             archivio_menu(base_path)
+        elif choice == '5':
+            from gui.terminale_web import testa_pagine_web     # stesse funzioni Kathará della GUI
+            testa_pagine_web(base_path)
         else:
             print('Scelta non valida, riprova.')
 

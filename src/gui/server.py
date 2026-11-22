@@ -17,6 +17,7 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, quote, urlparse
 
+from core import web
 from core.operazioni import ErroreOperazione
 
 from . import api, dati, kathara
@@ -101,7 +102,12 @@ class Stato:
         return os.path.join(self.base, nome)
 
     def leggi_lab(self, nome):
-        return dati.leggi_lab(self.gen, self.lab_path(nome))
+        p = self.lab_path(nome)
+        stato = self.gen.leggi_stato(p)
+        lab = dati.leggi_lab(self.gen, p, stato)
+        # pagine web: server, IP e nomi DNS da provare con links, dispositivi da cui provarli
+        lab['web'] = {'server': web.server_web(stato), 'bersagli': web.bersagli_web(stato), 'client': web.client_web(stato)}
+        return lab
 
     def serve_kathara(self):
         if not self.kathara:
@@ -196,6 +202,28 @@ def azione(st, dati_rich):
         args = kathara.kexec(k, lab_path, dev, cmd)
         testo = kathara.testo_exec(lab_path, dev, cmd)
         lid = st.lavori.avvia(f"{dev}: {etichetta}", testo, lambda lav: kathara.esegui_spiegato(args, lav, timeout=120)[0])
+        return {'lavoro': lid}
+
+    if tipo == 'pagina_web':
+        dev = _dispositivo(lab, dati_rich.get('dev'))['nome']
+        indirizzo = str(dati_rich.get('indirizzo') or '').strip()
+        if not web.indirizzo_valido(indirizzo):
+            raise Errore(f"Indirizzo non valido: {indirizzo or '(vuoto)'} (un IP o un nome come www.com)")
+        cmd = web.comando_links(indirizzo)
+        stato = st.gen.leggi_stato(lab_path)
+        lid = st.lavori.avvia(f"{dev}: links {indirizzo}", kathara.testo_exec(lab_path, dev, cmd),
+                              lambda lav: kathara.pagina_web(k, lab_path, dev, indirizzo, lav, stato))
+        return {'lavoro': lid}
+
+    if tipo == 'verifica_web':
+        dev = _dispositivo(lab, dati_rich.get('dev'))['nome']
+        stato = st.gen.leggi_stato(lab_path)
+        if dev not in web.client_web(stato):
+            raise Errore(f"{dev} non può aprire pagine web (i router non hanno links): scegli un host o un server")
+        if not web.server_web(stato):
+            raise Errore('Nessun server web nel lab (dispositivi con apache2)')
+        lid = st.lavori.avvia(f"pagine web da {dev}", f"systemctl is-active apache2 sui server, poi links -dump da {dev}",
+                              lambda lav: kathara.verifica_web(k, lab_path, stato, dev, lav))
         return {'lavoro': lid}
 
     if tipo == 'terminale':

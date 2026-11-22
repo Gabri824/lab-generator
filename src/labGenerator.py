@@ -25,6 +25,7 @@ from core import (
     leggi_resolver,
     load_lab_from_xml,
     opzioni_laboratorio_menu,
+    print_menu,
     rebuild_lab_metadata_and_export,
     scegli_lab,
     recreate_lab_from_data,
@@ -96,7 +97,7 @@ def main():
         print("  1) Crea nuovo Laboratorio")
         print("  2) Importa file XML/JSON")
         print("  3) Genera file XML")
-        print("  4) Testa Funzionamento (PING)")
+        print("  4) Testa Funzionamento (PING, pagine web e apache2)")
         print("  5) Opzioni Laboratorio")
         print("  6) Interfaccia grafica (browser)")
         print("  7) Crea archivio per la consegna")
@@ -157,6 +158,17 @@ def main():
                 print("❌ Rigenerazione XML fallita.")
             return
         if mode == '4':
+            print_menu('Cosa vuoi provare?', ['Ping: comando da incollare sulle macchine del lab',
+                                              'Pagine web e apache2 (links dal client)'], [('0', 'Indietro')])
+            scelta = input_non_vuoto('Scelta: ').strip()
+            if scelta == '2':
+                target = scegli_lab(base)
+                if target:
+                    from gui.terminale_web import testa_pagine_web
+                    testa_pagine_web(target)
+                continue
+            if scelta != '1':
+                continue
             target = input_non_vuoto('Percorso della directory del lab per generare il comando ping: ')
             if not os.path.isdir(target):
                 print(f"Directory non trovata: {target}")

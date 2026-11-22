@@ -6,7 +6,7 @@ import { interfacce } from './interfacce.js';
 import { registro } from './registro.js';
 import { riepilogo } from './riepilogo.js';
 import { apriEditor } from './editor/editor.js';
-import { attendiConvergenza, controllaSpenti, lanGuasto, origini } from './test.js';
+import { attendiConvergenza, controllaSpenti, lanGuasto, origini, preparaWeb } from './test.js';
 import { colori, grafo, ridisegna, varianti } from './topologia.js';
 
 // ---------- elenco lab e stato ----------
@@ -67,7 +67,8 @@ export async function apriLab(nome, mantieni) {
     $('#rDev').innerHTML = lab.dispositivi.filter(d => d.tipo === 'router').map(d => `<option>${esc(d.nome)}</option>`).join('');
     $('#retiList').innerHTML = [...new Set(lab.lan.map(l => l.subnet).concat(lab.dispositivi.flatMap(d => (d.riepilogo || {}).bgp_networks || [])))]
       .filter(Boolean).map(r => `<option value="${esc(r)}"></option>`).join('');
-    if (cambiato) { $('#rRotta').innerHTML = $('#rTabelle').innerHTML = ''; S.reali = null; }
+    if (cambiato) { $('#rRotta').innerHTML = $('#rTabelle').innerHTML = $('#rWeb').innerHTML = ''; S.reali = null; }
+    preparaWeb();
     interfacce(); avvisoArchivio();
     if (!$('#aNome').value || cambiato) $('#aNome').value = nome;
     disegnaLabs(); testaLab(); ridisegna(); lato(); riepilogo();

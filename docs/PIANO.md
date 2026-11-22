@@ -1020,9 +1020,58 @@ Difficoltà trovate dall'autore ridisegnando papillon, e correzioni approvate:
 Prova guidata dell'autore fatta su `papillon_gui` (disegnato nell'editor, avviato con Kathará,
 modificato dal terminale e riletto nella GUI): ok dopo le correzioni sopra.
 
+## Fase web: comandi web e apache2 — lavoro completato (2026-11-22), prova finale con la fase 5
+
+Decisioni dell'autore: il terminale stampa i comandi da incollare e, se Kathará c'è e il lab è
+acceso, chiede se eseguirli; apache2 si avvia solo su richiesta (pulsante "Avvia" o "s").
+
+- `core/web.py` (comune a GUI e terminale): server web (tipo www o apache2 nello startup), nomi
+  DNS che portano a loro (record A delle zone autoritative e CNAME, anche in catena), client
+  (tutto tranne i router: kathara/frr non ha links), comando `timeout 8 links -dump http://<x>/`
+  con l'indirizzo controllato (IP o nome DNS, niente che esca dall'URL), spiegazione degli esiti
+  misurati con Kathará e comandi da incollare.
+- Esiti di links misurati: pagina (0), `Host not found` (nome non risolto: resolver o DNS spenti,
+  record mancante), `Connection refused` (apache2 spento), `Network is unreachable` (client senza
+  gateway), codice 124 (nessuna risposta: routing).
+- GUI, pannello di host, DNS e server: campo con IP e nomi proposti e pulsante "links"; sui server
+  "stato apache2" e "avvia apache2". Scheda Test, "Server web": apache2 su ogni server (con "Avvia"
+  se spento, poi nuovo controllo) e pagine da un client scelto, con esito e spiegazione. Il
+  Registro ha i comandi `kathara exec` equivalenti.
+- Terminale: menu 4 con "Ping" (come prima) e "Pagine web e apache2"; anche nel menu dopo la
+  creazione (voce 5). Usa le stesse funzioni della GUI (`gui/terminale_web.py`).
+- `kathara.esegui` ora chiude l'output del processo (avvisi ResourceWarning nei test).
+- Verifiche: `tests/test_web.py` (16 test: indirizzi, dati dal lab, spiegazioni, Kathará finto per
+  GUI, server e terminale); sette rotture apposta fanno fallire i test. Con Kathará: lab DNS
+  dall'editor (pagine per IP, `www.com` e CNAME `web.com`; apache2 spento riconosciuto, "Avvia"
+  dalla GUI e "s" dal terminale lo riavviano; nome inesistente spiegato) e copia di papillon (pagina
+  attraverso i due AS; senza gateway spiegato).
+
+### Correzione dalla prova guidata della fase web (2026-11-22)
+
+- Su `papillon_gui` (senza le Opzioni 6, quindi senza aggregati BGP) la spiegazione diceva
+  "controlla il gateway del client", ma il gateway c'era: era r1 a non avere la rotta. `links`
+  scrive "Network is unreachable" in entrambi i casi. Ora, per i problemi di rete, la diagnosi
+  continua sul client con `ip route get <IP>` (senza rotta = gateway del client) e poi con
+  `traceroute -n`, e la spiegazione nomina il router: `!N` = "r1 (20.20.1.1) non ha una rotta
+  verso ...: rete da annunciare in BGP (Opzioni 6) e ridistribuire nell'IGP"; `!H`, `!X`; hop che
+  rispondono e poi solo `*` = "i pacchetti si fermano dopo r3 ...". Per i nomi si usa l'IP del
+  record A. Nel pannello il traceroute compare in Output.
+- Verifiche: uscite misurate con Kathará su una copia di `papillon_gui` (router senza rotta al
+  primo e al terzo hop, ritorno mancante, client senza gateway); test sulle uscite e con il
+  Kathará finto; quattro rotture apposta fanno fallire i test. Prova finale con Kathará sulla
+  copia: com'è adesso -> "r1 non ha una rotta"; senza gateway -> gateway; con gli aggregati delle
+  Opzioni 6 (stessa `calcola_network_bgp` del terminale) -> pagina ricevuta.
+
+### Prova guidata della fase web: rimandata (decisione dell'autore, 2026-11-22)
+
+Punti 1-7 fatti (il Registro: vedi sezione 8). Il punto 8 (`papillon_gui` con gli aggregati
+BGP) e il resto della prova si fanno alla fine della fase 5, quando le Opzioni sono anche nella
+GUI.
+
 ### Prossimo passo
 
-Comandi web e apache2 (proposta sopra, da spiegare e confermare), poi fase 5.
+Fase 5 (da spiegare prima di cominciare). Alla fine: prova guidata della fase 5 insieme al punto 8
+della fase web.
 
 ---
 
@@ -1041,4 +1090,5 @@ Cose trovate durante il lavoro e messe da parte di proposito. Non bloccano le fa
 | Quando le Opzioni aggiornano l'XML lo riscrivono per intero | `persistence._aggiorna_xml` | Cambia, per esempio, `&quot;` in `"` dentro `lab_conf`. Da decidere nella fase 1.7 (XML fuori dal lab, forse rigenerato dai file). |
 | `--output` (o un'opzione scritta male) viene ignorato in silenzio | `main` in [labGenerator.py](../src/labGenerator.py) (`parse_known_args`) | Visto nella prova guidata della fase 3: la GUI partiva sulla cartella corrente senza lab. Proposta: `--output` come sinonimo di `--out` e un avviso per le opzioni non riconosciute. |
 | Il costo OSPF predefinito citato nei messaggi (10000 senza auto-cost, 10 con) non vale ovunque | `analyzer` (avviso 6), `operazioni.calcola_auto_cost` | Misurato con Kathará il 2026-11-22: con veth a 10 Gbit/s è 10 senza auto-cost e 1 con `reference-bandwidth 100`. Proposta: dire che dipende dalla macchina e rimandare a `show ip ospf interface`. |
+| Il Registro della GUI è solo in memoria e contiene solo le operazioni della GUI | `gui/kathara.Lavori` | Visto nella prova guidata della fase web: chiudendo la GUI si svuota, e le operazioni del terminale non ci sono. Idea: salvarlo per lab in `.labgenerator/<lab>/` e aggiungere le operazioni fatte dal terminale del generatore. Non urgente (decisione dell'autore). |
 | Circa 130 stampe con emoji | tutto il terminale | Protette all'avvio (`reconfigure(errors='replace')`); nessuna è più dentro una domanda. |

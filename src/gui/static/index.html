@@ -134,6 +134,16 @@
             <div id="rSessioni"></div>
           </div>
           <div class="card">
+            <h2>Server web</h2>
+            <p class="muted small">Stato di apache2 su ogni server web, poi da un client <code>links -dump http://…/</code> verso ogni IP dei server e ogni nome DNS che porta a loro.
+              Se una pagina non arriva, la spiegazione dice dove si ferma: nome non risolto (DNS), apache2 spento, gateway, routing. apache2 si avvia solo con "Avvia" (i file non cambiano).</p>
+            <div class="riga">
+              <label class="campo"><span>Client</span><select id="wSrc"></select></label>
+              <button id="bWeb" type="button">Prova le pagine</button>
+            </div>
+            <div id="rWeb"></div>
+          </div>
+          <div class="card">
             <h2>Rotta verso una rete</h2>
             <p class="muted small">Come un router raggiunge una rete: next-hop scelto e tutti i percorsi BGP ricevuti con local-preference, MED e AS-path. Serve per "prefers…", "local preference", "MED", "filters out…".</p>
             <div class="riga">
@@ -228,5 +238,6 @@
 </div>
 <datalist id="ipList"></datalist>
 <datalist id="retiList"></datalist>
+<datalist id="webList"></datalist>
 </body>
 </html>
