@@ -1,0 +1,18 @@
+--- prima/as2r1.startup
++++ dopo/as2r1.startup
+@@ -2,4 +2,5 @@
+ ip address add 2.6.0.1/24 dev eth1
+ ip address add 2.4.0.1/24 dev eth2
+ 
++ip address add 2.255.0.1/32 dev lo
+ systemctl start frr
+--- prima/as2r1/etc/frr/frr.conf
++++ dopo/as2r1/etc/frr/frr.conf
+@@ -13,6 +13,7 @@
+ 
+     redistribute connected
+     redistribute bgp
++    network 2.255.0.1/32 area 0.0.0.0
+ 
+ router bgp 2
+ 

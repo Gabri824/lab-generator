@@ -1,0 +1,9 @@
+# BGP aggiunto a un router solo OSPF: AS 20, network proposte, redistribute bgp in OSPF
+@lab papillon_mio
+@chiama modifica_protocolli r1
+a
+1
+20
+
+
+s

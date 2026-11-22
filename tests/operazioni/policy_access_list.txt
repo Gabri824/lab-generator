@@ -1,0 +1,9 @@
+# Access-list che scarta una rete in ingresso (tramite route-map)
+@lab candy_test
+@chiama policies_menu
+4
+as60r1
+192.168.0.18
+10.0.0.0/8
+s
+0

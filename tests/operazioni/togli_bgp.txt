@@ -1,0 +1,7 @@
+# BGP tolto da un router, con i neighbor che puntano a lui sugli altri router
+@lab candy_test
+@chiama modifica_protocolli as10r1
+t
+1
+
+s

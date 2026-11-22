@@ -1,0 +1,31 @@
+
+Protocolli attivi su r3: bgp, ospf
+a = aggiungi un protocollo, t = togli un protocollo, Invio = annulla: t
+
+Protocollo:
+
+  1) BGP
+  2) OSPF
+
+Numero (Invio = annulla): 2
+
+--- Togli OSPF da r3: anteprima (2 file) ---
+  r3/etc/frr/daemons
+    - riga   3: ospfd=yes
+    + riga   3: ospfd=no
+  r3/etc/frr/frr.conf
+    - riga   9: 
+    - riga  10: router ospf
+    - riga  11: 
+    - riga  12: network 20.20.0.0/16 area 0.0.0.0
+    - riga  13: 
+    - riga  14: redistribute connected
+    - riga  15: redistribute bgp
+    - riga  16: auto-cost reference-bandwidth 100
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/papillon_mio/AAAAMMGG-HHMMSS
+   (i controlli dell'opzione 8 danno lo stesso esito di prima)
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+
+[copie di sicurezza create: 1]

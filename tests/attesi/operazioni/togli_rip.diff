@@ -1,0 +1,25 @@
+--- prima/as6r1/etc/frr/daemons
++++ dopo/as6r1/etc/frr/daemons
+@@ -1,5 +1,5 @@
+ zebra=yes 
+-ripd=yes
++ripd=no
+ ospfd=no
+ bgpd=yes
+ 
+--- prima/as6r1/etc/frr/frr.conf
++++ dopo/as6r1/etc/frr/frr.conf
+@@ -6,13 +6,6 @@
+ debug bgp keepalives
+ debug bgp updates in
+ debug bgp updates out
+-
+-router rip
+-
+-    network 6.0.0.0/8
+-
+-    redistribute connected
+-    redistribute bgp
+ 
+ router bgp 6
+ 

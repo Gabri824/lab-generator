@@ -1,4 +1,126 @@
 {
+ "collect_lab_ips": [
+  {
+   "iface": "eth0",
+   "ip": "1.0.0.1",
+   "name": "as1r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "1.1.0.1",
+   "name": "as1r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "1.1.0.2",
+   "name": "as1r2"
+  },
+  {
+   "iface": "eth1",
+   "ip": "1.2.0.1",
+   "name": "as1r2"
+  },
+  {
+   "iface": "eth0",
+   "ip": "1.2.0.2",
+   "name": "as1r3"
+  },
+  {
+   "iface": "eth1",
+   "ip": "10.20.0.1",
+   "name": "as1r3"
+  },
+  {
+   "iface": "eth2",
+   "ip": "20.10.0.1",
+   "name": "as1r3"
+  },
+  {
+   "iface": "eth0",
+   "ip": "10.20.0.2",
+   "name": "as2r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "2.6.0.1",
+   "name": "as2r1"
+  },
+  {
+   "iface": "eth2",
+   "ip": "2.4.0.1",
+   "name": "as2r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "2.6.0.2",
+   "name": "as2r2"
+  },
+  {
+   "iface": "eth1",
+   "ip": "2.7.0.2",
+   "name": "as2r2"
+  },
+  {
+   "iface": "eth2",
+   "ip": "2.5.0.2",
+   "name": "as2r2"
+  },
+  {
+   "iface": "eth0",
+   "ip": "2.4.0.3",
+   "name": "as2r3"
+  },
+  {
+   "iface": "eth1",
+   "ip": "2.5.0.3",
+   "name": "as2r3"
+  },
+  {
+   "iface": "eth2",
+   "ip": "2.2.0.3",
+   "name": "as2r3"
+  },
+  {
+   "iface": "eth3",
+   "ip": "2.3.0.3",
+   "name": "as2r3"
+  },
+  {
+   "iface": "eth0",
+   "ip": "2.1.0.4",
+   "name": "as2r4"
+  },
+  {
+   "iface": "eth1",
+   "ip": "2.2.0.4",
+   "name": "as2r4"
+  },
+  {
+   "iface": "eth0",
+   "ip": "20.10.0.2",
+   "name": "as2r5"
+  },
+  {
+   "iface": "eth1",
+   "ip": "2.3.0.5",
+   "name": "as2r5"
+  },
+  {
+   "iface": "eth2",
+   "ip": "2.1.0.5",
+   "name": "as2r5"
+  },
+  {
+   "iface": "eth0",
+   "ip": "1.0.0.2",
+   "name": "pc1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "2.7.0.100",
+   "name": "web"
+  }
+ ],
  "dati.leggi_lab": {
   "avvisi_config": [
    "AS2: sessioni iBGP mancanti (as2r1 -> as2r5; as2r5 -> as2r1). Se il testo le chiede -> Opzioni 7; se le vieta (es. butterfly) va bene così.",
@@ -953,8 +1075,20 @@
    }
   ],
   "nome": "galaxy_mio",
-  "xml": true
+  "xml": false
  },
+ "isole_ospf": [
+  [
+   "AS2",
+   [
+    "as2r1",
+    "as2r2",
+    "as2r3",
+    "as2r4",
+    "as2r5"
+   ]
+  ]
+ ],
  "leggi_dispositivi": {
   "as1r1": {
    "altri_ip": [],
@@ -1274,6 +1408,14 @@
   "hosts": [
    {
     "gateway": "1.0.0.1",
+    "gw_dev": "eth0",
+    "interfaces": [
+     {
+      "ip": "1.0.0.2/24",
+      "lan": "A",
+      "name": "eth0"
+     }
+    ],
     "ip": "1.0.0.2/24",
     "lan": "A",
     "name": "pc1"
@@ -1283,6 +1425,9 @@
   "routers": {
    "as1r1": {
     "asn": "",
+    "igp_networks": [
+     "1.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "1.0.0.1/24",
@@ -1301,6 +1446,9 @@
    },
    "as1r2": {
     "asn": "",
+    "igp_networks": [
+     "1.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "1.1.0.2/24",
@@ -1319,6 +1467,12 @@
    },
    "as1r3": {
     "asn": "1",
+    "bgp_extra_networks": [
+     "1.0.0.0/8"
+    ],
+    "igp_networks": [
+     "1.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "1.2.0.2/24",
@@ -1343,6 +1497,17 @@
    },
    "as2r1": {
     "asn": "2",
+    "bgp_extra_networks": [
+     "2.0.0.0/8",
+     "2.1.0.0/24",
+     "2.2.0.0/24",
+     "2.3.0.0/24",
+     "2.5.0.0/24",
+     "2.7.0.0/24"
+    ],
+    "igp_networks": [
+     "2.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "10.20.0.2/30",
@@ -1360,6 +1525,8 @@
       "name": "eth2"
      }
     ],
+    "ospf_area": "0.0.0.0",
+    "ospf_area_stub": false,
     "protocols": [
      "bgp",
      "ospf"
@@ -1367,6 +1534,9 @@
    },
    "as2r2": {
     "asn": "",
+    "igp_networks": [
+     "2.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "2.6.0.2/24",
@@ -1384,12 +1554,17 @@
       "name": "eth2"
      }
     ],
+    "ospf_area": "0.0.0.0",
+    "ospf_area_stub": false,
     "protocols": [
      "ospf"
     ]
    },
    "as2r3": {
     "asn": "",
+    "igp_networks": [
+     "2.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "2.4.0.3/24",
@@ -1412,12 +1587,17 @@
       "name": "eth3"
      }
     ],
+    "ospf_area": "0.0.0.0",
+    "ospf_area_stub": false,
     "protocols": [
      "ospf"
     ]
    },
    "as2r4": {
     "asn": "",
+    "igp_networks": [
+     "2.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "2.1.0.4/24",
@@ -1430,12 +1610,25 @@
       "name": "eth1"
      }
     ],
+    "ospf_area": "0.0.0.0",
+    "ospf_area_stub": false,
     "protocols": [
      "ospf"
     ]
    },
    "as2r5": {
     "asn": "2",
+    "bgp_extra_networks": [
+     "2.0.0.0/8",
+     "2.2.0.0/24",
+     "2.4.0.0/24",
+     "2.5.0.0/24",
+     "2.6.0.0/24",
+     "2.7.0.0/24"
+    ],
+    "igp_networks": [
+     "2.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "20.10.0.2/30",
@@ -1453,6 +1646,8 @@
       "name": "eth2"
      }
     ],
+    "ospf_area": "0.0.0.0",
+    "ospf_area_stub": false,
     "protocols": [
      "bgp",
      "ospf"

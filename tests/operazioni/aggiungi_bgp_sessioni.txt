@@ -1,0 +1,11 @@
+# BGP aggiunto a un router OSPF con un vicino BGP sulla stessa LAN: sessione da entrambi i lati
+@lab papillon_mio
+@chiama modifica_protocolli r2
+a
+1
+20
+
+
+
+
+s

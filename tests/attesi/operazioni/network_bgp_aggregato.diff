@@ -1,0 +1,16 @@
+--- prima/as10r1/etc/frr/frr.conf
++++ dopo/as10r1/etc/frr/frr.conf
+@@ -13,12 +13,11 @@
+     no bgp network import-check
+ 
+     network 192.168.0.0/30
+-    network 110.0.0.0/24
+ 
+     neighbor 192.168.0.2 remote-as 40
+     neighbor 192.168.0.2 description Router as40r1
+ 
+     neighbor 192.168.0.2 prefix-list PL_as10r1_192_168_0_2_in in
++    network 110.0.0.0/16
+ ip prefix-list PL_as10r1_192_168_0_2_in deny 160.0.0.0/24
+ ip prefix-list PL_as10r1_192_168_0_2_in permit any
+-

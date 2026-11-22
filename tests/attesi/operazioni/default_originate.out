@@ -1,0 +1,39 @@
+
+--- Default route verso un neighbor (default-originate) ---
+(Invio senza scrivere nulla a una domanda = annulla e torna al menu)
+
+Router che manda la default:
+
+  1) as10r1 (ASN: 10)
+  2) as20r1 (ASN: 20)
+  3) as30r1 (ASN: 30)
+  4) as40r1 (ASN: 40)
+  5) as50r1 (ASN: 50)
+  6) as60r1 (ASN: 60)
+  7) as70r1 (ASN: 70)
+  8) as80r1 (ASN: 80)
+
+Numero router (o nome, vuoto per annullare): 1
+
+Neighbor di as10r1 (AS10):
+
+  1) 192.168.0.2     as40r1     AS40    eBGP
+
+A chi mandare la default? Numeri separati da virgola, T = tutti gli eBGP (Invio = annulla): 1
+Questi neighbor devono ricevere SOLO la default (e al massimo poche reti che indichi)? Es. 'announces just the default route'. (s/N): s
+Reti da annunciare oltre alla default (es. 1.0.0.0/8; Invio = solo la default): 
+
+--- Default route da as10r1 verso as40r1: anteprima (1 file) ---
+  as10r1/etc/frr/frr.conf
+    + riga  22: neighbor 192.168.0.2 default-originate
+    + riga  23: neighbor 192.168.0.2 prefix-list SOLO_DEFAULT_192_168_0_2 out
+    + riga  27: ip prefix-list SOLO_DEFAULT_192_168_0_2 permit 0.0.0.0/0
+  ⚠️ default-originate da solo basta: 'network 0.0.0.0/0' non serve (slide 044). Se il testo o la soluzione lo vogliono comunque: Opzioni 6.
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/candy_test/AAAAMMGG-HHMMSS
+   ⚠️ nuovo: as10r1 (frr.conf riga 23): questo router annuncia 110.0.0.0/24 (riga 16), ma la prefix-list SOLO_DEFAULT_192_168_0_2 non la lascia passare verso 192.168.0.2: se il testo vuole annunciarla, aggiungila.
+   ⚠️ nuovo: as10r1: genera la default route (default-originate verso 192.168.0.2 (as40r1)). Tienila solo se il testo la chiede: molti testi dicono 'No router announces the default route'.
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+
+[copie di sicurezza create: 1]

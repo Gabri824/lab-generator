@@ -1,0 +1,42 @@
+
+Protocolli attivi su as10r1: bgp
+a = aggiungi un protocollo, t = togli un protocollo, Invio = annulla: t
+
+Protocollo:
+
+  1) BGP
+
+Numero (Invio = annulla): 1
+Tolgo anche le righe 'neighbor' che puntano a as10r1 su as40r1? (S/n): 
+
+--- Togli BGP da as10r1: anteprima (3 file) ---
+  as10r1/etc/frr/daemons
+    - riga   4: bgpd=yes
+    + riga   4: bgpd=no
+  as10r1/etc/frr/frr.conf
+    - riga   6: debug bgp keepalives
+    - riga   7: debug bgp updates in
+    - riga   8: debug bgp updates out
+    - riga  10: router bgp 10
+    - riga  11: 
+    - riga  12: no bgp ebgp-requires-policy
+    - riga  13: no bgp network import-check
+    - riga  14: 
+    - riga  15: network 192.168.0.0/30
+    - riga  16: network 110.0.0.0/24
+    - riga  17: 
+    - riga  18: neighbor 192.168.0.2 remote-as 40
+    - riga  19: neighbor 192.168.0.2 description Router as40r1
+    - riga  20: 
+    - riga  21: neighbor 192.168.0.2 prefix-list PL_as10r1_192_168_0_2_in in
+  as40r1/etc/frr/frr.conf
+    - riga  20: neighbor 192.168.0.1 remote-as 10
+    - riga  21: neighbor 192.168.0.1 description Router as10r1
+  ⚠️ Route-map e prefix-list del router restano: i controlli le segnaleranno se non sono più usate.
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/candy_test/AAAAMMGG-HHMMSS
+   ⚠️ nuovo: as10r1 (frr.conf riga 7): la prefix-list PL_as10r1_192_168_0_2_in è definita ma non è usata da nessuna parte (nome scritto diverso dove dovrebbe essere usata?).
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+
+[copie di sicurezza create: 1]

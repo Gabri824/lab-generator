@@ -1,0 +1,17 @@
+--- prima/client.startup
++++ dopo/client.startup
+@@ -1,2 +1,2 @@
+-ip address add 20.20.1.2/24 dev eth0
++ip address add 20.20.2.10/24 dev eth0
+ ip route add default via 20.20.1.1 dev eth0
+--- prima/lab.conf
++++ dopo/lab.conf
+@@ -30,7 +30,7 @@
+ r7[1]=G
+ r7[image]="kathara/frr"
+ 
+-client[0]=A
++client[0]=B
+ client[image]="kathara/base"
+ 
+ server[0]=L

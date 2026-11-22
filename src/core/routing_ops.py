@@ -2,17 +2,14 @@
 src/core/routing_ops.py
 Operazioni del menu Opzioni Laboratorio: policy BGP, costi OSPF, iBGP, loopback, ridistribuzione, DNS.
 """
-import datetime
 import ipaddress
 import os
-import re
-import shutil
 
 from .analyzer import (
+    leggi_dispositivi,
     _analizza_frr,
     collect_lab_ips,
     generate_ping_oneliner,
-    isole_ospf,
     riepilogo_configurazione,
 )
 from .cli_io import (
@@ -24,7 +21,6 @@ from .cli_io import (
     _chiedi_reti,
     _si,
     input,
-    input_area,
     input_asn,
     input_int,
     input_non_vuoto,
@@ -37,37 +33,27 @@ from .cli_io import (
 )
 from .device_editor import modifica_dispositivo_menu
 from .file_utils import (
-    _applica_modifiche,
-    _append_righe,
-    _comandi_nodo,
-    _indici_nodo,
-    _inizio_blocco,
-    _inserisci_nel_blocco,
+    _esegui_piano,
     _leggi_righe,
     _righe_file,
-    _rimuovi_righe,
-    _scrivi_righe,
-    append_frr_stanza,
     insert_lines_into_protocol_block,
 )
-from .generators import _righe_delega, _soa_root
 from .net_frr import (
-    _collega_al_neighbor,
-    _ip_verso,
     _neighbor_presente,
-    _norm_net,
     _rete_di_ip,
     _reti_del_router,
-    _reti_peering,
-    _scrivi_route_map,
-    add_ibgp_loopback_neighbors,
-    default_bgp_aggregate,
 )
+from . import operazioni
+from .stato import leggi_stato
 from .persistence import (
     correggi_nomi_lab,
-    load_lab_from_xml,
     rebuild_lab_metadata_and_export,
 )
+
+
+def routers_dai_file(base_path):
+    """Router del lab ricavati dai file (lettore unico), non dall'XML: protocolli, AS, interfacce."""
+    return operazioni.routers_dello_stato(leggi_stato(base_path))
 
 
 def aggiungi_relazioni_bgp_menu(base_path, routers):
@@ -141,9 +127,7 @@ def assegna_costo_interfaccia(base_path, routers):
         print('Interfaccia non selezionata. Annullato.')
         return
     costo = input_int(f'Inserisci il costo OSPF desiderato per {iface} (intero ≥ 1): ', 1)
-    stanza = f"interface {iface}\n    ospf cost {costo}\n"
-    if append_frr_stanza(base_path, target, stanza):
-        print(f"✅ Costo impostato su {target} {iface} = {costo} (append su frr.conf).")
+    _esegui_piano(base_path, operazioni.calcola_costo_ospf(leggi_stato(base_path), target, iface, costo))
 
 
 def aggiungi_network_bgp(base_path, routers):
@@ -158,65 +142,32 @@ def aggiungi_network_bgp(base_path, routers):
     if not os.path.exists(fpath):
         print(f"frr.conf non trovato per {target}: {fpath}")
         return
-    proposta = default_bgp_aggregate(target, routers[target])
+    stato = leggi_stato(base_path)
+    info = operazioni.opzioni_network_bgp(stato, target)[target]
+    proposta = info['proposta']
     reti = input_reti(
         f"Reti da annunciare in BGP, separate da virgola (invio = {', '.join(proposta)}): ",
         default=proposta
     )
-    presenti, in_bgp = set(), False
-    for l in _leggi_righe(fpath):
-        s = l.strip()
-        if s.startswith('router '):
-            in_bgp = s.startswith('router bgp')
-        elif l and not l[0].isspace():
-            in_bgp = False
-        elif in_bgp and s.startswith('network ') and len(s.split()) >= 2:
-            presenti.add(_norm_net(s.split()[1]))
-    nuove = [r for r in reti if r not in presenti]
-    if not nuove:
+    if not [r for r in reti if r not in info['presenti']]:
         print('Tutte le reti indicate sono già annunciate.')
         return
-    insert_lines_into_protocol_block(fpath, proto='bgp', asn=None, lines=[f"network {r}" for r in nuove])
-    routers[target].setdefault('bgp_extra_networks', []).extend(nuove)
-    print(f"✅ {target}: aggiunte in BGP {', '.join(nuove)}")
-
-    aggregati = [ipaddress.ip_network(r) for r in nuove]
-    peering = _reti_peering(target, routers)
-    coperte = sorted(
-        p for p in presenti
-        if p not in peering
-        and any(ipaddress.ip_network(p) != a and ipaddress.ip_network(p).subnet_of(a) for a in aggregati)
-    )
+    coperte = operazioni.reti_coperte(stato, target, reti)
+    togli = False
     if coperte:
         ans = input(
             f"Le reti {', '.join(coperte)} sono già contenute nell'aggregato. "
             f"Toglierle da BGP e annunciare solo l'aggregato? (s/N): "
         ).strip().lower()
-        if ans.startswith('s'):
-            out, in_bgp = [], False
-            for l in _leggi_righe(fpath):
-                s = l.strip()
-                if s.startswith('router '):
-                    in_bgp = s.startswith('router bgp')
-                elif l and not l[0].isspace():
-                    in_bgp = False
-                elif in_bgp and s.startswith('network ') and len(s.split()) == 2 and _norm_net(s.split()[1]) in coperte:
-                    continue
-                out.append(l)
-            _scrivi_righe(fpath, out)
-            print(f"✅ {target}: tolte da BGP {', '.join(coperte)}")
+        togli = ans.startswith('s')
+    _esegui_piano(base_path, operazioni.calcola_network_bgp(stato, target, reti, togli_coperte=togli))
 
 
 def aggiungi_delega_dns(base_path):
     """Aggiunge al server root (master per '.') la delega di una zona."""
     print('\n--- Aggiungi delega DNS sul root ---')
-    dns = []
-    for d in sorted(os.listdir(base_path)):
-        nc = os.path.join(base_path, d, 'etc', 'bind', 'named.conf')
-        if os.path.isfile(nc):
-            testo = ' '.join(' '.join(_leggi_righe(nc)).split())
-            master = re.search(r'zone "\." \{ type master;', testo) is not None
-            dns.append((d, master))
+    stato = leggi_stato(base_path)
+    dns = operazioni.opzioni_delega_dns(stato)
     if not dns:
         print('Nessun server DNS (etc/bind/named.conf) nel lab.')
         return
@@ -245,29 +196,14 @@ def aggiungi_delega_dns(base_path):
         return
     ns = input(f"Nameserver di {zona} (invio = dns.{zona}): ").strip().rstrip('.') or f"dns.{zona}"
     ip = valida_ip_senza_cidr(f"IP di {ns} (es. 20.1.0.3): ")
-    fpath = os.path.join(base_path, nome, 'etc', 'bind', 'db.root')
-    righe = _leggi_righe(fpath)
-    if not any('SOA' in l for l in righe):
-        serial = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d') + '01'
-        righe = _soa_root(serial) + righe
-        print("ℹ️ db.root non aveva il SOA (necessario per un master): aggiunto.")
-    gia = any(l.split()[:1] == [f"{zona}."] and 'NS' in l.split() for l in righe if l.strip())
-    if gia:
-        print(f"⚠️ La zona {zona} è già delegata in {nome}/etc/bind/db.root.")
-        _scrivi_righe(fpath, righe)
-        return
-    _scrivi_righe(fpath, [l for l in righe] + _righe_delega(zona, ns, ip))
-    print(f"✅ {nome}: delegata la zona {zona} a {ns} ({ip}).")
+    _esegui_piano(base_path, operazioni.calcola_delega_dns(stato, nome, zona, ns, ip))
 
 
 def aggiungi_ibgp_full_mesh(base_path, routers):
     """Crea le sessioni iBGP mancanti tra tutti i router BGP di uno stesso AS (full mesh)."""
     print("\n--- Aggiungi sessioni iBGP (full mesh nell'AS) ---")
-    per_as = {}
-    for rn, rd in routers.items():
-        if 'bgp' in rd.get('protocols', []) and str(rd.get('asn', '')).strip():
-            per_as.setdefault(str(rd['asn']).strip(), []).append(rn)
-    candidati = {a: ns for a, ns in per_as.items() if len(ns) >= 2}
+    stato = leggi_stato(base_path)
+    candidati = operazioni.opzioni_ibgp(stato)
     if not candidati:
         print('Nessun AS con almeno due router BGP.')
         return
@@ -282,35 +218,14 @@ def aggiungi_ibgp_full_mesh(base_path, routers):
     if sel not in candidati:
         print('Selezione non valida.')
         return
-    membri = candidati[sel]
     print("⚠️ Controlla il testo: alcuni esercizi vietano l'iBGP (es. butterfly).")
-    aggiunte = 0
-    for x in membri:
-        fpath = os.path.join(base_path, x, 'etc', 'frr', 'frr.conf')
-        presenti = set(re.findall(r'neighbor (\S+) remote-as', '\n'.join(_leggi_righe(fpath))))
-        nuove = []
-        for y in membri:
-            if y == x:
-                continue
-            ips_y = {
-                str(ipaddress.ip_interface(it['ip']).ip)
-                for it in routers[y].get('interfaces', []) if it.get('ip')
-            }
-            if presenti & ips_y:
-                continue
-            ip = _ip_verso(routers, y, x, sel)
-            if ip:
-                nuove += [f"neighbor {ip} remote-as {sel}", f"neighbor {ip} description iBGP {y}"]
-        if nuove:
-            insert_lines_into_protocol_block(fpath, proto='bgp', asn=None, lines=nuove)
-            aggiunte += len(nuove) // 2
-            print(f"✅ {x}: " + ', '.join(l.split()[1] for l in nuove if 'remote-as' in l))
-    print(f"Sessioni iBGP aggiunte: {aggiunte}" if aggiunte else 'Tutte le sessioni iBGP erano già presenti.')
+    _esegui_piano(base_path, operazioni.calcola_ibgp(stato, sel))
 
 
 def policies_menu(base_path, routers):
     """Sotto-menu per applicare policies BGP ai router del lab."""
     while True:
+        routers = routers_dai_file(base_path)    # anche le modifiche fatte dalla GUI o a mano
         items = [
             'Prefix-list: scarta una o più reti da/verso un neighbor (deny ... + permit any)',
             'Local-preference in ingresso (su tutte le rotte o solo su alcune reti)',
@@ -369,71 +284,19 @@ def policies_menu(base_path, routers):
             print('Annullato: nessuna modifica.')
             continue
 
-        if nuovo_asn:
-            insert_lines_into_protocol_block(
-                fpath, proto='bgp', asn=None,
-                lines=[f"neighbor {neigh_ip} remote-as {nuovo_asn}"]
+        tipo = {'1': 'prefix_list', '2': 'local_pref', '3': 'med', '4': 'access_list'}[c]
+        try:
+            piano = operazioni.calcola_policy(
+                leggi_stato(base_path), src, neigh_ip, tipo,
+                direzione=direz if c == '1' else None,
+                reti=reti if c in ('1', '2', '4') else (),
+                valore={'2': lp_val if c == '2' else None, '3': m_val if c == '3' else None}.get(c),
+                asn_nuovo=nuovo_asn
             )
-        tag = neigh_ip.replace('.', '_')
-
-        if c == '1':
-            pl_name = f"PL_{src}_{tag}_{direz}"
-            pat = re.compile(rf"^\s*ip prefix-list {re.escape(pl_name)} deny (\S+)")
-            prev = [m.group(1) for m in map(pat.match, _leggi_righe(fpath)) if m]
-            tutte = prev + [r for r in reti if r not in prev]
-            _rimuovi_righe(fpath, lambda l: l.strip().startswith(f"ip prefix-list {pl_name} "))
-            _append_righe(
-                fpath,
-                [f"ip prefix-list {pl_name} deny {r}" for r in tutte]
-                + [f"ip prefix-list {pl_name} permit any"]
-            )
-            _collega_al_neighbor(fpath, neigh_ip, 'prefix-list', pl_name, direz)
-            print(
-                f"✅ {src}: prefix-list {pl_name} ({direz}, neighbor {neigh_ip}): "
-                f"deny {', '.join(tutte)} + permit any."
-            )
-
-        elif c == '2':
-            rm_name, pl_name = f"PREF_IN_{tag}", f"PREF_IN_{tag}_NETS"
-            if reti:
-                stanza = [
-                    f"route-map {rm_name} permit 10",
-                    f"    match ip address prefix-list {pl_name}",
-                    f"    set local-preference {lp_val}",
-                    f"route-map {rm_name} permit 20",
-                    ""
-                ] + [f"ip prefix-list {pl_name} permit {r}" for r in reti]
-            else:
-                stanza = [f"route-map {rm_name} permit 10", f"    set local-preference {lp_val}"]
-            _scrivi_route_map(fpath, rm_name, stanza, pl_name)
-            _collega_al_neighbor(fpath, neigh_ip, 'route-map', rm_name, 'in')
-            print(
-                f"✅ {src}: route-map {rm_name} (neighbor {neigh_ip}, in): local-preference {lp_val} "
-                f"{'per ' + ', '.join(reti) if reti else 'su tutte le rotte'}."
-            )
-
-        elif c == '3':
-            rm_name = f"LOCALMED_OUT_{tag}"
-            _scrivi_route_map(fpath, rm_name, [f"route-map {rm_name} permit 10", f"    set metric {m_val}"])
-            _collega_al_neighbor(fpath, neigh_ip, 'route-map', rm_name, 'out')
-            print(f"✅ {src}: route-map {rm_name} (neighbor {neigh_ip}, out): metric {m_val}.")
-
-        elif c == '4':
-            contenuto = '\n'.join(_leggi_righe(fpath))
-            acl_id = 10
-            while re.search(rf"access-list {acl_id}\b", contenuto):
-                acl_id += 10
-            rm_name = f"FILTER_IN_{tag}"
-            stanza = (
-                [f"access-list {acl_id} deny {r}" for r in reti]
-                + [f"access-list {acl_id} permit any", "", f"route-map {rm_name} permit 10", f"    match ip address {acl_id}"]
-            )
-            _scrivi_route_map(fpath, rm_name, stanza)
-            _collega_al_neighbor(fpath, neigh_ip, 'route-map', rm_name, 'in')
-            print(
-                f"✅ {src}: access-list {acl_id} (deny {', '.join(reti)}) e route-map {rm_name} "
-                f"(neighbor {neigh_ip}, in)."
-            )
+        except operazioni.ErroreOperazione as e:
+            print(e)
+            continue
+        _esegui_piano(base_path, piano)
 
 
 def aggiungi_default_originate(base_path, routers):
@@ -509,63 +372,18 @@ def aggiungi_default_originate(base_path, routers):
             except ValueError as e:
                 print(f"❌ Rete non valida: {e}")
 
-    nuove, note = list(vecchie), []
-    righe_bgp = []
-    for ip in scelti:
-        if ip not in cfg['default_orig']:
-            righe_bgp.append(f"neighbor {ip} default-originate")
-        if solo:
-            pl = f"SOLO_DEFAULT_{ip.replace('.', '_')}"
-            for t_, nome, direz in cfg['link'].get(ip, []):
-                if t_ == 'prefix-list' and direz == 'out' and nome != pl:
-                    note.append(
-                        f"{ip} aveva già 'prefix-list {nome} out': FRR ne usa una sola per direzione, "
-                        f"la sostituisco con {pl}."
-                    )
-                    nuove = [l for l in nuove if ' '.join(l.split()) != f"neighbor {ip} prefix-list {nome} out"]
-            nuove = [l for l in nuove if not l.strip().startswith(f"ip prefix-list {pl} ")]
-            if f"neighbor {ip} prefix-list {pl} out" not in (' '.join(l.split()) for l in nuove):
-                righe_bgp.append(f"neighbor {ip} prefix-list {pl} out")
-            nuove += [''] + [f"ip prefix-list {pl} permit {r}" for r in ['0.0.0.0/0'] + extra]
-    if righe_bgp:
-        ins = _inserisci_nel_blocco(nuove, r'router bgp\b', righe_bgp)
-        if ins is None:
-            print(f"{src}: manca il blocco 'router bgp' in frr.conf.")
-            return
-        nuove = ins
-    pulite = []
-    for l in nuove:
-        if not l.strip() and pulite and not pulite[-1].strip():
-            continue
-        pulite.append(l)
-    while pulite and not pulite[-1].strip():
-        pulite.pop()
-    annunciate = {_norm_net(n) for n in cfg['bgp_networks']}
-    for r in extra:
-        if _norm_net(r) not in annunciate:
-            note.append(
-                f"{r} non è tra le network BGP di {src}: la prefix-list la lascia passare, ma per "
-                f"annunciarla serve anche Opzioni 6 (network {r})."
-            )
-    note.append(
-        "default-originate da solo basta: 'network 0.0.0.0/0' non serve (slide 044). "
-        "Se il testo o la soluzione lo vogliono comunque: Opzioni 6."
-    )
-    if not solo:
-        note.append(
-            "I neighbor ricevono la default IN PIÙ alle altre rotte. Se il testo dice 'just the "
-            "default route', rispondi s alla domanda 'SOLO la default'."
-        )
-    _applica_modifiche(
-        base_path, {rel: (vecchie, pulite)},
-        f"Default route da {src} verso {', '.join(owner.get(i, i) for i in scelti)}",
-        note
-    )
+    try:
+        piano = operazioni.calcola_default_originate(leggi_stato(base_path), src, scelti, solo, extra, owner)
+    except operazioni.ErroreOperazione as e:
+        print(e)
+        return
+    _esegui_piano(base_path, piano)
 
 
 def default_route_menu(base_path, routers):
     """Opzioni 12: tutte le default route in un posto solo (BGP, RIP, OSPF)."""
     while True:
+        routers = routers_dai_file(base_path)    # anche le modifiche fatte dalla GUI o a mano
         print_menu('=== Default route ===', [
             'BGP: manda la default a uno o più neighbor (default-originate, come Policies 6)',
             "RIP: annuncia la default (route 0.0.0.0/0) o un'altra rete (route <rete>)",
@@ -586,12 +404,8 @@ def aggiungi_default_igp(base_path, proto):
     """Default route in RIP o OSPF, dentro il blocco 'router rip/ospf' del router scelto."""
     nome_p = proto.upper()
     print(f"\n--- Default route in {nome_p} ---")
-    rx = rf'router {proto}\b'
-    cand = []
-    for d in sorted(os.listdir(base_path)):
-        f = os.path.join(base_path, d, 'etc', 'frr', 'frr.conf')
-        if os.path.isfile(f) and _inizio_blocco(_righe_file(f), rx) is not None:
-            cand.append(d)
+    stato = leggi_stato(base_path)
+    cand = operazioni.opzioni_default_igp(stato, proto)
     if not cand:
         print(f"Nessun router del lab ha il blocco 'router {proto}' in frr.conf.")
         return
@@ -601,10 +415,7 @@ def aggiungi_default_igp(base_path, proto):
     if not src:
         print('Annullato: nessuna modifica.' if not s else 'Router non valido: nessuna modifica.')
         return
-    rel = os.path.join(src, 'etc', 'frr', 'frr.conf')
-    vecchie = _righe_file(os.path.join(base_path, rel))
-    blocco = _comandi_nodo(vecchie, _inizio_blocco(vecchie, rx))
-    note = []
+    modo, reti, ha = '1', ['0.0.0.0/0'], False
     if proto == 'rip':
         print(
             "  1) route <rete>: annuncia la rete (Invio = 0.0.0.0/0, la default), anche se il router non ha "
@@ -623,190 +434,76 @@ def aggiungi_default_igp(base_path, proto):
                     break
                 except ValueError as e:
                     print(f"❌ Rete non valida: {e}")
-            nuove = [f"route {r}" for r in reti if f"route {r}" not in blocco]
-        elif modo == '2':
-            nuove = [] if 'default-information originate' in blocco else ['default-information originate']
-        else:
+        elif modo != '2':
             print('Scelta non valida: nessuna modifica.')
             return
     else:
         ha = _si("Il router ha già una default sua (statica nello startup o imparata da BGP)? (s/N): ")
-        riga = 'default-information originate' + ('' if ha else ' always')
-        if riga in blocco:
-            nuove = []
-        else:
-            togli = {
-                k for k in _indici_nodo(vecchie, _inizio_blocco(vecchie, rx))
-                if vecchie[k].strip().startswith('default-information originate')
-            }
-            vecchie = [l for k, l in enumerate(vecchie) if k not in togli]
-            nuove = [riga]
-        if not ha:
-            note.append("'always' = OSPF annuncia la default anche se il router non ne ha una.")
-    if not nuove:
-        print(f"{src}: è già tutto presente in router {proto}, niente da fare.")
-        return
-    righe = _inserisci_nel_blocco(vecchie, rx, nuove)
-    _applica_modifiche(
-        base_path,
-        {rel: (_righe_file(os.path.join(base_path, rel)), righe)},
-        f"Default route in {nome_p} su {src}",
-        note
-    )
+    _esegui_piano(base_path, operazioni.calcola_default_igp(stato, proto, src, modo, reti, ha))
+
+
+def _ip_manuale():
+    manual = input_non_vuoto("Inserisci l'IP del nameserver (es. 10.0.0.1): ").strip()
+    try:
+        ipaddress.ip_address(manual)
+        return manual
+    except ValueError:
+        print('IP non valido. Nessuna modifica effettuata.')
+        return None
 
 
 def assegna_resolv_conf(base_path):
     """Interattivo per assegnare un file `resolv.conf` a un singolo dispositivo."""
     try:
-        dir_items = [
-            d for d in os.listdir(base_path)
-            if os.path.isdir(os.path.join(base_path, d)) and not d.startswith('.')
-        ]
-        startup_files = []
-        for fn in os.listdir(base_path):
-            if fn.endswith('.startup') and os.path.isfile(os.path.join(base_path, fn)):
-                startup_files.append(os.path.splitext(fn)[0])
-        items = sorted(list(dict.fromkeys(dir_items + startup_files)))
+        stato = leggi_stato(base_path)
+        info = operazioni.opzioni_resolver(stato)
     except Exception:
         print('Errore leggendo la cartella del laboratorio.')
         return
-
+    items = info['dispositivi']
     if not items:
         print('Nessun dispositivo trovato nella cartella del lab.')
         return
 
     print_menu('Dispositivi trovati nel lab:', items)
-
     sel = input('Seleziona il dispositivo (numero o nome) o premi INVIO per annullare: ').strip()
     if not sel:
         print('Operazione annullata.')
         return
-
     target = None
     if sel.isdigit():
         idx = int(sel) - 1
         if 0 <= idx < len(items):
             target = items[idx]
-    else:
-        if sel in items:
-            target = sel
-
+    elif sel in items:
+        target = sel
     if not target:
         print('Selezione non valida.')
         return
 
-    device_dir = os.path.join(base_path, target)
-    os.makedirs(device_dir, exist_ok=True)
-    etc_dir = os.path.join(device_dir, 'etc')
-    os.makedirs(etc_dir, exist_ok=True)
-    dest_path = os.path.join(etc_dir, 'resolv.conf')
-
-    available_sources = []
-    for d in items:
-        src = os.path.join(base_path, d, 'etc', 'resolv.conf')
-        if os.path.isfile(src):
-            available_sources.append((d, src))
-    choice = '1'
-
-    try:
-        if choice == '1':
-            candidate_ns = []
-            for d in items:
-                if not os.path.isfile(os.path.join(base_path, d, 'etc', 'bind', 'named.conf')):
-                    continue
-                for line in _leggi_righe(os.path.join(base_path, f"{d}.startup")):
-                    m = re.match(r'\s*ip\s+a(?:ddr(?:ess)?)?\s+add\s+(\S+)\s+dev\s+(\S+)', line)
-                    if m and m.group(2) != 'lo':
-                        candidate_ns.append((d, m.group(1).split('/')[0]))
-                        break
-
-            if candidate_ns:
-                cand_items = [f"{d} - {ip}" for (d, ip) in candidate_ns]
-                print_menu(
-                    'Dispositivi candidati come nameserver:',
-                    cand_items,
-                    extra_options=[('M', 'Inserisci manualmente un IP')]
-                )
-                selns = input('Seleziona il nameserver (numero) o M per manuale, INVIO per annullare: ').strip()
-                if not selns:
-                    print('Operazione annullata.')
-                    return
-                if selns.lower() == 'm':
-                    manual = input_non_vuoto("Inserisci l'IP del nameserver (es. 10.0.0.1): ").strip()
-                    try:
-                        ipaddress.ip_address(manual)
-                        ns_ip = manual
-                    except Exception:
-                        print('IP non valido. Nessuna modifica effettuata.')
-                        return
-                else:
-                    if not selns.isdigit():
-                        print('Selezione non valida.')
-                        return
-                    idx = int(selns) - 1
-                    if not (0 <= idx < len(candidate_ns)):
-                        print('Selezione non valida.')
-                        return
-                    ns_ip = candidate_ns[idx][1]
-            else:
-                print('Nessun IP candidato trovato nelle cartelle dei dispositivi.')
-                manual = input_non_vuoto("Inserisci l'IP del nameserver (es. 10.0.0.1): ").strip()
-                try:
-                    ipaddress.ip_address(manual)
-                    ns_ip = manual
-                except Exception:
-                    print('IP non valido. Nessuna modifica effettuata.')
-                    return
-
-            try:
-                with open(dest_path, 'w', encoding='utf-8', newline='\n') as f:
-                    f.write(f"nameserver {ns_ip}\n")
-                print(f"✅ Wrote {dest_path} with nameserver {ns_ip}")
-            except Exception as e:
-                print('Errore scrivendo il file:', e)
-
-        elif choice == '2':
-            print("Inserisci il contenuto di resolv.conf. Termina con una linea contenente solo '.'")
-            lines = []
-            while True:
-                try:
-                    ln = input()
-                except EOFError:
-                    break
-                if ln.strip() == '.':
-                    break
-                lines.append(ln)
-            if not lines:
-                print('Nessun contenuto inserito. Nessuna modifica effettuata.')
-            else:
-                with open(dest_path, 'w', encoding='utf-8', newline='\n') as f:
-                    f.write('\n'.join(lines).rstrip() + '\n')
-                print(f"✅ Contenuto scritto in {dest_path}")
-
-        elif choice == '3' and available_sources:
-            src_items = [d for (d, p) in available_sources]
-            print_menu('Dispositivi con resolv.conf disponibile:', src_items)
-            src_sel = input('Seleziona il dispositivo sorgente (numero) o INVIO per annullare: ').strip()
-            if not src_sel:
-                print('Operazione annullata.')
-                return
-            if not src_sel.isdigit():
-                print('Selezione non valida.')
-                return
-            sidx = int(src_sel) - 1
-            if not (0 <= sidx < len(available_sources)):
-                print('Selezione non valida.')
-                return
-            src_path = available_sources[sidx][1]
-            try:
-                shutil.copyfile(src_path, dest_path)
-                print(f"✅ Copiato {src_path} -> {dest_path}")
-            except Exception as e:
-                print('Errore copiando il file:', e)
+    candidate_ns = info['candidati']
+    if candidate_ns:
+        print_menu(
+            'Dispositivi candidati come nameserver:',
+            [f"{d} - {ip}" for (d, ip) in candidate_ns],
+            extra_options=[('M', 'Inserisci manualmente un IP')]
+        )
+        selns = input('Seleziona il nameserver (numero) o M per manuale, INVIO per annullare: ').strip()
+        if not selns:
+            print('Operazione annullata.')
+            return
+        if selns.lower() == 'm':
+            ns_ip = _ip_manuale()
+        elif selns.isdigit() and 0 <= int(selns) - 1 < len(candidate_ns):
+            ns_ip = candidate_ns[int(selns) - 1][1]
         else:
-            print('Scelta non valida o nessuna sorgente disponibile.')
-    except Exception as e:
-        print("Errore durante l'impostazione di resolv.conf:", e)
+            print('Selezione non valida.')
+            return
+    else:
+        print('Nessun IP candidato trovato nelle cartelle dei dispositivi.')
+        ns_ip = _ip_manuale()
+    if ns_ip:
+        _esegui_piano(base_path, operazioni.calcola_resolver(stato, target, ns_ip))
 
 
 def aggiungi_loopback_menu(base_path, routers):
@@ -843,104 +540,22 @@ def aggiungi_loopback_menu(base_path, routers):
     if sel.isdigit():
         idx = int(sel) - 1
         if 0 <= idx < len(items):
-            if idx < len(router_names):
-                target = router_names[idx]
-            else:
-                target = only_startup[idx - len(router_names)]
+            target = router_names[idx] if idx < len(router_names) else only_startup[idx - len(router_names)]
         else:
             print('Selezione non valida.')
             return
+    elif sel in router_names or sel in only_startup:
+        target = sel
     else:
-        if sel in router_names or sel in only_startup:
-            target = sel
-        else:
-            print('Selezione non valida.')
-            return
-
-    typ = 'r' if target in router_names else 'd'
-    if typ.startswith('r'):
-        if not target or target not in routers:
-            target = select_router(routers, prompt='Seleziona il router a cui aggiungere la loopback:')
-            if not target:
-                print('Operazione annullata.')
-                return
-        ip_only = valida_ip_senza_cidr('IP loopback (es. 1.2.3.4): ')
-        ipcidr = ip_only + '/32'
-        routers.setdefault(target, {}).setdefault('loopbacks', [])
-        if ipcidr in routers[target]['loopbacks']:
-            print('⚠️ Loopback già presente nei dati del router.')
-        else:
-            routers[target]['loopbacks'].append(ipcidr)
-        startup = os.path.join(base_path, f"{target}.startup")
-        try:
-            lines = []
-            if os.path.exists(startup):
-                with open(startup, 'r', encoding='utf-8') as f:
-                    lines = f.readlines()
-            lb_line = f"ip address add {ipcidr} dev lo\n"
-            if not any(l.strip() == lb_line.strip() for l in lines):
-                insert_idx = None
-                for i, l in enumerate(lines):
-                    if re.match(r'^\s*systemctl start\b', l):
-                        insert_idx = i
-                        break
-                if insert_idx is None:
-                    if lines and not lines[-1].endswith('\n'):
-                        lines[-1] = lines[-1] + '\n'
-                    lines.append(lb_line)
-                else:
-                    lines.insert(insert_idx, lb_line)
-                with open(startup, 'w', encoding='utf-8', newline='\n') as f:
-                    f.writelines(lines)
-        except Exception:
-            print('⚠️ Impossibile aggiornare lo startup del router (file non trovato).')
-        fpath = os.path.join(base_path, target, 'etc', 'frr', 'frr.conf')
-        if os.path.exists(fpath):
-            protos = routers.get(target, {}).get('protocols', [])
-            if 'ospf' in protos:
-                area = routers.get(target, {}).get('ospf_area') or input_area(
-                    'Area OSPF per annuncio della loopback (es. 0.0.0.0): ', default='0.0.0.0'
-                )
-                insert_lines_into_protocol_block(fpath, proto='ospf', asn=None, lines=[f"network {ipcidr} area {area}"])
-            if 'rip' in protos:
-                insert_lines_into_protocol_block(fpath, proto='rip', asn=None, lines=[f"network {ipcidr}"])
-            try:
-                add_ibgp_loopback_neighbors(base_path, routers)
-            except Exception:
-                pass
-            print(f"\n\n✅ Loopback {ipcidr} aggiunta a router {target} (startup aggiornato).\n")
-        else:
-            print(f"⚠️ frr.conf non trovato per {target}; è stata aggiornata solo la startup (se esistente).")
+        print('Selezione non valida.')
         return
 
-    ip_only = valida_ip_senza_cidr('\nIP loopback (es. 1.2.3.4): ')
-    ipcidr = ip_only + '/32'
-    startup = os.path.join(base_path, f"{target}.startup")
-    try:
-        lines = []
-        if os.path.exists(startup):
-            with open(startup, 'r', encoding='utf-8') as f:
-                lines = f.readlines()
-        lb_line = f"ip address add {ipcidr} dev lo\n"
-        if any(l.strip() == lb_line.strip() for l in lines):
-            print(f'⚠️ Loopback {ipcidr} già presente nello startup di {target}.')
-        else:
-            insert_idx = None
-            for i, l in enumerate(lines):
-                if re.match(r'^\s*systemctl start\b', l):
-                    insert_idx = i
-                    break
-            if insert_idx is None:
-                if lines and not lines[-1].endswith('\n'):
-                    lines[-1] = lines[-1] + '\n'
-                lines.append(lb_line)
-            else:
-                lines.insert(insert_idx, lb_line)
-            with open(startup, 'w', encoding='utf-8', newline='\n') as f:
-                f.writelines(lines)
-            print(f"✅ Loopback {ipcidr} aggiunta a {target} (startup).")
-    except Exception as e:
-        print('Errore aggiornando lo startup:', e)
+    stato = leggi_stato(base_path)
+    if stato['dispositivi'].get(target, {}).get('tipo') == 'router':
+        ip_only = valida_ip_senza_cidr('IP loopback (es. 1.2.3.4): ')
+    else:
+        ip_only = valida_ip_senza_cidr('\nIP loopback (es. 1.2.3.4): ')
+    _esegui_piano(base_path, operazioni.calcola_loopback(stato, target, ip_only))
 
 
 def _chiedi_reti_cpp(routers):
@@ -1035,18 +650,8 @@ def aggiungi_customer_provider_wizard(base_path, routers):
         print(f"File {fpath} non trovato.")
         return
 
-    with open(fpath, 'r', encoding='utf-8') as f:
-        content = f.read()
-
-    if f"neighbor {neigh_ip} remote-as" not in content:
-        print(f"Neighbor {neigh_ip} non presente. Lo aggiungo.")
-        lines = [
-            f"neighbor {neigh_ip} remote-as {neigh_asn}",
-            f"neighbor {neigh_ip} description {neigh_name}"
-        ]
-        if not insert_lines_into_protocol_block(fpath, proto='bgp', asn=None, lines=lines):
-            print("❌ Errore nell'inserimento del neighbor.")
-            return
+    if f"neighbor {neigh_ip} remote-as" not in '\n'.join(_leggi_righe(fpath)):
+        print(f"Neighbor {neigh_ip} non presente: verrà aggiunto.")
 
     print("\nQual è la relazione economica?")
     print("1) PROVIDER (Il vicino è il mio provider)")
@@ -1064,12 +669,8 @@ def aggiungi_customer_provider_wizard(base_path, routers):
         print("Scelta non valida.")
         return
 
-    pl_in = f"{rel_type}_{neigh_name}_in"
-    pl_out = f"{rel_type}_{neigh_name}_out"
-    lines_to_append = []
-
+    reti_out = []
     if rel_type in ("provider", "peer"):
-        lines_to_append.append(f"ip prefix-list {pl_in} permit any")
         vietate = "DEI tuoi PEER" if rel_type == "provider" else "DEL tuo PROVIDER"
         proprie = _analizza_frr(_leggi_righe(fpath))['bgp_networks']
 
@@ -1085,32 +686,13 @@ def aggiungi_customer_provider_wizard(base_path, routers):
         print(f"⚠️  ATTENZIONE: NON inserire le reti {vietate}!")
         reti_out += [r for r in _chiedi_reti_cpp(routers) if r not in reti_out]
 
-        lines_to_append += [f"ip prefix-list {pl_out} permit {r}" for r in reti_out]
-        if not reti_out:
-            print(f"⚠️  Nessuna rete: {target} non annuncerà niente a {neigh_name}.")
-
-    elif rel_type == "customer":
-        lines_to_append.append(f"ip prefix-list {pl_in} permit any")
-        lines_to_append.append(f"ip prefix-list {pl_out} permit any")
-
-    neigh_lines = [
-        "",
-        f"neighbor {neigh_ip} prefix-list {pl_in} in",
-        f"neighbor {neigh_ip} prefix-list {pl_out} out"
-    ]
-    if insert_lines_into_protocol_block(fpath, proto='bgp', asn=None, lines=neigh_lines):
-        try:
-            with open(fpath, 'a', encoding='utf-8', newline='\n') as f:
-                f.write('\n')
-                for l in lines_to_append:
-                    f.write(l + '\n')
-                f.write('\n')
-        except Exception as e:
-            print(f"❌ Errore scrivendo le prefix-list: {e}")
-            return
-        print(f"✅ Configurazione {rel_type.upper()} applicata su {target} verso {neigh_name}.")
-    else:
-        print(f"❌ Errore applicando la configurazione neighbor su {target}.")
+    try:
+        piano = operazioni.calcola_cpp(leggi_stato(base_path), target, neigh_name, neigh_ip, neigh_asn,
+                                       rel_type, reti_out)
+    except operazioni.ErroreOperazione as e:
+        print(e)
+        return
+    _esegui_piano(base_path, piano)
 
 
 def aggiungi_redistribuzione_bgp_igp(base_path, routers):
@@ -1135,62 +717,16 @@ def aggiungi_redistribuzione_bgp_igp(base_path, routers):
             print("Inserisci un valore.")
             continue
         try:
-            net = ipaddress.ip_network(neigh_ip, strict=False)
-            prefix = str(net)
+            ipaddress.ip_network(neigh_ip, strict=False)
             break
         except ValueError:
             print("❌ Formato non valido. Inserisci IP o CIDR (es. 10.0.0.1 o 10.0.0.0/24)")
-
-    global_conf = [
-        f"ip prefix-list myNeighbors permit {prefix} le 32",
-        "",
-        "route-map eBGP permit 10",
-        "    match ip next-hop prefix-list myNeighbors",
-        ""
-    ]
-
-    fpath = os.path.join(base_path, target, "etc", "frr", "frr.conf")
-    if not os.path.exists(fpath):
-        print(f"File {fpath} non trovato.")
-        return
-
     try:
-        with open(fpath, 'a', encoding='utf-8', newline='\n') as f:
-            f.write("\n\n")
-            for line in global_conf:
-                f.write(line + "\n")
-    except Exception as e:
-        print(f"❌ Errore scrivendo su {fpath}: {e}")
+        piano = operazioni.calcola_redistribuzione_route_map(leggi_stato(base_path), target, neigh_ip)
+    except operazioni.ErroreOperazione as e:
+        print(e)
         return
-
-    protos = candidates[target]['protocols']
-    redist_cmd = "redistribute bgp route-map eBGP"
-
-    try:
-        with open(fpath, 'r', encoding='utf-8') as f:
-            cur = f.readlines()
-        kept = [l for l in cur if l.strip() != 'redistribute bgp']
-        if len(kept) != len(cur):
-            with open(fpath, 'w', encoding='utf-8', newline='\n') as f:
-                f.writelines(kept)
-    except Exception as e:
-        print(f"⚠️ Impossibile ripulire 'redistribute bgp' esistente: {e}")
-
-    applied = False
-    if 'rip' in protos:
-        if insert_lines_into_protocol_block(fpath, proto='rip', lines=['', redist_cmd]):
-            print(f"✅ Aggiunto '{redist_cmd}' a router rip.")
-            applied = True
-
-    if 'ospf' in protos:
-        if insert_lines_into_protocol_block(fpath, proto='ospf', lines=['', redist_cmd]):
-            print(f"✅ Aggiunto '{redist_cmd}' a router ospf.")
-            applied = True
-
-    if applied:
-        print(f"✅ Configurazione completata su {target}.")
-    else:
-        print("❌ Impossibile applicare la ridistribuzione (protocollo IGP non trovato nel file?).")
+    _esegui_piano(base_path, piano)
 
 
 def _imposta_redistribute_bgp(base_path, routers, attiva):
@@ -1206,39 +742,12 @@ def _imposta_redistribute_bgp(base_path, routers, attiva):
     if not target:
         print('Operazione annullata.')
         return
-    fpath = os.path.join(base_path, target, 'etc', 'frr', 'frr.conf')
-    out, blocco, presente = [], None, set()
-    for l in _leggi_righe(fpath):
-        s = l.strip()
-        if s.startswith('router '):
-            blocco = s.split()[1]
-        elif l and not l[0].isspace():
-            blocco = None
-        if blocco in ('ospf', 'rip') and s == 'redistribute bgp':
-            presente.add(blocco)
-            if not attiva:
-                continue
-        out.append(l)
-    protos = [p for p in ('ospf', 'rip') if p in candidati[target]['protocols']]
-    if attiva:
-        mancanti = [p for p in protos if p not in presente]
-        for p in mancanti:
-            insert_lines_into_protocol_block(fpath, proto=p, asn=None, lines=['redistribute bgp'])
-        print(
-            f"✅ {target}: redistribute bgp "
-            + (f"aggiunto in {', '.join(mancanti)}." if mancanti else "era già presente.")
-        )
-    else:
-        _scrivi_righe(fpath, out)
-        print(
-            f"✅ {target}: redistribute bgp "
-            + (f"tolto da {', '.join(sorted(presente))}." if presente else "non era presente.")
-        )
-    routers[target]['igp_redistribute_bgp'] = attiva
+    _esegui_piano(base_path, operazioni.calcola_redistribuzione(leggi_stato(base_path), target, attiva))
 
 
 def menu_ridistribuzione(base_path, routers):
     while True:
+        routers = routers_dai_file(base_path)    # anche le modifiche fatte dalla GUI o a mano
         print_menu('=== Ridistribuzione BGP -> IGP ===', [
             "Togli 'redistribute bgp' da un router (il testo la chiede solo su alcuni router di confine)",
             "Rimetti 'redistribute bgp' su un router",
@@ -1259,48 +768,113 @@ def menu_ridistribuzione(base_path, routers):
 
 def imposta_auto_cost(base_path):
     """Opzioni 10: 'auto-cost reference-bandwidth 100' su tutti i router OSPF di un AS."""
-    isole = isole_ospf(base_path)
-    if not isole:
+    stato = leggi_stato(base_path)
+    gruppi = operazioni.opzioni_auto_cost(stato)
+    if not gruppi:
         print('Nessun router OSPF nel lab.')
         return
     items = []
-    for et, rs, cfgs in isole:
-        costi = [f"{r} {c}" for r in rs for c in cfgs[r]['costi']]
-        con = [r for r in rs if cfgs[r]['auto_cost']]
-        stato = (
+    for g in gruppi:
+        rs, con = g['router'], g['con_auto_cost']
+        stato_g = (
             'auto-cost già su tutti' if len(con) == len(rs)
             else f"auto-cost su {len(con)}/{len(rs)}" if con else 'senza auto-cost'
         )
-        items.append(f"{et}: {', '.join(rs)}  [{stato}]" + (f"  costi espliciti: {', '.join(costi)}" if costi else ''))
+        items.append(f"{g['etichetta']}: {', '.join(rs)}  [{stato_g}]"
+                     + (f"  costi espliciti: {', '.join(g['costi'])}" if g['costi'] else ''))
     print_menu('Router OSPF del lab (per AS):', items)
     s = input('Su quale AS? (numero, invio = annulla): ').strip()
-    if not s.isdigit() or not 1 <= int(s) <= len(isole):
+    if not s.isdigit() or not 1 <= int(s) <= len(gruppi):
         print('Operazione annullata.')
         return
-    et, rs, cfgs = isole[int(s) - 1]
-    file_di = {r: os.path.join(base_path, r, 'etc', 'frr', 'frr.conf') for r in rs}
-    togli_vecchie = lambda r: _rimuovi_righe(file_di[r], lambda l: l.strip().startswith('auto-cost reference-bandwidth'))
-    if all(cfgs[r]['auto_cost'] for r in rs):
+    g = gruppi[int(s) - 1]
+    et, rs = g['etichetta'], g['router']
+    if len(g['con_auto_cost']) == len(rs):
         if input(f"{et} ha già 'auto-cost reference-bandwidth' su tutti i router. Toglierlo? (s/N): ").strip().lower() == 's':
-            for r in rs:
-                togli_vecchie(r)
-            print(f"✅ Tolto da {', '.join(rs)}: costo predefinito di nuovo 10000.")
+            _esegui_piano(base_path, operazioni.calcola_auto_cost(stato, et, togli=True))
         return
     print(f"Aggiungo 'auto-cost reference-bandwidth 100' a {len(rs)} router di {et}: {', '.join(rs)}.")
     print("Effetto: costo predefinito di ogni interfaccia = 100 / 10 Mbit = 10 (oggi è 10000).")
     print("I costi che hai scritto tu (Opzioni 1) non cambiano.")
-    if input('Confermi? (S/n): ').strip().lower() == 'n':
-        print('Operazione annullata.')
+    _esegui_piano(base_path, operazioni.calcola_auto_cost(stato, et))
+
+
+def _aggiungi_dispositivo(base_path, routers, tipo):
+    """Aggiunge un dispositivo con le stesse domande del wizard (nomi e IP del lab già noti)."""
+    from .wizard import wizard_dns, wizard_host, wizard_router, wizard_www
+    stato = leggi_stato(base_path)
+    info = operazioni.opzioni_aggiungi_dispositivo(stato)
+    m = info['modello']
+    area, stub = info['prima_area_ospf']
+    ctx = {'routers': dict(m['routers']), 'hosts': list(m['hosts']), 'wwws': list(m['wwws']),
+           'used_ips': set(info['ip']), 'used_names': set(info['nomi']),
+           'first_ospf_area': area, 'first_ospf_stub': stub}
+    print("(Domande come nella creazione: '<' torna indietro, '<<' ricomincia il dispositivo.)")
+    if tipo == 'router':
+        prima = set(ctx['routers'])
+        wizard_router(len(prima) + 1, ctx)
+        nome = next(n for n in ctx['routers'] if n not in prima)
+        dati = dict(ctx['routers'][nome], name=nome)
+    elif tipo == 'host':
+        wizard_host(sum(1 for h in m['hosts'] if not h.get('dns')) + 1, ctx)
+        dati = ctx['hosts'][-1]
+    elif tipo == 'www':
+        wizard_www(len(m['wwws']) + 1, ctx)
+        dati = ctx['wwws'][-1]
+    else:
+        wizard_dns(sum(1 for h in m['hosts'] if h.get('dns')) + 1, ctx)
+        dati = ctx['hosts'][-1]
+    sessioni, resolver = True, True
+    if tipo == 'router' and 'bgp' in dati.get('protocols', []):
+        sessioni = _si("Aprire le sessioni BGP con i router BGP sulle sue LAN (da entrambi i lati)? (S/n): ", True)
+    if tipo != 'router' and info['resolver']:
+        resolver = _si(f"Usare anche qui il resolver del lab ({info['resolver']})? (S/n): ", True)
+    try:
+        piano = operazioni.calcola_aggiungi_dispositivo(stato, tipo, dati, sessioni_bgp=sessioni, resolver=resolver)
+    except operazioni.ErroreOperazione as e:
+        print(e)
         return
-    for r in rs:
-        togli_vecchie(r)
-        insert_lines_into_protocol_block(file_di[r], proto='ospf', lines=['auto-cost reference-bandwidth 100'])
-    print("✅ Fatto. Controlla con la GUI (show ip ospf interface: 'Cost: 10') e con Test -> Verifica percorso.")
+    _esegui_piano(base_path, piano, routers)
+
+
+def _togli_dispositivo(base_path, routers):
+    from .device_editor import _scegli_dispositivo
+    disp = leggi_dispositivi(base_path)
+    nome = _scegli_dispositivo(disp, 'Dispositivo da togliere')
+    if not nome:
+        print('Annullato.')
+        return
+    stato = leggi_stato(base_path)
+    info = operazioni.opzioni_togli_dispositivo(stato, nome)
+    togli = True
+    if info['neighbor']:
+        togli = _si(f"Tolgo anche le righe 'neighbor' che puntano a {nome} su {', '.join(info['neighbor'])}? (S/n): ", True)
+    _esegui_piano(base_path, operazioni.calcola_togli_dispositivo(stato, nome, togli_neighbor=togli), routers)
+
+
+def menu_dispositivi(base_path, routers):
+    """Opzioni 13: aggiungere o togliere un dispositivo da un lab già creato."""
+    while True:
+        routers = routers_dai_file(base_path)    # anche le modifiche fatte dalla GUI o a mano
+        print_menu('=== Aggiungi o togli un dispositivo ===', [
+            'Aggiungi un router', 'Aggiungi un host/PC', 'Aggiungi un server WWW', 'Aggiungi un server DNS',
+            'Togli un dispositivo'
+        ], extra_options=[('0', 'Torna indietro')])
+        c = input('Seleziona (numero): ').strip()
+        if c == '0' or not c:
+            return
+        if c in ('1', '2', '3', '4'):
+            _aggiungi_dispositivo(base_path, routers, {'1': 'router', '2': 'host', '3': 'www', '4': 'dns'}[c])
+        elif c == '5':
+            _togli_dispositivo(base_path, routers)
+        else:
+            print('Scelta non valida.')
 
 
 def menu_opzioni_laboratorio(base_path, routers):
     """Sottomenu per opzioni avanzate del laboratorio."""
     while True:
+        routers = routers_dai_file(base_path)    # anche le modifiche fatte dalla GUI o a mano
         items = [
             'Imposta costo OSPF',
             'Aggiungi Policies BGP',
@@ -1313,7 +887,8 @@ def menu_opzioni_laboratorio(base_path, routers):
             'Aggiungi delega DNS sul root (es. com -> dns.com)',
             'Costi OSPF predefiniti a 10 (auto-cost reference-bandwidth 100 su un AS)',
             'Modifica un dispositivo (IP, LAN, gateway, protocolli, AS, righe dei file)',
-            'Default route (BGP verso un neighbor, RIP, OSPF)'
+            'Default route (BGP verso un neighbor, RIP, OSPF)',
+            'Aggiungi o togli un dispositivo'
         ]
         print_menu(
             f'=== Opzioni Laboratorio ({os.path.basename(os.path.normpath(base_path))}) ===',
@@ -1346,16 +921,48 @@ def menu_opzioni_laboratorio(base_path, routers):
             modifica_dispositivo_menu(base_path, routers)
         elif choice == '12':
             default_route_menu(base_path, routers)
+        elif choice == '13':
+            menu_dispositivi(base_path, routers)
         else:
             print('Scelta non valida, riprova.')
 
 
+def archivio_menu(lab_path):
+    """Archivio del lab per la consegna (stesso codice della GUI): solo i file della configurazione."""
+    from .archivio import contenuto_archivio, crea_archivio, nome_archivio_valido
+    base, lab = os.path.dirname(os.path.abspath(lab_path)), os.path.basename(os.path.normpath(lab_path))
+    nome = input(f"Nome dell'archivio (Invio = {lab}): ").strip() or lab
+    for suff in ('.tar.gz', '.zip'):
+        if nome.endswith(suff):
+            nome = nome[:-len(suff)]
+    if not nome_archivio_valido(nome):
+        print("❌ Nome dell'archivio non valido (lettere, numeri, _ - .).")
+        return
+    if nome != lab:
+        print(f"Attenzione: dentro l'archivio la cartella si chiamerà {lab}, non {nome}. Se il testo chiede "
+              f"che cartella e archivio abbiano lo stesso nome, rinomina il lab.")
+    formato = 'zip' if input("Formato: t = .tar.gz (quello della consegna), z = .zip [t]: ").strip().lower() == 'z' else 'tar.gz'
+    dest = os.path.join(base, f"{nome}.{formato}")
+    file, esclusi = contenuto_archivio(base, lab)
+    print(f"\nNell'archivio: {len(file)} file della cartella {lab}.")
+    if esclusi:
+        print("Lasciati fuori: " + ', '.join(esclusi))
+    if os.path.exists(dest) and not _si(f"{os.path.basename(dest)} esiste già. Lo sostituisco? (s/N): "):
+        print('Annullato.')
+        return
+    dest, file, comando, esclusi = crea_archivio(base, lab, nome, formato)
+    print(f"✅ Archivio creato: {dest} ({len(file)} file)")
+    print(f"   Comando equivalente: {comando}")
+
+
 def menu_post_creazione(base_path, routers):
     while True:
+        routers = routers_dai_file(base_path)    # anche le modifiche fatte dalla GUI o a mano
         items = [
             'Genera file XML aggiornato',
             'Testa Funzionamento (PING)',
-            'Opzioni Laboratorio'
+            'Opzioni Laboratorio',
+            'Crea archivio per la consegna'
         ]
         print_menu('-------------- Menu post-creazione --------------', items, extra_options=[('0', 'Termina Programma')])
         print('\n--------------------------------------------------')
@@ -1389,6 +996,8 @@ def menu_post_creazione(base_path, routers):
                 print('Errore generando il comando ping:', e)
         elif choice == '3':
             menu_opzioni_laboratorio(base_path, routers)
+        elif choice == '4':
+            archivio_menu(base_path)
         else:
             print('Scelta non valida, riprova.')
 
@@ -1424,15 +1033,17 @@ def opzioni_laboratorio_menu(base):
     if not target:
         return
     correggi_nomi_lab(target)
-    xmlpath = os.path.join(target, os.path.basename(os.path.normpath(target)) + '.xml')
-    try:
-        if not os.path.exists(xmlpath):
-            xmlpath = rebuild_lab_metadata_and_export(target)
-            if not xmlpath:
-                print('Impossibile leggere i dati del lab.')
-                return
-        _, routers_meta, _, _, _ = load_lab_from_xml(xmlpath)
-    except Exception as e:
-        print('Errore caricando il lab:', e)
+    _proponi_xml_fuori(target)
+    # i dati dei router si leggono dai file a ogni giro del menu: niente XML da creare o leggere
+    menu_opzioni_laboratorio(target, None)
+
+
+def _proponi_xml_fuori(lab_path):
+    """Lab creati prima della fase 1.7: l'XML dei metadati sta ancora dentro il lab."""
+    from .supporto import nome_lab, sposta_xml_fuori, xml_nel_lab
+    if not xml_nel_lab(lab_path):
         return
-    menu_opzioni_laboratorio(target, routers_meta)
+    print(f"\nIl lab contiene {nome_lab(lab_path)}.xml (metadati del generatore), che va tolto prima della consegna.")
+    if _si("Lo sposto in .labgenerator/ accanto ai lab? (S/n): ", True):
+        fuori, copia = sposta_xml_fuori(lab_path)
+        print(f"✅ XML spostato in {fuori} (copia di sicurezza del lab: {copia}).")

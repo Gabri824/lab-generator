@@ -1,0 +1,6 @@
+# Loopback su un dispositivo che non è un router (solo startup)
+@lab papillon_mio
+@chiama aggiungi_loopback_menu
+client
+9.9.9.9
+s

@@ -17,10 +17,8 @@ import shlex
 import shutil
 import subprocess
 import sys
-import tarfile
 import threading
 import time
-import zipfile
 
 from . import dati
 
@@ -948,38 +946,9 @@ def apri_terminale(kathara, lab_path, dev):
 
 
 def crea_archivio(base, lab, nome, formato):
-    """Archivio del lab senza l'XML del generatore (e senza la cartella shared/ vuota
-    che Kathará crea a ogni lstart), salvato nella cartella dei lab.
+    """Archivio del lab per la consegna: lo crea il motore (core/archivio.py), lo stesso del terminale.
     Ritorna (percorso, elenco dei file, comando equivalente, esclusi)."""
-    lab_dir = os.path.join(base, lab)
-    esclusi = [f"{lab}/{lab}.xml"]
-    shared = os.path.join(lab_dir, 'shared')
-    if os.path.isdir(shared) and not os.listdir(shared):
-        esclusi.append(f"{lab}/shared")
-    file = []
-    for radice, cartelle, nomi in os.walk(lab_dir):
-        cartelle[:] = sorted(c for c in cartelle if c != '__pycache__')
-        for n in sorted(nomi):
-            rel = os.path.relpath(os.path.join(radice, n), base).replace(os.sep, '/')
-            if rel not in esclusi:
-                file.append(rel)
-    if formato == 'zip':
-        dest = os.path.join(base, f"{nome}.zip")
-        with zipfile.ZipFile(dest, 'w', zipfile.ZIP_DEFLATED) as z:
-            for rel in file:
-                z.write(os.path.join(base, rel), rel)
-        comando = f"zip -r {nome}.zip {lab} -x " + ' '.join(
-            f"'{e}/'" if e.endswith('/shared') else f"'{e}'" for e in esclusi)
-    else:
-        dest = os.path.join(base, f"{nome}.tar.gz")
+    from core.archivio import crea_archivio as crea
+    return crea(base, lab, nome, formato)
 
-        def filtro(info):
-            if info.name in esclusi or '__pycache__' in info.name.split('/'):
-                return None
-            info.uid = info.gid = 0
-            info.uname = info.gname = ''
-            return info
-        with tarfile.open(dest, 'w:gz') as t:
-            t.add(lab_dir, arcname=lab, filter=filtro)
-        comando = ' '.join(['tar'] + [f"--exclude='{e}'" for e in esclusi] + [f"-czvf {nome}.tar.gz {lab}"])
-    return dest, file, comando, esclusi
+

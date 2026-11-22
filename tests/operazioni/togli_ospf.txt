@@ -1,0 +1,6 @@
+# OSPF tolto da un router BGP+OSPF
+@lab papillon_mio
+@chiama modifica_protocolli r3
+t
+2
+s

@@ -1,0 +1,126 @@
+
+=== Aggiungi o togli un dispositivo ===
+
+  1) Aggiungi un router
+  2) Aggiungi un host/PC
+  3) Aggiungi un server WWW
+  4) Aggiungi un server DNS
+  5) Togli un dispositivo
+  0) Torna indietro
+
+Seleziona (numero): 1
+(Domande come nella creazione: '<' torna indietro, '<<' ricomincia il dispositivo.)
+
+Nome router (default r9): as90r1
+--- Configurazione router as90r1 ---
+Protocolli attivi su as90r1 (bgp/ospf/rip/statico, separati da virgola): bgp
+Numero AS BGP: 90
+Numero interfacce: 2
+  LAN associata a eth0 (es. A): L
+  IP per eth0 (es. 10.0.9.0/24): 110.0.0.9/24
+  LAN associata a eth1 (es. A): Q
+  IP per eth1 (es. 10.0.9.1/24): 190.0.0.1/24
+
+--- Riepilogo router n.9 ---
+  router as90r1   protocolli: bgp   AS 90
+  eth0   LAN L    110.0.0.9/24
+  eth1   LAN Q    190.0.0.1/24
+Confermi? (s = sì / r = rifai da capo / < = correggi l'ultima risposta) [s]: 
+Aprire le sessioni BGP con i router BGP sulle sue LAN (da entrambi i lati)? (S/n): 
+
+--- Aggiungi router as90r1: anteprima (6 file) ---
+  as10r1/etc/frr/frr.conf
+    + riga  22: neighbor 110.0.0.9 remote-as 90
+    + riga  23: neighbor 110.0.0.9 description Router as90r1
+  as90r1.startup
+    + riga   1: ip address add 110.0.0.9/24 dev eth0
+    + riga   2: ip address add 190.0.0.1/24 dev eth1
+    + riga   3: 
+    + riga   4: systemctl start frr
+  as90r1/etc/frr/daemons
+    + riga   1: zebra=yes
+    + riga   2: ripd=no
+    + riga   3: ospfd=no
+    + riga   4: bgpd=yes
+    + riga   5: 
+    + riga   6: ospf6d=no
+    + riga   7: ripngd=no
+    + riga   8: isisd=no
+    + riga   9: pimd=no
+    + riga  10: ldpd=no
+    + riga  11: nhrpd=no
+    + riga  12: eigrpd=no
+    + riga  13: babeld=no
+    + riga  14: sharpd=no
+    + riga  15: staticd=no
+    + riga  16: pbrd=no
+    + riga  17: bfdd=no
+    + riga  18: fabricd=no
+    + riga  19: 
+    + riga  20: ######
+    + riga  21: 
+    + riga  22: vtysh_enable=yes
+    + riga  23: zebra_options=" -s 90000000 --daemon -A 127.0.0.1"
+    + riga  24: bgpd_options="   --daemon -A 127.0.0.1"
+    + riga  25: ospfd_options="  --daemon -A 127.0.0.1"
+    + riga  26: ospf6d_options=" --daemon -A ::1"
+    + riga  27: ripd_options="   --daemon -A 127.0.0.1"
+    + riga  28: ripngd_options=" --daemon -A ::1"
+    + riga  29: isisd_options="  --daemon -A 127.0.0.1"
+    + riga  30: pimd_options="  --daemon -A 127.0.0.1"
+    + riga  31: ldpd_options="  --daemon -A 127.0.0.1"
+    + riga  32: nhrpd_options="  --daemon -A 127.0.0.1"
+    + riga  33: eigrpd_options="  --daemon -A 127.0.0.1"
+    + riga  34: babeld_options="  --daemon -A 127.0.0.1"
+    + riga  35: sharpd_options="  --daemon -A 127.0.0.1"
+    + riga  36: staticd_options="  --daemon -A 127.0.0.1"
+    + riga  37: pbrd_options="  --daemon -A 127.0.0.1"
+    + riga  38: bfdd_options="  --daemon -A 127.0.0.1"
+    + riga  39: fabricd_options="  --daemon -A 127.0.0.1"
+  as90r1/etc/frr/frr.conf
+    + riga   1: password zebra
+    + riga   2: enable password zebra
+    + riga   3: 
+    + riga   4: log file /var/log/frr/frr.log
+    + riga   5: 
+    + riga   6: debug bgp keepalives
+    + riga   7: debug bgp updates in
+    + riga   8: debug bgp updates out
+    + riga   9: 
+    + riga  10: router bgp 90
+    + riga  11: 
+    + riga  12: no bgp ebgp-requires-policy
+    + riga  13: no bgp network import-check
+    + riga  14: 
+    + riga  15: network 110.0.0.0/24
+    + riga  16: network 190.0.0.0/24
+    + riga  17: neighbor 110.0.0.1 remote-as 10
+    + riga  18: neighbor 110.0.0.1 description Router as10r1
+    + riga  19: 
+  as90r1/etc/frr/vtysh.conf
+    + riga   1: service integrated-vtysh-config
+    + riga   2: hostname as90r1-frr
+  lab.conf
+    + riga  36: 
+    + riga  37: as90r1[0]=L
+    + riga  38: as90r1[1]=Q
+    + riga  39: as90r1[image]="kathara/frr"
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/candy_test/AAAAMMGG-HHMMSS
+   (i controlli dell'opzione 8 danno lo stesso esito di prima)
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+✅ Sessione BGP as90r1 <-> as10r1 (LAN L).
+
+=== Aggiungi o togli un dispositivo ===
+
+  1) Aggiungi un router
+  2) Aggiungi un host/PC
+  3) Aggiungi un server WWW
+  4) Aggiungi un server DNS
+  5) Togli un dispositivo
+  0) Torna indietro
+
+Seleziona (numero): 0
+
+[copie di sicurezza create: 1]

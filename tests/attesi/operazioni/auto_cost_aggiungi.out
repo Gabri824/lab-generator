@@ -1,0 +1,27 @@
+
+Router OSPF del lab (per AS):
+
+  1) AS40: r4, r5, r6, r7  [senza auto-cost]  costi espliciti: r4 eth1 100
+
+Su quale AS? (numero, invio = annulla): 1
+Aggiungo 'auto-cost reference-bandwidth 100' a 4 router di AS40: r4, r5, r6, r7.
+Effetto: costo predefinito di ogni interfaccia = 100 / 10 Mbit = 10 (oggi è 10000).
+I costi che hai scritto tu (Opzioni 1) non cambiano.
+
+--- Aggiungi auto-cost reference-bandwidth 100 su AS40: anteprima (4 file) ---
+  r4/etc/frr/frr.conf
+    + riga  16: auto-cost reference-bandwidth 100
+  r5/etc/frr/frr.conf
+    + riga  11: auto-cost reference-bandwidth 100
+  r6/etc/frr/frr.conf
+    + riga  11: auto-cost reference-bandwidth 100
+  r7/etc/frr/frr.conf
+    + riga  11: auto-cost reference-bandwidth 100
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/hourglass_test/AAAAMMGG-HHMMSS
+   ✔ risolto: AS40: costi OSPF espliciti (r4 eth1 100), ma in kathara/frr il costo predefinito delle altre interfacce è 10000, non 10: il costo indicato renderà quel link il più conveniente invece del più caro. Se il testo chiede percorsi che dipendono da questo costo -> Opzioni 10 su AS40 (verifica con la GUI: show ip ospf interface / Verifica percorso).
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+✅ Fatto. Controlla con la GUI (show ip ospf interface: 'Cost: 10') e con Test -> Verifica percorso.
+
+[copie di sicurezza create: 1]

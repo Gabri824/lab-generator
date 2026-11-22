@@ -1,0 +1,5 @@
+# Rinomina di un router: lab.conf, cartella, startup, hostname, descrizioni dei vicini, XML
+@lab candy_test
+@chiama rinomina_dispositivo as40r1
+core1
+s

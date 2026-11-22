@@ -1,0 +1,53 @@
+
+Interfacce di as10r1:
+
+  1) eth0  LAN A     192.168.0.1/30
+  2) eth1  LAN L     110.0.0.1/24
+
+Interfaccia di cui cambiare l'IP (numero, Invio = annulla): 1
+
+as10r1 eth0 (LAN A): IP attuale 192.168.0.1/30
+Sulla LAN A (192.168.0.0/30) ci sono anche: as40r1 192.168.0.2/30
+Nuovo IP (es. 192.168.0.1/30; senza maschera tiene /30; Invio = annulla): 192.168.50.1/30
+⚠️ 192.168.50.1/30 non è nella rete della LAN A (192.168.0.0/30): gli altri dispositivi della LAN non lo raggiungerebbero.
+  1) cambia la rete di tutta la LAN (anche gli IP degli altri)
+  2) cambia solo questo IP
+  0) annulla
+Scelta: 1
+
+LAN A: rete 192.168.0.0/30; as10r1 eth0 192.168.0.1/30, as40r1 eth0 192.168.0.2/30
+
+LAN A: 192.168.0.0/30 -> 192.168.50.0/30
+   as10r1     eth0  192.168.0.1/30 -> 192.168.50.1/30
+   as40r1     eth0  192.168.0.2/30 -> 192.168.50.2/30
+
+--- Rete della LAN A: 192.168.0.0/30 -> 192.168.50.0/30: anteprima (4 file) ---
+  as10r1.startup
+    - riga   1: ip address add 192.168.0.1/30 dev eth0
+    + riga   1: ip address add 192.168.50.1/30 dev eth0
+  as10r1/etc/frr/frr.conf
+    - riga  15: network 192.168.0.0/30
+    + riga  15: network 192.168.50.0/30
+    - riga  18: neighbor 192.168.0.2 remote-as 40
+    - riga  19: neighbor 192.168.0.2 description Router as40r1
+    + riga  18: neighbor 192.168.50.2 remote-as 40
+    + riga  19: neighbor 192.168.50.2 description Router as40r1
+    - riga  21: neighbor 192.168.0.2 prefix-list PL_as10r1_192_168_0_2_in in
+    + riga  21: neighbor 192.168.50.2 prefix-list PL_as10r1_192_168_0_2_in in
+  as40r1.startup
+    - riga   1: ip address add 192.168.0.2/30 dev eth0
+    + riga   1: ip address add 192.168.50.2/30 dev eth0
+  as40r1/etc/frr/frr.conf
+    - riga  15: network 192.168.0.0/30
+    + riga  15: network 192.168.50.0/30
+    - riga  20: neighbor 192.168.0.1 remote-as 10
+    - riga  21: neighbor 192.168.0.1 description Router as10r1
+    + riga  20: neighbor 192.168.50.1 remote-as 10
+    + riga  21: neighbor 192.168.50.1 description Router as10r1
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/candy_test/AAAAMMGG-HHMMSS
+   (i controlli dell'opzione 8 danno lo stesso esito di prima)
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+
+[copie di sicurezza create: 1]

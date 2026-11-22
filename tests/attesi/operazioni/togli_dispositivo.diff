@@ -1,0 +1,99 @@
+--- prima/as40r1/etc/frr/frr.conf
++++ dopo/as40r1/etc/frr/frr.conf
+@@ -23,5 +23,3 @@
+     neighbor 192.168.0.5 description Router as20r1
+     neighbor 192.168.0.25 remote-as 70
+     neighbor 192.168.0.25 description Router as70r1
+-    neighbor 192.168.0.29 remote-as 80
+-    neighbor 192.168.0.29 description Router as80r1
+--- prima/as80r1.startup
++++ /dev/null
+@@ -1,4 +0,0 @@
+-ip address add 192.168.0.29/30 dev eth0
+-ip address add 180.0.0.1/24 dev eth1
+-
+-systemctl start frr
+--- prima/as80r1/etc/frr/daemons
++++ /dev/null
+@@ -1,39 +0,0 @@
+-zebra=yes 
+-ripd=no
+-ospfd=no
+-bgpd=yes
+-
+-ospf6d=no
+-ripngd=no
+-isisd=no
+-pimd=no
+-ldpd=no
+-nhrpd=no
+-eigrpd=no
+-babeld=no
+-sharpd=no
+-staticd=no
+-pbrd=no
+-bfdd=no
+-fabricd=no
+-
+-######
+-
+-vtysh_enable=yes
+-zebra_options=" -s 90000000 --daemon -A 127.0.0.1"
+-bgpd_options="   --daemon -A 127.0.0.1"
+-ospfd_options="  --daemon -A 127.0.0.1"
+-ospf6d_options=" --daemon -A ::1"
+-ripd_options="   --daemon -A 127.0.0.1"
+-ripngd_options=" --daemon -A ::1"
+-isisd_options="  --daemon -A 127.0.0.1"
+-pimd_options="  --daemon -A 127.0.0.1"
+-ldpd_options="  --daemon -A 127.0.0.1"
+-nhrpd_options="  --daemon -A 127.0.0.1"
+-eigrpd_options="  --daemon -A 127.0.0.1"
+-babeld_options="  --daemon -A 127.0.0.1"
+-sharpd_options="  --daemon -A 127.0.0.1"
+-staticd_options="  --daemon -A 127.0.0.1"
+-pbrd_options="  --daemon -A 127.0.0.1"
+-bfdd_options="  --daemon -A 127.0.0.1"
+-fabricd_options="  --daemon -A 127.0.0.1"
+--- prima/as80r1/etc/frr/frr.conf
++++ /dev/null
+@@ -1,24 +0,0 @@
+-password zebra
+-enable password zebra
+-
+-log file /var/log/frr/frr.log
+-
+-debug bgp keepalives
+-debug bgp updates in
+-debug bgp updates out
+-
+-router bgp 80
+-
+-    no bgp ebgp-requires-policy
+-    no bgp network import-check
+-
+-    network 192.168.0.28/30
+-    network 180.0.0.0/24
+-
+-    neighbor 192.168.0.30 remote-as 40
+-    neighbor 192.168.0.30 description Router as40r1
+-
+-    neighbor 192.168.0.30 prefix-list PL_as80r1_192_168_0_30_in in
+-ip prefix-list PL_as80r1_192_168_0_30_in deny 130.0.0.0/24
+-ip prefix-list PL_as80r1_192_168_0_30_in permit any
+-
+--- prima/as80r1/etc/frr/vtysh.conf
++++ /dev/null
+@@ -1,2 +0,0 @@
+-service integrated-vtysh-config
+-hostname as80r1-frr
+--- prima/lab.conf
++++ dopo/lab.conf
+@@ -29,7 +29,3 @@
+ as70r1[0]=F
+ as70r1[1]=G
+ as70r1[image]="kathara/frr"
+-
+-as80r1[0]=E
+-as80r1[1]=I
+-as80r1[image]="kathara/frr"

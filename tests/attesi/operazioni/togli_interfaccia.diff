@@ -1,0 +1,46 @@
+--- prima/as50r1.startup
++++ dopo/as50r1.startup
+@@ -1,6 +1,5 @@
+ ip address add 192.168.0.18/30 dev eth0
+-ip address add 192.168.0.22/30 dev eth1
+-ip address add 192.168.0.10/30 dev eth2
+-ip address add 192.168.0.14/30 dev eth3
++ip address add 192.168.0.10/30 dev eth1
++ip address add 192.168.0.14/30 dev eth2
+ 
+ systemctl start frr
+--- prima/as50r1/etc/frr/frr.conf
++++ dopo/as50r1/etc/frr/frr.conf
+@@ -23,10 +23,7 @@
+     neighbor 192.168.0.13 description Router as30r1
+     neighbor 192.168.0.17 remote-as 60
+     neighbor 192.168.0.17 description Router as60r1
+-    neighbor 192.168.0.21 remote-as 70
+-    neighbor 192.168.0.21 description Router as70r1
+ 
+-    neighbor 192.168.0.21 route-map PREF_IN_192_168_0_21 in
+ route-map PREF_IN_192_168_0_21 permit 10
+     set local-preference 110
+ 
+--- prima/as70r1/etc/frr/frr.conf
++++ dopo/as70r1/etc/frr/frr.conf
+@@ -17,5 +17,3 @@
+ 
+     neighbor 192.168.0.26 remote-as 40
+     neighbor 192.168.0.26 description Router as40r1
+-    neighbor 192.168.0.22 remote-as 50
+-    neighbor 192.168.0.22 description Router as50r1
+--- prima/lab.conf
++++ dopo/lab.conf
+@@ -17,9 +17,8 @@
+ as40r1[image]="kathara/frr"
+ 
+ as50r1[0]=H
+-as50r1[1]=G
+-as50r1[2]=C
+-as50r1[3]=D
++as50r1[1]=C
++as50r1[2]=D
+ as50r1[image]="kathara/frr"
+ 
+ as60r1[0]=H

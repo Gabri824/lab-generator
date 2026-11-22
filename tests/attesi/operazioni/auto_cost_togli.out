@@ -1,0 +1,29 @@
+
+Router OSPF del lab (per AS):
+
+  1) AS20: r1, r2, r3, r4  [auto-cost già su tutti]  costi espliciti: r2 eth0 100
+
+Su quale AS? (numero, invio = annulla): 1
+AS20 ha già 'auto-cost reference-bandwidth' su tutti i router. Toglierlo? (s/N): s
+
+--- Togli auto-cost reference-bandwidth 100 su AS20: anteprima (4 file) ---
+  r1/etc/frr/frr.conf
+    - riga  11: auto-cost reference-bandwidth 100
+    - riga  12: 
+  r2/etc/frr/frr.conf
+    - riga  11: auto-cost reference-bandwidth 100
+    - riga  12: 
+    - riga  16: 
+  r3/etc/frr/frr.conf
+    - riga  16: auto-cost reference-bandwidth 100
+  r4/etc/frr/frr.conf
+    - riga  11: auto-cost reference-bandwidth 100
+    - riga  12: 
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/papillon_mio/AAAAMMGG-HHMMSS
+   ⚠️ nuovo: AS20: costi OSPF espliciti (r2 eth0 100), ma in kathara/frr il costo predefinito delle altre interfacce è 10000, non 10: il costo indicato renderà quel link il più conveniente invece del più caro. Se il testo chiede percorsi che dipendono da questo costo -> Opzioni 10 su AS20 (verifica con la GUI: show ip ospf interface / Verifica percorso).
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+✅ Tolto da r1, r2, r3, r4: costo predefinito di nuovo 10000.
+
+[copie di sicurezza create: 1]

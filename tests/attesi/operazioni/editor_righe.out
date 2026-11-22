@@ -1,0 +1,190 @@
+
+(IP, LAN, gateway, protocolli e AS conviene cambiarli con le voci guidate: aggiornano anche gli
+ altri dispositivi e l'XML. Le modifiche a righe cambiano solo il file scelto.)
+
+File di as10r1:
+
+  1) as10r1.startup
+  2) as10r1/etc/frr/frr.conf
+  0) Torna indietro
+
+Seleziona: 2
+
+=== as10r1/etc/frr/frr.conf (24 righe) ===
+  1 | password zebra
+  2 | enable password zebra
+  3 | 
+  4 | log file /var/log/frr/frr.log
+  5 | 
+  6 | debug bgp keepalives
+  7 | debug bgp updates in
+  8 | debug bgp updates out
+  9 | 
+ 10 | router bgp 10
+ 11 | 
+ 12 |     no bgp ebgp-requires-policy
+ 13 |     no bgp network import-check
+ 14 | 
+ 15 |     network 192.168.0.0/30
+ 16 |     network 110.0.0.0/24
+ 17 | 
+ 18 |     neighbor 192.168.0.2 remote-as 40
+ 19 |     neighbor 192.168.0.2 description Router as40r1
+ 20 | 
+ 21 |     neighbor 192.168.0.2 prefix-list PL_as10r1_192_168_0_2_in in
+ 22 | ip prefix-list PL_as10r1_192_168_0_2_in deny 160.0.0.0/24
+ 23 | ip prefix-list PL_as10r1_192_168_0_2_in permit any
+ 24 | 
+  M n = modifica la riga n      E n = elimina la riga n     A n = aggiungi righe dopo la n (A 0 = in cima)
+  C n = applica la correzione suggerita sulla riga n          U = annulla l'ultima modifica
+  S = salva                       0 = esci                    V = rivedi il file
+Comando: M 16
+Riga 16:     network 110.0.0.0/24
+Nuovo testo (Invio = lascia com'è): network 110.0.0.0/16
+
+=== as10r1/etc/frr/frr.conf (24 righe, modificato, non salvato) ===
+  1 | password zebra
+  2 | enable password zebra
+  3 | 
+  4 | log file /var/log/frr/frr.log
+  5 | 
+  6 | debug bgp keepalives
+  7 | debug bgp updates in
+  8 | debug bgp updates out
+  9 | 
+ 10 | router bgp 10
+ 11 | 
+ 12 |     no bgp ebgp-requires-policy
+ 13 |     no bgp network import-check
+ 14 | 
+ 15 |     network 192.168.0.0/30
+ 16 |     network 110.0.0.0/16
+ 17 | 
+ 18 |     neighbor 192.168.0.2 remote-as 40
+ 19 |     neighbor 192.168.0.2 description Router as40r1
+ 20 | 
+ 21 |     neighbor 192.168.0.2 prefix-list PL_as10r1_192_168_0_2_in in
+ 22 | ip prefix-list PL_as10r1_192_168_0_2_in deny 160.0.0.0/24
+ 23 | ip prefix-list PL_as10r1_192_168_0_2_in permit any
+ 24 | 
+  M n = modifica la riga n      E n = elimina la riga n     A n = aggiungi righe dopo la n (A 0 = in cima)
+  C n = applica la correzione suggerita sulla riga n          U = annulla l'ultima modifica
+  S = salva                       0 = esci                    V = rivedi il file
+Comando: A 23
+Righe da aggiungere (una per volta, Invio a vuoto per finire):
+  + ip prefix-list PL_as10r1_192_168_0_2_in deny 170.0.0.0/24
+  + 
+
+=== as10r1/etc/frr/frr.conf (25 righe, modificato, non salvato) ===
+  1 | password zebra
+  2 | enable password zebra
+  3 | 
+  4 | log file /var/log/frr/frr.log
+  5 | 
+  6 | debug bgp keepalives
+  7 | debug bgp updates in
+  8 | debug bgp updates out
+  9 | 
+ 10 | router bgp 10
+ 11 | 
+ 12 |     no bgp ebgp-requires-policy
+ 13 |     no bgp network import-check
+ 14 | 
+ 15 |     network 192.168.0.0/30
+ 16 |     network 110.0.0.0/16
+ 17 | 
+ 18 |     neighbor 192.168.0.2 remote-as 40
+ 19 |     neighbor 192.168.0.2 description Router as40r1
+ 20 | 
+ 21 |     neighbor 192.168.0.2 prefix-list PL_as10r1_192_168_0_2_in in
+ 22 | ip prefix-list PL_as10r1_192_168_0_2_in deny 160.0.0.0/24
+ 23 | ip prefix-list PL_as10r1_192_168_0_2_in permit any
+ 24 | ip prefix-list PL_as10r1_192_168_0_2_in deny 170.0.0.0/24
+ 25 | 
+  M n = modifica la riga n      E n = elimina la riga n     A n = aggiungi righe dopo la n (A 0 = in cima)
+  C n = applica la correzione suggerita sulla riga n          U = annulla l'ultima modifica
+  S = salva                       0 = esci                    V = rivedi il file
+Comando: E 7
+Eliminata la riga 7: debug bgp updates in
+
+=== as10r1/etc/frr/frr.conf (24 righe, modificato, non salvato) ===
+  1 | password zebra
+  2 | enable password zebra
+  3 | 
+  4 | log file /var/log/frr/frr.log
+  5 | 
+  6 | debug bgp keepalives
+  7 | debug bgp updates out
+  8 | 
+  9 | router bgp 10
+ 10 | 
+ 11 |     no bgp ebgp-requires-policy
+ 12 |     no bgp network import-check
+ 13 | 
+ 14 |     network 192.168.0.0/30
+ 15 |     network 110.0.0.0/16
+ 16 | 
+ 17 |     neighbor 192.168.0.2 remote-as 40
+ 18 |     neighbor 192.168.0.2 description Router as40r1
+ 19 | 
+ 20 |     neighbor 192.168.0.2 prefix-list PL_as10r1_192_168_0_2_in in
+ 21 | ip prefix-list PL_as10r1_192_168_0_2_in deny 160.0.0.0/24
+ 22 | ip prefix-list PL_as10r1_192_168_0_2_in permit any
+ 23 | ip prefix-list PL_as10r1_192_168_0_2_in deny 170.0.0.0/24
+ 24 | 
+  M n = modifica la riga n      E n = elimina la riga n     A n = aggiungi righe dopo la n (A 0 = in cima)
+  C n = applica la correzione suggerita sulla riga n          U = annulla l'ultima modifica
+  S = salva                       0 = esci                    V = rivedi il file
+Comando: S
+
+--- Modifica di as10r1/etc/frr/frr.conf: anteprima (1 file) ---
+  as10r1/etc/frr/frr.conf
+    - riga   7: debug bgp updates in
+    - riga  16: network 110.0.0.0/24
+    + riga  15: network 110.0.0.0/16
+    + riga  23: ip prefix-list PL_as10r1_192_168_0_2_in deny 170.0.0.0/24
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/candy_test/AAAAMMGG-HHMMSS
+   (i controlli dell'opzione 8 danno lo stesso esito di prima)
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+
+=== as10r1/etc/frr/frr.conf (24 righe) ===
+  1 | password zebra
+  2 | enable password zebra
+  3 | 
+  4 | log file /var/log/frr/frr.log
+  5 | 
+  6 | debug bgp keepalives
+  7 | debug bgp updates out
+  8 | 
+  9 | router bgp 10
+ 10 | 
+ 11 |     no bgp ebgp-requires-policy
+ 12 |     no bgp network import-check
+ 13 | 
+ 14 |     network 192.168.0.0/30
+ 15 |     network 110.0.0.0/16
+ 16 | 
+ 17 |     neighbor 192.168.0.2 remote-as 40
+ 18 |     neighbor 192.168.0.2 description Router as40r1
+ 19 | 
+ 20 |     neighbor 192.168.0.2 prefix-list PL_as10r1_192_168_0_2_in in
+ 21 | ip prefix-list PL_as10r1_192_168_0_2_in deny 160.0.0.0/24
+ 22 | ip prefix-list PL_as10r1_192_168_0_2_in permit any
+ 23 | ip prefix-list PL_as10r1_192_168_0_2_in deny 170.0.0.0/24
+ 24 | 
+  M n = modifica la riga n      E n = elimina la riga n     A n = aggiungi righe dopo la n (A 0 = in cima)
+  C n = applica la correzione suggerita sulla riga n          U = annulla l'ultima modifica
+  S = salva                       0 = esci                    V = rivedi il file
+Comando: 0
+
+File di as10r1:
+
+  1) as10r1.startup
+  2) as10r1/etc/frr/frr.conf
+  0) Torna indietro
+
+Seleziona: 0
+
+[copie di sicurezza create: 1]

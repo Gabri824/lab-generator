@@ -1,0 +1,52 @@
+# Router di confine OSPF (ABR): r1 in area 0, r2 su area 0 e area 1.1.1.1 stub, r3 in area 1.1.1.1 stub
+# --- conteggi: router, host, www, dns, conferma
+3
+1
+0
+0
+
+# --- r1: backbone, una LAN
+r1
+ospf
+s
+1
+A
+10.0.0.1/30
+
+
+# --- r2: router di confine (area di default 0.0.0.0), una rete per area
+r2
+ospf
+
+2
+A
+10.0.0.2/30
+B
+10.1.0.1/30
+10.0.0.0/30, 10.1.0.0/30
+n
+
+1.1.1.1
+s
+
+# --- r3: area 1.1.1.1 stub
+r3
+ospf
+1.1.1.1
+s
+2
+B
+10.1.0.2/30
+C
+10.1.1.1/24
+
+
+# --- host1
+host1
+1
+10.1.1.10/24
+C
+10.1.1.1
+
+# --- menu post-creazione
+0

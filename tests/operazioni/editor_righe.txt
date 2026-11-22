@@ -1,0 +1,14 @@
+# Editor a righe su frr.conf: modifica, aggiunta ed eliminazione, poi salva
+@lab candy_test
+@chiama modifica_righe as10r1
+2
+M 16
+network 110.0.0.0/16
+A 23
+ip prefix-list PL_as10r1_192_168_0_2_in deny 170.0.0.0/24
+
+E 7
+S
+s
+0
+0

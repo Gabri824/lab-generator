@@ -1,0 +1,41 @@
+
+Dispositivi trovati nel lab:
+
+  1) as10r1
+  2) as1r1
+  3) as20r1
+  4) as20r2
+  5) as20r3
+  6) as20r4
+  7) as2r1
+  8) as2r2
+  9) as2r3
+  10) ns_com
+  11) ns_local
+  12) pc
+  13) root
+  14) shared
+  15) web_srv
+
+Seleziona il dispositivo (numero o nome) o premi INVIO per annullare: web_srv
+
+Dispositivi candidati come nameserver:
+
+  1) ns_com - 20.1.0.3
+  2) ns_local - 1.0.0.2
+  3) root - 20.3.0.2
+  M) Inserisci manualmente un IP
+
+Seleziona il nameserver (numero) o M per manuale, INVIO per annullare: 2
+
+--- Resolver di web_srv: 1.0.0.2: anteprima (1 file) ---
+  web_srv/etc/resolv.conf
+    + riga   1: nameserver 1.0.0.2
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/tennis_test/AAAAMMGG-HHMMSS
+   (i controlli dell'opzione 8 danno lo stesso esito di prima)
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+✅ Wrote <BASE>/tennis_test/web_srv/etc/resolv.conf with nameserver 1.0.0.2
+
+[copie di sicurezza create: 1]

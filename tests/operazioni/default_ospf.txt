@@ -1,0 +1,6 @@
+# Default route in OSPF su un router che ha già una default (da BGP)
+@lab papillon_mio
+@chiama aggiungi_default_igp ospf
+3
+s
+s

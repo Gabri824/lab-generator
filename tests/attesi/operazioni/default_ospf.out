@@ -1,0 +1,23 @@
+
+--- Default route in OSPF ---
+
+Router con OSPF:
+
+  1) r1
+  2) r2
+  3) r3
+  4) r4
+
+Router (numero o nome, Invio = annulla): 3
+Il router ha già una default sua (statica nello startup o imparata da BGP)? (s/N): s
+
+--- Default route in OSPF su r3: anteprima (1 file) ---
+  r3/etc/frr/frr.conf
+    + riga  17: default-information originate
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/papillon_mio/AAAAMMGG-HHMMSS
+   ⚠️ nuovo: r3: genera la default route (OSPF default-information originate). Tienila solo se il testo la chiede: molti testi dicono 'No router announces the default route'.
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+
+[copie di sicurezza create: 1]

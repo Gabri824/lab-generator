@@ -1,0 +1,11 @@
+# Prefix-list verso un neighbor non ancora configurato (si chiede il suo AS)
+@lab candy_test
+@chiama policies_menu
+1
+as20r1
+192.168.0.99
+99
+in
+1.0.0.0/8
+s
+0

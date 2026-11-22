@@ -1,0 +1,7 @@
+# Default route in RIP (route 0.0.0.0/0)
+@lab garden_umbrella_mio
+@chiama aggiungi_default_igp rip
+1
+
+
+s

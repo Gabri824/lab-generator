@@ -1,0 +1,20 @@
+
+Interfacce di as10r1:
+
+  1) eth0  LAN A     192.168.0.1/30
+  2) eth1  LAN L     110.0.0.1/24
+
+Interfaccia di cui cambiare l'IP (numero, Invio = annulla): 2
+
+as10r1 eth1 (LAN L): IP attuale 110.0.0.1/24
+Nuovo IP (es. 110.0.0.1/24; senza maschera tiene /24; Invio = annulla): 110.0.0.5
+
+--- IP di as10r1 eth1: 110.0.0.1/24 -> 110.0.0.5/24: anteprima (1 file) ---
+  as10r1.startup
+    - riga   2: ip address add 110.0.0.1/24 dev eth1
+    + riga   2: ip address add 110.0.0.5/24 dev eth1
+
+Confermi le modifiche? (s/N): n
+Annullato: nessun file modificato.
+
+[copie di sicurezza create: 0]

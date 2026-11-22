@@ -1,0 +1,5 @@
+# Interfaccia spostata su una LAN nuova (nessun IP da cambiare)
+@lab papillon_mio
+@chiama sposta_interfaccia client
+Z
+s

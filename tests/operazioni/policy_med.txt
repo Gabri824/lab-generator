@@ -1,0 +1,9 @@
+# MED (metric) in uscita verso un neighbor
+@lab candy_test
+@chiama policies_menu
+3
+as30r1
+192.168.0.14
+20
+s
+0

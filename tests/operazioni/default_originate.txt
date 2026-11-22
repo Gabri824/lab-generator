@@ -1,0 +1,8 @@
+# Default-originate verso il neighbor, solo la default
+@lab candy_test
+@chiama aggiungi_default_originate
+1
+1
+s
+
+s

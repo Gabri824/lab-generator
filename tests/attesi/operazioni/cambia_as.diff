@@ -1,0 +1,22 @@
+--- prima/as10r1/etc/frr/frr.conf
++++ dopo/as10r1/etc/frr/frr.conf
+@@ -7,7 +7,7 @@
+ debug bgp updates in
+ debug bgp updates out
+ 
+-router bgp 10
++router bgp 11
+ 
+     no bgp ebgp-requires-policy
+     no bgp network import-check
+--- prima/as40r1/etc/frr/frr.conf
++++ dopo/as40r1/etc/frr/frr.conf
+@@ -17,7 +17,7 @@
+     network 192.168.0.24/30
+     network 192.168.0.28/30
+ 
+-    neighbor 192.168.0.1 remote-as 10
++    neighbor 192.168.0.1 remote-as 11
+     neighbor 192.168.0.1 description Router as10r1
+     neighbor 192.168.0.5 remote-as 20
+     neighbor 192.168.0.5 description Router as20r1

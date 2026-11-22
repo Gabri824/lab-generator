@@ -1,4 +1,106 @@
 {
+ "collect_lab_ips": [
+  {
+   "iface": "eth0",
+   "ip": "20.20.1.2",
+   "name": "client"
+  },
+  {
+   "iface": "eth0",
+   "ip": "20.20.1.1",
+   "name": "r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "20.20.2.1",
+   "name": "r1"
+  },
+  {
+   "iface": "eth2",
+   "ip": "20.20.5.2",
+   "name": "r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "20.20.2.2",
+   "name": "r2"
+  },
+  {
+   "iface": "eth1",
+   "ip": "20.20.3.1",
+   "name": "r2"
+  },
+  {
+   "iface": "eth0",
+   "ip": "20.20.3.2",
+   "name": "r3"
+  },
+  {
+   "iface": "eth1",
+   "ip": "20.20.4.1",
+   "name": "r3"
+  },
+  {
+   "iface": "eth2",
+   "ip": "10.1.0.1",
+   "name": "r3"
+  },
+  {
+   "iface": "eth0",
+   "ip": "20.20.4.2",
+   "name": "r4"
+  },
+  {
+   "iface": "eth1",
+   "ip": "20.20.5.1",
+   "name": "r4"
+  },
+  {
+   "iface": "eth0",
+   "ip": "10.1.0.2",
+   "name": "r5"
+  },
+  {
+   "iface": "eth1",
+   "ip": "30.30.3.1",
+   "name": "r5"
+  },
+  {
+   "iface": "eth2",
+   "ip": "30.30.2.2",
+   "name": "r5"
+  },
+  {
+   "iface": "eth0",
+   "ip": "30.30.4.1",
+   "name": "r6"
+  },
+  {
+   "iface": "eth1",
+   "ip": "30.30.2.1",
+   "name": "r6"
+  },
+  {
+   "iface": "eth2",
+   "ip": "30.30.1.1",
+   "name": "r6"
+  },
+  {
+   "iface": "eth0",
+   "ip": "30.30.4.2",
+   "name": "r7"
+  },
+  {
+   "iface": "eth1",
+   "ip": "30.30.3.2",
+   "name": "r7"
+  },
+  {
+   "iface": "eth0",
+   "ip": "30.30.1.2",
+   "name": "server"
+  }
+ ],
  "dati.leggi_lab": {
   "avvisi_config": [],
   "avvisi_topologia": [],
@@ -740,8 +842,19 @@
    }
   ],
   "nome": "papillon_mio",
-  "xml": true
+  "xml": false
  },
+ "isole_ospf": [
+  [
+   "AS20",
+   [
+    "r1",
+    "r2",
+    "r3",
+    "r4"
+   ]
+  ]
+ ],
  "leggi_dispositivi": {
   "client": {
    "altri_ip": [],
@@ -1019,6 +1132,14 @@
   "hosts": [
    {
     "gateway": "20.20.1.1",
+    "gw_dev": "eth0",
+    "interfaces": [
+     {
+      "ip": "20.20.1.2/24",
+      "lan": "A",
+      "name": "eth0"
+     }
+    ],
     "ip": "20.20.1.2/24",
     "lan": "A",
     "name": "client"
@@ -1028,6 +1149,9 @@
   "routers": {
    "r1": {
     "asn": "",
+    "igp_networks": [
+     "20.20.0.0/16"
+    ],
     "interfaces": [
      {
       "ip": "20.20.1.1/24",
@@ -1045,12 +1169,17 @@
       "name": "eth2"
      }
     ],
+    "ospf_area": "0.0.0.0",
+    "ospf_area_stub": false,
     "protocols": [
      "ospf"
     ]
    },
    "r2": {
     "asn": "",
+    "igp_networks": [
+     "20.20.0.0/16"
+    ],
     "interfaces": [
      {
       "ip": "20.20.2.2/24",
@@ -1063,12 +1192,20 @@
       "name": "eth1"
      }
     ],
+    "ospf_area": "0.0.0.0",
+    "ospf_area_stub": false,
     "protocols": [
      "ospf"
     ]
    },
    "r3": {
     "asn": "20",
+    "bgp_extra_networks": [
+     "20.20.0.0/16"
+    ],
+    "igp_networks": [
+     "20.20.0.0/16"
+    ],
     "interfaces": [
      {
       "ip": "20.20.3.2/24",
@@ -1086,6 +1223,8 @@
       "name": "eth2"
      }
     ],
+    "ospf_area": "0.0.0.0",
+    "ospf_area_stub": false,
     "protocols": [
      "bgp",
      "ospf"
@@ -1093,6 +1232,9 @@
    },
    "r4": {
     "asn": "",
+    "igp_networks": [
+     "20.20.0.0/16"
+    ],
     "interfaces": [
      {
       "ip": "20.20.4.2/24",
@@ -1105,12 +1247,20 @@
       "name": "eth1"
      }
     ],
+    "ospf_area": "0.0.0.0",
+    "ospf_area_stub": false,
     "protocols": [
      "ospf"
     ]
    },
    "r5": {
     "asn": "30",
+    "bgp_extra_networks": [
+     "30.30.0.0/16"
+    ],
+    "igp_networks": [
+     "30.30.0.0/16"
+    ],
     "interfaces": [
      {
       "ip": "10.1.0.2/30",
@@ -1135,6 +1285,9 @@
    },
    "r6": {
     "asn": "",
+    "igp_networks": [
+     "30.30.0.0/16"
+    ],
     "interfaces": [
      {
       "ip": "30.30.4.1/24",
@@ -1158,6 +1311,9 @@
    },
    "r7": {
     "asn": "",
+    "igp_networks": [
+     "30.30.0.0/16"
+    ],
     "interfaces": [
      {
       "ip": "30.30.4.2/24",

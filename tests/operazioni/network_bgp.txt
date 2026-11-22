@@ -1,0 +1,6 @@
+# Network BGP aggiunta senza reti coperte
+@lab candy_test
+@chiama aggiungi_network_bgp
+as20r1
+20.0.0.0/8
+s

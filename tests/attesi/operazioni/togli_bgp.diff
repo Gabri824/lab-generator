@@ -1,0 +1,47 @@
+--- prima/as10r1/etc/frr/daemons
++++ dopo/as10r1/etc/frr/daemons
+@@ -1,7 +1,7 @@
+ zebra=yes 
+ ripd=no
+ ospfd=no
+-bgpd=yes
++bgpd=no
+ 
+ ospf6d=no
+ ripngd=no
+--- prima/as10r1/etc/frr/frr.conf
++++ dopo/as10r1/etc/frr/frr.conf
+@@ -3,22 +3,7 @@
+ 
+ log file /var/log/frr/frr.log
+ 
+-debug bgp keepalives
+-debug bgp updates in
+-debug bgp updates out
+ 
+-router bgp 10
+-
+-    no bgp ebgp-requires-policy
+-    no bgp network import-check
+-
+-    network 192.168.0.0/30
+-    network 110.0.0.0/24
+-
+-    neighbor 192.168.0.2 remote-as 40
+-    neighbor 192.168.0.2 description Router as40r1
+-
+-    neighbor 192.168.0.2 prefix-list PL_as10r1_192_168_0_2_in in
+ ip prefix-list PL_as10r1_192_168_0_2_in deny 160.0.0.0/24
+ ip prefix-list PL_as10r1_192_168_0_2_in permit any
+ 
+--- prima/as40r1/etc/frr/frr.conf
++++ dopo/as40r1/etc/frr/frr.conf
+@@ -17,8 +17,6 @@
+     network 192.168.0.24/30
+     network 192.168.0.28/30
+ 
+-    neighbor 192.168.0.1 remote-as 10
+-    neighbor 192.168.0.1 description Router as10r1
+     neighbor 192.168.0.5 remote-as 20
+     neighbor 192.168.0.5 description Router as20r1
+     neighbor 192.168.0.25 remote-as 70

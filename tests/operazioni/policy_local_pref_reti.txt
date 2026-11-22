@@ -1,0 +1,10 @@
+# Local preference in ingresso solo su alcune reti
+@lab candy_test
+@chiama policies_menu
+2
+as40r1
+192.168.0.5
+130
+20.0.0.0/8
+s
+0

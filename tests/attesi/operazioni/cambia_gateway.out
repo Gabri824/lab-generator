@@ -1,0 +1,20 @@
+
+Gateway attuale di client: 20.20.1.1
+
+Router sulle sue LAN:
+
+  1) 20.20.1.1  (r1)
+
+Nuovo gateway (numero dell'elenco o IP, Invio = annulla): 20.20.1.254
+
+--- Gateway di client: 20.20.1.1 -> 20.20.1.254: anteprima (1 file) ---
+  client.startup
+    - riga   2: ip route add default via 20.20.1.1 dev eth0
+    + riga   2: ip route add default via 20.20.1.254 dev eth0
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/papillon_mio/AAAAMMGG-HHMMSS
+   ⚠️ nuovo: client: il gateway 20.20.1.254 non è l'IP di nessun dispositivo del lab (refuso?).
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+
+[copie di sicurezza create: 1]

@@ -1,0 +1,3 @@
+# Riepilogo configurazione (Opzioni 8)
+@lab papillon_mio
+@chiama riepilogo_configurazione

@@ -1,0 +1,6 @@
+--- prima/client.startup
++++ dopo/client.startup
+@@ -1,2 +1,2 @@
+ ip address add 20.20.1.2/24 dev eth0
+-ip route add default via 20.20.1.1 dev eth0
++ip route add default via 20.20.1.254 dev eth0

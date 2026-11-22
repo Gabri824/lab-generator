@@ -1,0 +1,20 @@
+
+Interfacce di as10r1: eth0 (LAN A), eth1 (LAN L)
+LAN della nuova interfaccia (es. A; Invio = annulla): Q
+La LAN Q è nuova.
+IP della nuova interfaccia con la maschera (es. 10.0.9.1/24) (Invio = annulla): 190.0.0.1/24
+
+--- Aggiungi eth2 a as10r1 (LAN Q, 190.0.0.1/24): anteprima (2 file) ---
+  as10r1.startup
+    + riga   3: ip address add 190.0.0.1/24 dev eth2
+  lab.conf
+    + riga   3: as10r1[2]=Q
+  ⚠️ La rete 190.0.0.0/24 non è annunciata da nessun protocollo: se serve, aggiungila in BGP (Opzioni 6) o nelle network dell'IGP (modifica a righe di frr.conf).
+  ⚠️ La LAN Q è nuova: per ora c'è solo as10r1.
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/candy_test/AAAAMMGG-HHMMSS
+   (i controlli dell'opzione 8 danno lo stesso esito di prima)
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+
+[copie di sicurezza create: 1]

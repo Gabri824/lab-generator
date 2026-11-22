@@ -1,0 +1,28 @@
+
+--- Aggiungi network BGP ---
+
+Seleziona il router BGP:
+
+  1) as10r1 (ASN: 10)
+  2) as20r1 (ASN: 20)
+  3) as30r1 (ASN: 30)
+  4) as40r1 (ASN: 40)
+  5) as50r1 (ASN: 50)
+  6) as60r1 (ASN: 60)
+  7) as70r1 (ASN: 70)
+  8) as80r1 (ASN: 80)
+
+Numero router (o nome, vuoto per annullare): as20r1
+Reti da annunciare in BGP, separate da virgola (invio = 192.0.0.0/8): 20.0.0.0/8
+
+--- Network BGP su as20r1: 20.0.0.0/8: anteprima (1 file) ---
+  as20r1/etc/frr/frr.conf
+    + riga  22: network 20.0.0.0/8
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/candy_test/AAAAMMGG-HHMMSS
+   (i controlli dell'opzione 8 danno lo stesso esito di prima)
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+✅ as20r1: aggiunte in BGP 20.0.0.0/8
+
+[copie di sicurezza create: 1]

@@ -1,0 +1,11 @@
+--- prima/lab.conf
++++ dopo/lab.conf
+@@ -30,7 +30,7 @@
+ r7[1]=G
+ r7[image]="kathara/frr"
+ 
+-client[0]=A
++client[0]=Z
+ client[image]="kathara/base"
+ 
+ server[0]=L

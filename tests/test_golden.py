@@ -62,6 +62,23 @@ class TestRigenerazione(unittest.TestCase):
                 self.assertEqual('', diff, f"rigenerazione di {lab} cambiata:\n{diff}" + SUGGERIMENTO)
 
 
+class TestAndataRitorno(unittest.TestCase):
+    """XML rigenerato dai file -> lab ricreato da quell'XML: deve tornare il lab di partenza.
+
+    Si prova sui lab prodotti dal generatore senza Opzioni (tests/attesi/rigenerazione/ e
+    tests/attesi/scenari/), resolver finale compreso (campo <resolver> dell'XML).
+    """
+
+    def test_lab_senza_opzioni(self):
+        cartelle = [os.path.join(c.ATTESI, 'rigenerazione', lab) for lab in c.elenco_lab()]
+        cartelle += [os.path.join(c.ATTESI, 'scenari', s) for s in c.elenco_scenari()]
+        for cartella in cartelle:
+            with self.subTest(lab=os.path.basename(cartella)):
+                originale, ricreato = c.produci_andata_ritorno(cartella)
+                diff = c.differenze_alberi(originale, ricreato)
+                self.assertEqual('', diff, f"l'XML rigenerato perde qualcosa:\n{diff}")
+
+
 class TestOpzioni(unittest.TestCase):
     """La differenza tra lab rigenerato e lab reale (il lavoro fatto con le Opzioni) è ancora quella.
 
@@ -91,6 +108,21 @@ class TestScenari(unittest.TestCase):
                 self.assertTrue(os.path.isdir(cartella), f"manca {cartella}" + SUGGERIMENTO)
                 diff = c.differenze_alberi(c.leggi_albero(cartella), c.produci_scenario(s))
                 self.assertEqual('', diff, f"scenario {s} cambiato:\n{diff}" + SUGGERIMENTO)
+
+
+class TestOperazioni(unittest.TestCase):
+    """Le operazioni del menu Opzioni (tests/operazioni/) cambiano i file e stampano come prima."""
+
+    def test_operazioni(self):
+        operazioni = c.elenco_operazioni()
+        self.assertTrue(operazioni, 'nessuna operazione in tests/operazioni/')
+        for n in operazioni:
+            with self.subTest(operazione=n):
+                base = os.path.join(c.ATTESI, 'operazioni', n)
+                self.assertTrue(os.path.isfile(base + '.diff'), f"manca {base}.diff" + SUGGERIMENTO)
+                diff, stampato = c.produci_operazione(n)
+                self.assertEqual(_leggi(base + '.diff'), diff, f"file prodotti da {n} cambiati" + SUGGERIMENTO)
+                self.assertEqual(_leggi(base + '.out'), stampato, f"testo stampato da {n} cambiato" + SUGGERIMENTO)
 
 
 class TestSoluzioni(unittest.TestCase):

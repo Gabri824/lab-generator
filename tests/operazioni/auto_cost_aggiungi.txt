@@ -1,0 +1,5 @@
+# auto-cost reference-bandwidth 100 sui router OSPF di un AS che non l'hanno
+@lab hourglass_test
+@chiama imposta_auto_cost
+1
+s

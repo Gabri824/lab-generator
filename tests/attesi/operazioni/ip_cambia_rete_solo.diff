@@ -1,0 +1,21 @@
+--- prima/as10r1.startup
++++ dopo/as10r1.startup
+@@ -1,4 +1,4 @@
+-ip address add 192.168.0.1/30 dev eth0
++ip address add 192.168.50.1/30 dev eth0
+ ip address add 110.0.0.1/24 dev eth1
+ 
+ systemctl start frr
+--- prima/as40r1/etc/frr/frr.conf
++++ dopo/as40r1/etc/frr/frr.conf
+@@ -17,8 +17,8 @@
+     network 192.168.0.24/30
+     network 192.168.0.28/30
+ 
+-    neighbor 192.168.0.1 remote-as 10
+-    neighbor 192.168.0.1 description Router as10r1
++    neighbor 192.168.50.1 remote-as 10
++    neighbor 192.168.50.1 description Router as10r1
+     neighbor 192.168.0.5 remote-as 20
+     neighbor 192.168.0.5 description Router as20r1
+     neighbor 192.168.0.25 remote-as 70

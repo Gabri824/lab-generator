@@ -1,0 +1,5 @@
+--- prima/pc/etc/resolv.conf
++++ dopo/pc/etc/resolv.conf
+@@ -1 +1 @@
+-nameserver 1.0.0.2
++nameserver 9.9.9.9

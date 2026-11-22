@@ -1,0 +1,12 @@
+--- prima/as10r1/etc/frr/frr.conf
++++ dopo/as10r1/etc/frr/frr.conf
+@@ -19,6 +19,9 @@
+     neighbor 192.168.0.2 description Router as40r1
+ 
+     neighbor 192.168.0.2 prefix-list PL_as10r1_192_168_0_2_in in
++    neighbor 192.168.0.2 default-originate
++    neighbor 192.168.0.2 prefix-list SOLO_DEFAULT_192_168_0_2 out
+ ip prefix-list PL_as10r1_192_168_0_2_in deny 160.0.0.0/24
+ ip prefix-list PL_as10r1_192_168_0_2_in permit any
+ 
++ip prefix-list SOLO_DEFAULT_192_168_0_2 permit 0.0.0.0/0

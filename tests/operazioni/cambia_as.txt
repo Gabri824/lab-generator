@@ -1,0 +1,5 @@
+# AS di un router: cambia anche il remote-as sul vicino
+@lab candy_test
+@chiama cambia_as as10r1
+11
+s

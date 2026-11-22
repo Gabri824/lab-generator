@@ -1,0 +1,6 @@
+# auto-cost tolto da un AS che l'ha su tutti i router
+@lab papillon_mio
+@chiama imposta_auto_cost
+1
+s
+s

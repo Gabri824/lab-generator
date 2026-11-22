@@ -1,0 +1,6 @@
+# Interfaccia tolta in mezzo: le successive scalano (eth2 -> eth1), neighbor tolti
+@lab candy_test
+@chiama togli_interfaccia as50r1
+2
+
+s

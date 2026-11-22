@@ -1,4 +1,106 @@
 {
+ "collect_lab_ips": [
+  {
+   "iface": "eth0",
+   "ip": "50.50.3.1",
+   "name": "r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "50.50.1.1",
+   "name": "r1"
+  },
+  {
+   "iface": "eth2",
+   "ip": "50.50.2.1",
+   "name": "r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "50.50.4.1",
+   "name": "r2"
+  },
+  {
+   "iface": "eth1",
+   "ip": "50.50.3.2",
+   "name": "r2"
+  },
+  {
+   "iface": "eth0",
+   "ip": "10.1.0.2",
+   "name": "r3"
+  },
+  {
+   "iface": "eth1",
+   "ip": "50.50.4.2",
+   "name": "r3"
+  },
+  {
+   "iface": "eth2",
+   "ip": "50.50.2.2",
+   "name": "r3"
+  },
+  {
+   "iface": "eth0",
+   "ip": "40.40.4.2",
+   "name": "r4"
+  },
+  {
+   "iface": "eth1",
+   "ip": "40.40.5.2",
+   "name": "r4"
+  },
+  {
+   "iface": "eth2",
+   "ip": "10.1.0.1",
+   "name": "r4"
+  },
+  {
+   "iface": "eth0",
+   "ip": "40.40.4.1",
+   "name": "r5"
+  },
+  {
+   "iface": "eth1",
+   "ip": "40.40.3.2",
+   "name": "r5"
+  },
+  {
+   "iface": "eth0",
+   "ip": "40.40.2.2",
+   "name": "r6"
+  },
+  {
+   "iface": "eth1",
+   "ip": "40.40.3.1",
+   "name": "r6"
+  },
+  {
+   "iface": "eth0",
+   "ip": "40.40.2.1",
+   "name": "r7"
+  },
+  {
+   "iface": "eth1",
+   "ip": "40.40.1.1",
+   "name": "r7"
+  },
+  {
+   "iface": "eth2",
+   "ip": "40.40.5.1",
+   "name": "r7"
+  },
+  {
+   "iface": "eth0",
+   "ip": "40.40.1.2",
+   "name": "user"
+  },
+  {
+   "iface": "eth0",
+   "ip": "50.50.1.2",
+   "name": "www"
+  }
+ ],
  "dati.leggi_lab": {
   "avvisi_config": [
    "AS40: costi OSPF espliciti (r4 eth1 100), ma in kathara/frr il costo predefinito delle altre interfacce è 10000, non 10: il costo indicato renderà quel link il più conveniente invece del più caro. Se il testo chiede percorsi che dipendono da questo costo -> Opzioni 10 su AS40 (verifica con la GUI: show ip ospf interface / Verifica percorso)."
@@ -742,8 +844,19 @@
    }
   ],
   "nome": "hourglass_test",
-  "xml": true
+  "xml": false
  },
+ "isole_ospf": [
+  [
+   "AS40",
+   [
+    "r4",
+    "r5",
+    "r6",
+    "r7"
+   ]
+  ]
+ ],
  "leggi_dispositivi": {
   "r1": {
    "altri_ip": [],
@@ -1021,6 +1134,14 @@
   "hosts": [
    {
     "gateway": "40.40.1.1",
+    "gw_dev": "eth0",
+    "interfaces": [
+     {
+      "ip": "40.40.1.2/24",
+      "lan": "L",
+      "name": "eth0"
+     }
+    ],
     "ip": "40.40.1.2/24",
     "lan": "L",
     "name": "user"
@@ -1030,6 +1151,9 @@
   "routers": {
    "r1": {
     "asn": "",
+    "igp_networks": [
+     "50.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "50.50.3.1/24",
@@ -1053,6 +1177,9 @@
    },
    "r2": {
     "asn": "",
+    "igp_networks": [
+     "50.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "50.50.4.1/24",
@@ -1071,6 +1198,12 @@
    },
    "r3": {
     "asn": "50",
+    "bgp_extra_networks": [
+     "50.50.0.0/16"
+    ],
+    "igp_networks": [
+     "50.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "10.1.0.2/30",
@@ -1095,6 +1228,12 @@
    },
    "r4": {
     "asn": "40",
+    "bgp_extra_networks": [
+     "40.40.0.0/16"
+    ],
+    "igp_networks": [
+     "40.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "40.40.4.2/24",
@@ -1112,6 +1251,8 @@
       "name": "eth2"
      }
     ],
+    "ospf_area": "0.0.0.0",
+    "ospf_area_stub": false,
     "protocols": [
      "bgp",
      "ospf"
@@ -1119,6 +1260,9 @@
    },
    "r5": {
     "asn": "",
+    "igp_networks": [
+     "40.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "40.40.4.1/24",
@@ -1131,12 +1275,17 @@
       "name": "eth1"
      }
     ],
+    "ospf_area": "0.0.0.0",
+    "ospf_area_stub": false,
     "protocols": [
      "ospf"
     ]
    },
    "r6": {
     "asn": "",
+    "igp_networks": [
+     "40.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "40.40.2.2/24",
@@ -1149,12 +1298,17 @@
       "name": "eth1"
      }
     ],
+    "ospf_area": "0.0.0.0",
+    "ospf_area_stub": false,
     "protocols": [
      "ospf"
     ]
    },
    "r7": {
     "asn": "",
+    "igp_networks": [
+     "40.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "40.40.2.1/24",
@@ -1172,6 +1326,8 @@
       "name": "eth2"
      }
     ],
+    "ospf_area": "0.0.0.0",
+    "ospf_area_stub": false,
     "protocols": [
      "ospf"
     ]

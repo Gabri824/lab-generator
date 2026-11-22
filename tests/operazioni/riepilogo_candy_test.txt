@@ -1,0 +1,3 @@
+# Riepilogo configurazione (Opzioni 8)
+@lab candy_test
+@chiama riepilogo_configurazione

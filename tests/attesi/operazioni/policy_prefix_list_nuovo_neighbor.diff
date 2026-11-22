@@ -1,0 +1,11 @@
+--- prima/as20r1/etc/frr/frr.conf
++++ dopo/as20r1/etc/frr/frr.conf
+@@ -19,3 +19,8 @@
+     neighbor 192.168.0.10 description Router as50r1
+     neighbor 192.168.0.6 remote-as 40
+     neighbor 192.168.0.6 description Router as40r1
++    neighbor 192.168.0.99 remote-as 99
++    neighbor 192.168.0.99 prefix-list PL_as20r1_192_168_0_99_in in
++
++ip prefix-list PL_as20r1_192_168_0_99_in deny 1.0.0.0/8
++ip prefix-list PL_as20r1_192_168_0_99_in permit any

@@ -1,0 +1,10 @@
+--- prima/r3/etc/frr/frr.conf
++++ dopo/r3/etc/frr/frr.conf
+@@ -14,6 +14,7 @@
+     redistribute connected
+     redistribute bgp
+     auto-cost reference-bandwidth 100
++    default-information originate
+ 
+ router bgp 20
+ 

@@ -1,0 +1,38 @@
+
+--- Assegna costo OSPF su una interfaccia di un router ---
+
+Seleziona il router su cui impostare il costo OSPF:
+
+  1) r1 (ASN: )
+  2) r2 (ASN: )
+  3) r3 (ASN: 20)
+  4) r4 (ASN: )
+  5) r5 (ASN: 30)
+  6) r6 (ASN: )
+  7) r7 (ASN: )
+
+Numero router (o nome, vuoto per annullare): r1
+
+Interfacce disponibili:
+
+  1) eth0 - 20.20.1.1/24
+  2) eth1 - 20.20.2.1/24
+  3) eth2 - 20.20.5.2/24
+
+Seleziona interfaccia (numero o nome, vuoto per annullare): 2
+Inserisci il costo OSPF desiderato per eth1 (intero ≥ 1): 50
+
+--- Costo OSPF di r1 eth1: 50: anteprima (1 file) ---
+  r1/etc/frr/frr.conf
+    + riga  13: 
+    + riga  14: interface eth1
+    + riga  15: ospf cost 50
+    + riga  16: 
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/papillon_mio/AAAAMMGG-HHMMSS
+   (i controlli dell'opzione 8 danno lo stesso esito di prima)
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+✅ Costo impostato su r1 eth1 = 50 (append su frr.conf).
+
+[copie di sicurezza create: 1]

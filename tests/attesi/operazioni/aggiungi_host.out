@@ -1,0 +1,53 @@
+
+=== Aggiungi o togli un dispositivo ===
+
+  1) Aggiungi un router
+  2) Aggiungi un host/PC
+  3) Aggiungi un server WWW
+  4) Aggiungi un server DNS
+  5) Togli un dispositivo
+  0) Torna indietro
+
+Seleziona (numero): 2
+(Domande come nella creazione: '<' torna indietro, '<<' ricomincia il dispositivo.)
+
+Nome host (default host2): pc2
+--- Configurazione host pc2 ---
+Numero interfacce per pc2: 1
+    IP per eth0 (es. 192.168.10.2/24): 20.20.1.20/24
+    LAN associata a eth0 (es. A): A
+Gateway di default per pc2 (invio per nessuno): 20.20.1.1
+Interfaccia per il gateway: eth0
+
+--- Riepilogo host n.2 ---
+  host pc2
+  eth0   LAN A    20.20.1.20/24
+  default gateway: 20.20.1.1 dev eth0
+Confermi? (s = sì / r = rifai da capo / < = correggi l'ultima risposta) [s]: 
+
+--- Aggiungi host pc2: anteprima (2 file) ---
+  lab.conf
+    + riga  38: 
+    + riga  39: pc2[0]=A
+    + riga  40: pc2[image]="kathara/base"
+  pc2.startup
+    + riga   1: ip address add 20.20.1.20/24 dev eth0
+    + riga   2: ip route add default via 20.20.1.1 dev eth0
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/papillon_mio/AAAAMMGG-HHMMSS
+   (i controlli dell'opzione 8 danno lo stesso esito di prima)
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+
+=== Aggiungi o togli un dispositivo ===
+
+  1) Aggiungi un router
+  2) Aggiungi un host/PC
+  3) Aggiungi un server WWW
+  4) Aggiungi un server DNS
+  5) Togli un dispositivo
+  0) Torna indietro
+
+Seleziona (numero): 0
+
+[copie di sicurezza create: 1]

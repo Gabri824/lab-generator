@@ -14,6 +14,7 @@ if _SRC_DIR not in sys.path:
 
 import core
 from core import (
+    archivio_menu,
     collect_lab_ips,
     correggi_nomi_importati,
     esegui_wizard_nuovo_lab,
@@ -21,9 +22,11 @@ from core import (
     input_lab_name,
     input_non_vuoto,
     load_lab_from_json,
+    leggi_resolver,
     load_lab_from_xml,
     opzioni_laboratorio_menu,
     rebuild_lab_metadata_and_export,
+    scegli_lab,
     recreate_lab_from_data,
     stampa_controllo_topologia,
 )
@@ -78,7 +81,8 @@ def main():
             print(f"❌ Il lab '{lab_name}' esiste già in {base}. Usa --force per sovrascriverlo.")
             sys.exit(1)
         routers, lab_conf_text = correggi_nomi_importati(routers, hosts, wwws, lab_conf_text, interactive=False)
-        lab_path = recreate_lab_from_data(lab_name, base, routers, hosts, wwws, lab_conf_text)
+        lab_path = recreate_lab_from_data(lab_name, base, routers, hosts, wwws, lab_conf_text,
+                                          resolver=leggi_resolver(args.from_xml or args.from_json))
         print(f"✅ Lab '{lab_name}' creato (non-interattivo) in: {lab_path}")
         stampa_controllo_topologia(lab_path)
         return
@@ -95,10 +99,11 @@ def main():
         print("  4) Testa Funzionamento (PING)")
         print("  5) Opzioni Laboratorio")
         print("  6) Interfaccia grafica (browser)")
+        print("  7) Crea archivio per la consegna")
         print("  0) Esci\n")
         print("--------------------------------------------------------\n")
 
-        mode = input_non_vuoto("Digita un'opzione (0-6): ").strip()
+        mode = input_non_vuoto("Digita un'opzione (0-7): ").strip()
         if not mode:
             continue
         if mode == '0':
@@ -130,7 +135,8 @@ def main():
                 if corretti is None:
                     continue
                 routers, lab_conf_text = corretti
-                lab_path = recreate_lab_from_data(lab_name, base, routers, hosts, wwws, lab_conf_text, confirm=True)
+                lab_path = recreate_lab_from_data(lab_name, base, routers, hosts, wwws, lab_conf_text,
+                                                  confirm=True, resolver=leggi_resolver(file_path))
                 if not lab_path:
                     continue
                 print(f"✅ Lab '{lab_name}' creato da file in: {lab_path}")
@@ -155,14 +161,7 @@ def main():
             if not os.path.isdir(target):
                 print(f"Directory non trovata: {target}")
                 continue
-            routers_meta = None
-            try:
-                xmlpath = os.path.join(target, os.path.basename(os.path.normpath(target)) + '.xml')
-                if os.path.exists(xmlpath):
-                    _, routers_meta, _, _, _ = load_lab_from_xml(xmlpath)
-            except Exception:
-                routers_meta = None
-            ips = collect_lab_ips(target, routers_meta)
+            ips = collect_lab_ips(target)
             if not ips:
                 print('Nessun IP trovato nella directory del lab. Controlla che ci siano file .startup o i router con interfacce.')
                 continue
@@ -176,6 +175,11 @@ def main():
             continue
         if mode == '6':
             avvia_gui(base, args.porta)
+            continue
+        if mode == '7':
+            target = scegli_lab(base)
+            if target:
+                archivio_menu(target)
             continue
         print('Scelta non valida, riprova.')
 

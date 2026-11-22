@@ -1,0 +1,39 @@
+Nuovo nome per as40r1 (solo minuscole, cifre e _; Invio = annulla): core1
+
+--- Rinomina as40r1 -> core1: anteprima (9 file) ---
+  as10r1/etc/frr/frr.conf
+    - riga  19: neighbor 192.168.0.2 description Router as40r1
+    + riga  19: neighbor 192.168.0.2 description Router core1
+  as20r1/etc/frr/frr.conf
+    - riga  21: neighbor 192.168.0.6 description Router as40r1
+    + riga  21: neighbor 192.168.0.6 description Router core1
+  as70r1/etc/frr/frr.conf
+    - riga  19: neighbor 192.168.0.26 description Router as40r1
+    + riga  19: neighbor 192.168.0.26 description Router core1
+  as80r1/etc/frr/frr.conf
+    - riga  19: neighbor 192.168.0.30 description Router as40r1
+    + riga  19: neighbor 192.168.0.30 description Router core1
+  core1.startup  (era as40r1.startup)
+  core1/etc/frr/daemons  (era as40r1/etc/frr/daemons)
+  core1/etc/frr/frr.conf  (era as40r1/etc/frr/frr.conf)
+  core1/etc/frr/vtysh.conf  (era as40r1/etc/frr/vtysh.conf)
+    - riga   2: hostname as40r1-frr
+    + riga   2: hostname core1-frr
+  lab.conf
+    - riga  13: as40r1[0]=A
+    - riga  14: as40r1[1]=B
+    - riga  15: as40r1[2]=F
+    - riga  16: as40r1[3]=E
+    - riga  17: as40r1[image]="kathara/frr"
+    + riga  13: core1[0]=A
+    + riga  14: core1[1]=B
+    + riga  15: core1[2]=F
+    + riga  16: core1[3]=E
+    + riga  17: core1[image]="kathara/frr"
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/candy_test/AAAAMMGG-HHMMSS
+   (i controlli dell'opzione 8 danno lo stesso esito di prima)
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+
+[copie di sicurezza create: 1]

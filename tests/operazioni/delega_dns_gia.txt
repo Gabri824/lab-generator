@@ -1,0 +1,7 @@
+# Delega di una zona che il root delega già
+@lab tennis_test
+@chiama aggiungi_delega_dns
+root
+com
+
+20.1.0.3

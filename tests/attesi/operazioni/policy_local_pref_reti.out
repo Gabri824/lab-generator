@@ -1,0 +1,60 @@
+
+=== Policies BGP (scegli) ===
+
+  1) Prefix-list: scarta una o più reti da/verso un neighbor (deny ... + permit any)
+  2) Local-preference in ingresso (su tutte le rotte o solo su alcune reti)
+  3) MED (metric) in uscita
+  4) Access-list: scarta una rete in ingresso (via route-map)
+  5) Configurazione Customer-Provider-Peer
+  6) Default route verso uno o più neighbor (default-originate, anche "solo la default")
+  0) Torna indietro
+
+Seleziona (numero): 2
+(Invio senza scrivere nulla a una domanda = annulla e torna al menu)
+
+Seleziona il router su cui applicare la policy:
+
+  1) as10r1 (ASN: 10)
+  2) as20r1 (ASN: 20)
+  3) as30r1 (ASN: 30)
+  4) as40r1 (ASN: 40)
+  5) as50r1 (ASN: 50)
+  6) as60r1 (ASN: 60)
+  7) as70r1 (ASN: 70)
+  8) as80r1 (ASN: 80)
+
+Numero router (o nome, vuoto per annullare): as40r1
+IP neighbor (es. 10.0.0.2): 192.168.0.5
+Valore local-preference da impostare (es. 110): 130
+Solo per alcune reti? Inserisci le reti separate da virgola (Invio = tutte le rotte): 20.0.0.0/8
+
+--- Local preference 130 da 192.168.0.5 su as40r1: anteprima (1 file) ---
+  as40r1/etc/frr/frr.conf
+    + riga  28: neighbor 192.168.0.5 route-map PREF_IN_192_168_0_5 in
+    + riga  29: 
+    + riga  30: route-map PREF_IN_192_168_0_5 permit 10
+    + riga  31: match ip address prefix-list PREF_IN_192_168_0_5_NETS
+    + riga  32: set local-preference 130
+    + riga  33: route-map PREF_IN_192_168_0_5 permit 20
+    + riga  34: 
+    + riga  35: ip prefix-list PREF_IN_192_168_0_5_NETS permit 20.0.0.0/8
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/candy_test/AAAAMMGG-HHMMSS
+   (i controlli dell'opzione 8 danno lo stesso esito di prima)
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+✅ as40r1: route-map PREF_IN_192_168_0_5 (neighbor 192.168.0.5, in): local-preference 130 per 20.0.0.0/8.
+
+=== Policies BGP (scegli) ===
+
+  1) Prefix-list: scarta una o più reti da/verso un neighbor (deny ... + permit any)
+  2) Local-preference in ingresso (su tutte le rotte o solo su alcune reti)
+  3) MED (metric) in uscita
+  4) Access-list: scarta una rete in ingresso (via route-map)
+  5) Configurazione Customer-Provider-Peer
+  6) Default route verso uno o più neighbor (default-originate, anche "solo la default")
+  0) Torna indietro
+
+Seleziona (numero): 0
+
+[copie di sicurezza create: 1]

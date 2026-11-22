@@ -1,0 +1,41 @@
+
+=== Ridistribuzione BGP -> IGP ===
+
+  1) Togli 'redistribute bgp' da un router (il testo la chiede solo su alcuni router di confine)
+  2) Rimetti 'redistribute bgp' su un router
+  3) Redistribute bgp con route-map eBGP (solo rotte imparate via eBGP)
+  0) Torna indietro
+
+Seleziona (numero): 2
+
+Seleziona il router:
+
+  1) as2r1 (ASN: 2)
+  2) as2r2 (ASN: 2)
+  3) as20r1 (ASN: 20)
+  4) as20r2 (ASN: 20)
+  5) as20r3 (ASN: 20)
+  6) as20r4 (ASN: 20)
+
+Numero router (o nome, vuoto per annullare): as2r1
+
+--- Rimetti redistribute bgp su as2r1: anteprima (1 file) ---
+  as2r1/etc/frr/frr.conf
+    + riga  15: redistribute bgp
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/tennis_test/AAAAMMGG-HHMMSS
+   (i controlli dell'opzione 8 danno lo stesso esito di prima)
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+✅ as2r1: redistribute bgp aggiunto in rip.
+
+=== Ridistribuzione BGP -> IGP ===
+
+  1) Togli 'redistribute bgp' da un router (il testo la chiede solo su alcuni router di confine)
+  2) Rimetti 'redistribute bgp' su un router
+  3) Redistribute bgp con route-map eBGP (solo rotte imparate via eBGP)
+  0) Torna indietro
+
+Seleziona (numero): 0
+
+[copie di sicurezza create: 1]

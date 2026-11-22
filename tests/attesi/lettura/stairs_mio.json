@@ -1,4 +1,106 @@
 {
+ "collect_lab_ips": [
+  {
+   "iface": "eth0",
+   "ip": "1.0.0.1",
+   "name": "as1r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "10.0.0.1",
+   "name": "as1r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "1.0.0.2",
+   "name": "as1r2"
+  },
+  {
+   "iface": "eth1",
+   "ip": "10.0.0.5",
+   "name": "as1r2"
+  },
+  {
+   "iface": "eth0",
+   "ip": "2.0.0.1",
+   "name": "as2r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "10.0.0.9",
+   "name": "as2r1"
+  },
+  {
+   "iface": "eth2",
+   "ip": "10.0.0.2",
+   "name": "as2r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "2.0.0.2",
+   "name": "as2r2"
+  },
+  {
+   "iface": "eth1",
+   "ip": "10.0.0.13",
+   "name": "as2r2"
+  },
+  {
+   "iface": "eth2",
+   "ip": "10.0.0.6",
+   "name": "as2r2"
+  },
+  {
+   "iface": "eth0",
+   "ip": "3.0.0.1",
+   "name": "as3r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "10.0.0.17",
+   "name": "as3r1"
+  },
+  {
+   "iface": "eth2",
+   "ip": "10.0.0.10",
+   "name": "as3r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "3.0.0.2",
+   "name": "as3r2"
+  },
+  {
+   "iface": "eth1",
+   "ip": "10.0.0.21",
+   "name": "as3r2"
+  },
+  {
+   "iface": "eth2",
+   "ip": "10.0.0.14",
+   "name": "as3r2"
+  },
+  {
+   "iface": "eth0",
+   "ip": "4.0.0.1",
+   "name": "as4r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "10.0.0.18",
+   "name": "as4r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "4.0.0.2",
+   "name": "as4r2"
+  },
+  {
+   "iface": "eth1",
+   "ip": "10.0.0.22",
+   "name": "as4r2"
+  }
+ ],
  "dati.leggi_lab": {
   "avvisi_config": [],
   "avvisi_topologia": [],
@@ -1071,8 +1173,9 @@
    }
   ],
   "nome": "stairs_mio",
-  "xml": true
+  "xml": false
  },
+ "isole_ospf": [],
  "leggi_dispositivi": {
   "as1r1": {
    "altri_ip": [],
@@ -1345,6 +1448,9 @@
   "routers": {
    "as1r1": {
     "asn": "1",
+    "igp_networks": [
+     "1.0.0.0/24"
+    ],
     "interfaces": [
      {
       "ip": "1.0.0.1/24",
@@ -1364,6 +1470,9 @@
    },
    "as1r2": {
     "asn": "1",
+    "igp_networks": [
+     "1.0.0.0/24"
+    ],
     "interfaces": [
      {
       "ip": "1.0.0.2/24",
@@ -1383,6 +1492,9 @@
    },
    "as2r1": {
     "asn": "2",
+    "igp_networks": [
+     "2.0.0.0/24"
+    ],
     "interfaces": [
      {
       "ip": "2.0.0.1/24",
@@ -1407,6 +1519,9 @@
    },
    "as2r2": {
     "asn": "2",
+    "igp_networks": [
+     "2.0.0.0/24"
+    ],
     "interfaces": [
      {
       "ip": "2.0.0.2/24",
@@ -1431,6 +1546,9 @@
    },
    "as3r1": {
     "asn": "3",
+    "igp_networks": [
+     "3.0.0.0/24"
+    ],
     "interfaces": [
      {
       "ip": "3.0.0.1/24",
@@ -1455,6 +1573,9 @@
    },
    "as3r2": {
     "asn": "3",
+    "igp_networks": [
+     "3.0.0.0/24"
+    ],
     "interfaces": [
      {
       "ip": "3.0.0.2/24",
@@ -1479,6 +1600,9 @@
    },
    "as4r1": {
     "asn": "4",
+    "igp_networks": [
+     "4.0.0.0/24"
+    ],
     "interfaces": [
      {
       "ip": "4.0.0.1/24",
@@ -1498,6 +1622,9 @@
    },
    "as4r2": {
     "asn": "4",
+    "igp_networks": [
+     "4.0.0.0/24"
+    ],
     "interfaces": [
      {
       "ip": "4.0.0.2/24",

@@ -1,0 +1,10 @@
+# Prefix-list in uscita verso un neighbor esistente
+@lab candy_test
+@chiama policies_menu
+1
+as20r1
+192.168.0.10
+out
+20.0.0.0/8
+s
+0

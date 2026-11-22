@@ -1,0 +1,10 @@
+--- prima/as6r1/etc/frr/frr.conf
++++ dopo/as6r1/etc/frr/frr.conf
+@@ -13,6 +13,7 @@
+ 
+     redistribute connected
+     redistribute bgp
++    route 0.0.0.0/0
+ 
+ router bgp 6
+ 

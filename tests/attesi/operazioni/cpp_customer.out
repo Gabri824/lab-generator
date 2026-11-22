@@ -1,0 +1,87 @@
+
+=== Policies BGP (scegli) ===
+
+  1) Prefix-list: scarta una o più reti da/verso un neighbor (deny ... + permit any)
+  2) Local-preference in ingresso (su tutte le rotte o solo su alcune reti)
+  3) MED (metric) in uscita
+  4) Access-list: scarta una rete in ingresso (via route-map)
+  5) Configurazione Customer-Provider-Peer
+  6) Default route verso uno o più neighbor (default-originate, anche "solo la default")
+  0) Torna indietro
+
+Seleziona (numero): 5
+
+=== Configurazione Customer-Provider ===
+
+Quale router stiamo configurando? 
+
+  1) as10r1 (ASN: 10)
+  2) as20r1 (ASN: 20)
+  3) as30r1 (ASN: 30)
+  4) as40r1 (ASN: 40)
+  5) as50r1 (ASN: 50)
+  6) as60r1 (ASN: 60)
+  7) as70r1 (ASN: 70)
+  8) as80r1 (ASN: 80)
+
+Numero router (o nome, vuoto per annullare): as40r1
+
+Seleziona il Neighbor (vicino) di as40r1:
+
+Router vicino:
+
+  1) as10r1 (ASN: 10)
+  2) as20r1 (ASN: 20)
+  3) as30r1 (ASN: 30)
+  4) as40r1 (ASN: 40)
+  5) as50r1 (ASN: 50)
+  6) as60r1 (ASN: 60)
+  7) as70r1 (ASN: 70)
+  8) as80r1 (ASN: 80)
+
+Numero router (o nome, vuoto per annullare): as10r1
+
+Il router as10r1 ha più indirizzi IP. Seleziona quello verso as40r1:
+
+IP Disponibili:
+
+  1) 192.168.0.1
+  2) 110.0.0.1
+
+Seleziona numero (o premi invio per il primo): 1
+
+Qual è la relazione economica?
+1) PROVIDER (Il vicino è il mio provider)
+2) CUSTOMER (Il vicino è il mio cliente)
+3) PEER (Siamo alla pari)
+Scelta (1-3): 2
+
+--- Customer as10r1 su as40r1: anteprima (1 file) ---
+  as40r1/etc/frr/frr.conf
+    + riga  28: 
+    + riga  29: neighbor 192.168.0.1 prefix-list customer_as10r1_in in
+    + riga  30: neighbor 192.168.0.1 prefix-list customer_as10r1_out out
+    + riga  31: 
+    + riga  32: ip prefix-list customer_as10r1_in permit any
+    + riga  33: ip prefix-list customer_as10r1_out permit any
+    + riga  34: 
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/candy_test/AAAAMMGG-HHMMSS
+   (i controlli dell'opzione 8 danno lo stesso esito di prima)
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+✅ Configurazione CUSTOMER applicata su as40r1 verso as10r1.
+
+=== Policies BGP (scegli) ===
+
+  1) Prefix-list: scarta una o più reti da/verso un neighbor (deny ... + permit any)
+  2) Local-preference in ingresso (su tutte le rotte o solo su alcune reti)
+  3) MED (metric) in uscita
+  4) Access-list: scarta una rete in ingresso (via route-map)
+  5) Configurazione Customer-Provider-Peer
+  6) Default route verso uno o più neighbor (default-originate, anche "solo la default")
+  0) Torna indietro
+
+Seleziona (numero): 0
+
+[copie di sicurezza create: 1]

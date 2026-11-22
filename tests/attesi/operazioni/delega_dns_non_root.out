@@ -1,0 +1,13 @@
+
+--- Aggiungi delega DNS sul root ---
+
+Server DNS del lab:
+
+  1) ns_com
+  2) ns_local
+  3) root  (root: master per .)
+
+Seleziona il server root (numero o nome, vuoto per annullare): ns_com
+⚠️ ns_com non è il root (in named.conf la zona '.' non è 'type master'): le deleghe dei domini di primo livello vanno sul root.
+
+[copie di sicurezza create: 0]

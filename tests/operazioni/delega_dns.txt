@@ -1,0 +1,8 @@
+# Delega di una zona nuova sul root
+@lab tennis_test
+@chiama aggiungi_delega_dns
+root
+org
+
+20.1.0.9
+s

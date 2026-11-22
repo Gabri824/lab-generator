@@ -1,0 +1,13 @@
+--- prima/as40r1/etc/frr/frr.conf
++++ dopo/as40r1/etc/frr/frr.conf
+@@ -25,3 +25,10 @@
+     neighbor 192.168.0.25 description Router as70r1
+     neighbor 192.168.0.29 remote-as 80
+     neighbor 192.168.0.29 description Router as80r1
++    
++    neighbor 192.168.0.1 prefix-list customer_as10r1_in in
++    neighbor 192.168.0.1 prefix-list customer_as10r1_out out
++
++ip prefix-list customer_as10r1_in permit any
++ip prefix-list customer_as10r1_out permit any
++

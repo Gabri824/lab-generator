@@ -1,0 +1,6 @@
+# resolv.conf su un dispositivo, scegliendo uno dei server DNS del lab
+@lab tennis_test
+@chiama assegna_resolv_conf
+web_srv
+2
+s

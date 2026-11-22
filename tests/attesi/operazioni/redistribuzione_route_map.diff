@@ -1,0 +1,23 @@
+--- prima/r3/etc/frr/frr.conf
++++ dopo/r3/etc/frr/frr.conf
+@@ -12,7 +12,8 @@
+     network 50.0.0.0/8
+ 
+     redistribute connected
+-    redistribute bgp
++    
++    redistribute bgp route-map eBGP
+ 
+ router bgp 50
+ 
+@@ -23,3 +24,10 @@
+     neighbor 10.1.0.1 remote-as 40
+     neighbor 10.1.0.1 description Router r4
+     network 50.50.0.0/16
++
++
++ip prefix-list myNeighbors permit 10.2.0.0/30 le 32
++
++route-map eBGP permit 10
++    match ip next-hop prefix-list myNeighbors
++

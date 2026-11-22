@@ -1,0 +1,34 @@
+
+--- Aggiungi loopback ad un dispositivo ---
+
+Seleziona il dispositivo su cui aggiungere la loopback:
+
+  1) as1r1 (router, ASN: )
+  2) as1r2 (router, ASN: )
+  3) as1r3 (router, ASN: 1)
+  4) as2r1 (router, ASN: 2)
+  5) as2r2 (router, ASN: )
+  6) as2r3 (router, ASN: )
+  7) as2r4 (router, ASN: )
+  8) as2r5 (router, ASN: 2)
+  9) web (device)
+  10) pc1 (device)
+
+Seleziona il dispositivo (numero o nome, vuoto per annullare): as2r1
+IP loopback (es. 1.2.3.4): 2.255.0.1
+
+--- Loopback 2.255.0.1/32 su as2r1: anteprima (2 file) ---
+  as2r1.startup
+    + riga   5: ip address add 2.255.0.1/32 dev lo
+  as2r1/etc/frr/frr.conf
+    + riga  16: network 2.255.0.1/32 area 0.0.0.0
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/galaxy_mio/AAAAMMGG-HHMMSS
+   (i controlli dell'opzione 8 danno lo stesso esito di prima)
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+
+
+✅ Loopback 2.255.0.1/32 aggiunta a router as2r1 (startup aggiornato).
+
+[copie di sicurezza create: 1]

@@ -1,0 +1,13 @@
+# OSPF aggiunto a un router su due aree (router di confine): area 0 e area 2.2.2.2
+@lab candy_test
+@chiama modifica_protocolli as10r1
+a
+1
+192.168.0.0/30, 110.0.0.0/24
+
+
+n
+
+2.2.2.2
+n
+s

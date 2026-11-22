@@ -1,0 +1,34 @@
+--- prima/r4/etc/frr/frr.conf
++++ dopo/r4/etc/frr/frr.conf
+@@ -13,6 +13,7 @@
+ 
+     redistribute connected
+     redistribute bgp
++    auto-cost reference-bandwidth 100
+ 
+ router bgp 40
+ 
+--- prima/r5/etc/frr/frr.conf
++++ dopo/r5/etc/frr/frr.conf
+@@ -8,4 +8,5 @@
+     network 40.0.0.0/8 area 0.0.0.0
+ 
+     redistribute connected
++    auto-cost reference-bandwidth 100
+ 
+--- prima/r6/etc/frr/frr.conf
++++ dopo/r6/etc/frr/frr.conf
+@@ -8,4 +8,5 @@
+     network 40.0.0.0/8 area 0.0.0.0
+ 
+     redistribute connected
++    auto-cost reference-bandwidth 100
+ 
+--- prima/r7/etc/frr/frr.conf
++++ dopo/r7/etc/frr/frr.conf
+@@ -8,4 +8,5 @@
+     network 40.0.0.0/8 area 0.0.0.0
+ 
+     redistribute connected
++    auto-cost reference-bandwidth 100
+ 

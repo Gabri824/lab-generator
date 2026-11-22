@@ -1,0 +1,5 @@
+# Nuovo default gateway di un host
+@lab papillon_mio
+@chiama cambia_gateway client
+20.20.1.254
+s

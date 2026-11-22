@@ -1,0 +1,1404 @@
+{
+ "dispositivi": {
+  "r1": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": null,
+   "demoni": [
+    "ripd"
+   ],
+   "dns": null,
+   "frr": {
+    "access_list": {},
+    "altre": [
+     {
+      "riga": 1,
+      "testo": "password zebra"
+     },
+     {
+      "riga": 2,
+      "testo": "enable password zebra"
+     },
+     {
+      "riga": 4,
+      "testo": "log file /var/log/frr/frr.log"
+     }
+    ],
+    "bgp": null,
+    "file": "r1/etc/frr/frr.conf",
+    "interfacce": {},
+    "non_comprese": [],
+    "ospf": null,
+    "prefix_list": {},
+    "rip": {
+     "default_information": [],
+     "network": [
+      {
+       "rete": "50.0.0.0/8",
+       "riga": 8
+      }
+     ],
+     "redistribute": [
+      {
+       "riga": 10,
+       "testo": "connected"
+      }
+     ],
+     "riga": 6,
+     "route": []
+    },
+    "route_map": {},
+    "statiche": []
+   },
+   "gateway": null,
+   "immagine": "kathara/frr",
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "50.50.3.1/24",
+     "lan": "C"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "50.50.1.1/24",
+     "lan": "A"
+    },
+    {
+     "dev": "eth2",
+     "idx": 2,
+     "ip": "50.50.2.1/24",
+     "lan": "B"
+    }
+   ],
+   "ip_per_dev": {
+    "eth0": [
+     "50.50.3.1/24"
+    ],
+    "eth1": [
+     "50.50.1.1/24"
+    ],
+    "eth2": [
+     "50.50.2.1/24"
+    ]
+   },
+   "lab_conf": {
+    "0": "C",
+    "1": "A",
+    "2": "B"
+   },
+   "loopback": [],
+   "nameserver": [],
+   "nome": "r1",
+   "non_comprese": [],
+   "presenti": {
+    "daemons": true,
+    "dir_bind": false,
+    "dir_www": false,
+    "frr_conf": true,
+    "index_html": false,
+    "named_conf": false,
+    "named_conf_local": false,
+    "named_conf_options": false,
+    "resolv_conf": false,
+    "startup": true,
+    "vtysh_conf": true
+   },
+   "startup": {
+    "file": "r1.startup",
+    "gateway": null,
+    "ip": [
+     {
+      "dev": "eth0",
+      "ip": "50.50.3.1/24",
+      "riga": 1
+     },
+     {
+      "dev": "eth1",
+      "ip": "50.50.1.1/24",
+      "riga": 2
+     },
+     {
+      "dev": "eth2",
+      "ip": "50.50.2.1/24",
+      "riga": 3
+     }
+    ],
+    "non_comprese": [],
+    "servizi": [
+     {
+      "nome": "frr",
+      "riga": 5
+     }
+    ],
+    "statiche": []
+   },
+   "tipo": "router"
+  },
+  "r2": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": null,
+   "demoni": [
+    "ripd"
+   ],
+   "dns": null,
+   "frr": {
+    "access_list": {},
+    "altre": [
+     {
+      "riga": 1,
+      "testo": "password zebra"
+     },
+     {
+      "riga": 2,
+      "testo": "enable password zebra"
+     },
+     {
+      "riga": 4,
+      "testo": "log file /var/log/frr/frr.log"
+     }
+    ],
+    "bgp": null,
+    "file": "r2/etc/frr/frr.conf",
+    "interfacce": {},
+    "non_comprese": [],
+    "ospf": null,
+    "prefix_list": {},
+    "rip": {
+     "default_information": [],
+     "network": [
+      {
+       "rete": "50.0.0.0/8",
+       "riga": 8
+      }
+     ],
+     "redistribute": [
+      {
+       "riga": 10,
+       "testo": "connected"
+      }
+     ],
+     "riga": 6,
+     "route": []
+    },
+    "route_map": {},
+    "statiche": []
+   },
+   "gateway": null,
+   "immagine": "kathara/frr",
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "50.50.4.1/24",
+     "lan": "D"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "50.50.3.2/24",
+     "lan": "C"
+    }
+   ],
+   "ip_per_dev": {
+    "eth0": [
+     "50.50.4.1/24"
+    ],
+    "eth1": [
+     "50.50.3.2/24"
+    ]
+   },
+   "lab_conf": {
+    "0": "D",
+    "1": "C"
+   },
+   "loopback": [],
+   "nameserver": [],
+   "nome": "r2",
+   "non_comprese": [],
+   "presenti": {
+    "daemons": true,
+    "dir_bind": false,
+    "dir_www": false,
+    "frr_conf": true,
+    "index_html": false,
+    "named_conf": false,
+    "named_conf_local": false,
+    "named_conf_options": false,
+    "resolv_conf": false,
+    "startup": true,
+    "vtysh_conf": true
+   },
+   "startup": {
+    "file": "r2.startup",
+    "gateway": null,
+    "ip": [
+     {
+      "dev": "eth0",
+      "ip": "50.50.4.1/24",
+      "riga": 1
+     },
+     {
+      "dev": "eth1",
+      "ip": "50.50.3.2/24",
+      "riga": 2
+     }
+    ],
+    "non_comprese": [],
+    "servizi": [
+     {
+      "nome": "frr",
+      "riga": 4
+     }
+    ],
+    "statiche": []
+   },
+   "tipo": "router"
+  },
+  "r3": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": "50",
+   "demoni": [
+    "ripd",
+    "bgpd"
+   ],
+   "dns": null,
+   "frr": {
+    "access_list": {},
+    "altre": [
+     {
+      "riga": 1,
+      "testo": "password zebra"
+     },
+     {
+      "riga": 2,
+      "testo": "enable password zebra"
+     },
+     {
+      "riga": 4,
+      "testo": "log file /var/log/frr/frr.log"
+     },
+     {
+      "riga": 6,
+      "testo": "debug bgp keepalives"
+     },
+     {
+      "riga": 7,
+      "testo": "debug bgp updates in"
+     },
+     {
+      "riga": 8,
+      "testo": "debug bgp updates out"
+     },
+     {
+      "riga": 19,
+      "testo": "no bgp ebgp-requires-policy"
+     },
+     {
+      "riga": 20,
+      "testo": "no bgp network import-check"
+     }
+    ],
+    "bgp": {
+     "asn": "50",
+     "default_information": [],
+     "neighbor": {
+      "10.1.0.1": {
+       "default_originate": null,
+       "descrizione": "Router r4",
+       "dispositivo": "r4",
+       "policy": [],
+       "remote_as": "40",
+       "righe": [
+        23,
+        24
+       ],
+       "tipo": "eBGP",
+       "update_source": null
+      }
+     },
+     "network": [
+      {
+       "rete": "10.1.0.0/30",
+       "riga": 22
+      },
+      {
+       "rete": "50.50.0.0/16",
+       "riga": 25
+      }
+     ],
+     "redistribute": [],
+     "riga": 17
+    },
+    "file": "r3/etc/frr/frr.conf",
+    "interfacce": {},
+    "non_comprese": [],
+    "ospf": null,
+    "prefix_list": {},
+    "rip": {
+     "default_information": [],
+     "network": [
+      {
+       "rete": "50.0.0.0/8",
+       "riga": 12
+      }
+     ],
+     "redistribute": [
+      {
+       "riga": 14,
+       "testo": "connected"
+      },
+      {
+       "riga": 15,
+       "testo": "bgp"
+      }
+     ],
+     "riga": 10,
+     "route": []
+    },
+    "route_map": {},
+    "statiche": []
+   },
+   "gateway": null,
+   "immagine": "kathara/frr",
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "10.1.0.2/30",
+     "lan": "E"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "50.50.4.2/24",
+     "lan": "D"
+    },
+    {
+     "dev": "eth2",
+     "idx": 2,
+     "ip": "50.50.2.2/24",
+     "lan": "B"
+    }
+   ],
+   "ip_per_dev": {
+    "eth0": [
+     "10.1.0.2/30"
+    ],
+    "eth1": [
+     "50.50.4.2/24"
+    ],
+    "eth2": [
+     "50.50.2.2/24"
+    ]
+   },
+   "lab_conf": {
+    "0": "E",
+    "1": "D",
+    "2": "B"
+   },
+   "loopback": [],
+   "nameserver": [],
+   "nome": "r3",
+   "non_comprese": [],
+   "presenti": {
+    "daemons": true,
+    "dir_bind": false,
+    "dir_www": false,
+    "frr_conf": true,
+    "index_html": false,
+    "named_conf": false,
+    "named_conf_local": false,
+    "named_conf_options": false,
+    "resolv_conf": false,
+    "startup": true,
+    "vtysh_conf": true
+   },
+   "startup": {
+    "file": "r3.startup",
+    "gateway": null,
+    "ip": [
+     {
+      "dev": "eth0",
+      "ip": "10.1.0.2/30",
+      "riga": 1
+     },
+     {
+      "dev": "eth1",
+      "ip": "50.50.4.2/24",
+      "riga": 2
+     },
+     {
+      "dev": "eth2",
+      "ip": "50.50.2.2/24",
+      "riga": 3
+     }
+    ],
+    "non_comprese": [],
+    "servizi": [
+     {
+      "nome": "frr",
+      "riga": 5
+     }
+    ],
+    "statiche": []
+   },
+   "tipo": "router"
+  },
+  "r4": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": "40",
+   "demoni": [
+    "ospfd",
+    "bgpd"
+   ],
+   "dns": null,
+   "frr": {
+    "access_list": {},
+    "altre": [
+     {
+      "riga": 1,
+      "testo": "password zebra"
+     },
+     {
+      "riga": 2,
+      "testo": "enable password zebra"
+     },
+     {
+      "riga": 4,
+      "testo": "log file /var/log/frr/frr.log"
+     },
+     {
+      "riga": 6,
+      "testo": "debug bgp keepalives"
+     },
+     {
+      "riga": 7,
+      "testo": "debug bgp updates in"
+     },
+     {
+      "riga": 8,
+      "testo": "debug bgp updates out"
+     },
+     {
+      "riga": 19,
+      "testo": "no bgp ebgp-requires-policy"
+     },
+     {
+      "riga": 20,
+      "testo": "no bgp network import-check"
+     }
+    ],
+    "bgp": {
+     "asn": "40",
+     "default_information": [],
+     "neighbor": {
+      "10.1.0.2": {
+       "default_originate": null,
+       "descrizione": "Router r3",
+       "dispositivo": "r3",
+       "policy": [],
+       "remote_as": "50",
+       "righe": [
+        23,
+        24
+       ],
+       "tipo": "eBGP",
+       "update_source": null
+      }
+     },
+     "network": [
+      {
+       "rete": "10.1.0.0/30",
+       "riga": 22
+      },
+      {
+       "rete": "40.40.0.0/16",
+       "riga": 25
+      }
+     ],
+     "redistribute": [],
+     "riga": 17
+    },
+    "file": "r4/etc/frr/frr.conf",
+    "interfacce": {
+     "eth1": {
+      "costo_ospf": 100,
+      "riga": 27,
+      "riga_costo": 28
+     }
+    },
+    "non_comprese": [],
+    "ospf": {
+     "auto_cost": null,
+     "default_information": [],
+     "network": [
+      {
+       "area": "0.0.0.0",
+       "rete": "40.0.0.0/8",
+       "riga": 12
+      }
+     ],
+     "redistribute": [
+      {
+       "riga": 14,
+       "testo": "connected"
+      },
+      {
+       "riga": 15,
+       "testo": "bgp"
+      }
+     ],
+     "riga": 10,
+     "stub": []
+    },
+    "prefix_list": {},
+    "rip": null,
+    "route_map": {},
+    "statiche": []
+   },
+   "gateway": null,
+   "immagine": "kathara/frr",
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "40.40.4.2/24",
+     "lan": "G"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "40.40.5.2/24",
+     "lan": "F"
+    },
+    {
+     "dev": "eth2",
+     "idx": 2,
+     "ip": "10.1.0.1/30",
+     "lan": "E"
+    }
+   ],
+   "ip_per_dev": {
+    "eth0": [
+     "40.40.4.2/24"
+    ],
+    "eth1": [
+     "40.40.5.2/24"
+    ],
+    "eth2": [
+     "10.1.0.1/30"
+    ]
+   },
+   "lab_conf": {
+    "0": "G",
+    "1": "F",
+    "2": "E"
+   },
+   "loopback": [],
+   "nameserver": [],
+   "nome": "r4",
+   "non_comprese": [],
+   "presenti": {
+    "daemons": true,
+    "dir_bind": false,
+    "dir_www": false,
+    "frr_conf": true,
+    "index_html": false,
+    "named_conf": false,
+    "named_conf_local": false,
+    "named_conf_options": false,
+    "resolv_conf": false,
+    "startup": true,
+    "vtysh_conf": true
+   },
+   "startup": {
+    "file": "r4.startup",
+    "gateway": null,
+    "ip": [
+     {
+      "dev": "eth0",
+      "ip": "40.40.4.2/24",
+      "riga": 1
+     },
+     {
+      "dev": "eth1",
+      "ip": "40.40.5.2/24",
+      "riga": 2
+     },
+     {
+      "dev": "eth2",
+      "ip": "10.1.0.1/30",
+      "riga": 3
+     }
+    ],
+    "non_comprese": [],
+    "servizi": [
+     {
+      "nome": "frr",
+      "riga": 5
+     }
+    ],
+    "statiche": []
+   },
+   "tipo": "router"
+  },
+  "r5": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": null,
+   "demoni": [
+    "ospfd"
+   ],
+   "dns": null,
+   "frr": {
+    "access_list": {},
+    "altre": [
+     {
+      "riga": 1,
+      "testo": "password zebra"
+     },
+     {
+      "riga": 2,
+      "testo": "enable password zebra"
+     },
+     {
+      "riga": 4,
+      "testo": "log file /var/log/frr/frr.log"
+     }
+    ],
+    "bgp": null,
+    "file": "r5/etc/frr/frr.conf",
+    "interfacce": {},
+    "non_comprese": [],
+    "ospf": {
+     "auto_cost": null,
+     "default_information": [],
+     "network": [
+      {
+       "area": "0.0.0.0",
+       "rete": "40.0.0.0/8",
+       "riga": 8
+      }
+     ],
+     "redistribute": [
+      {
+       "riga": 10,
+       "testo": "connected"
+      }
+     ],
+     "riga": 6,
+     "stub": []
+    },
+    "prefix_list": {},
+    "rip": null,
+    "route_map": {},
+    "statiche": []
+   },
+   "gateway": null,
+   "immagine": "kathara/frr",
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "40.40.4.1/24",
+     "lan": "G"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "40.40.3.2/24",
+     "lan": "H"
+    }
+   ],
+   "ip_per_dev": {
+    "eth0": [
+     "40.40.4.1/24"
+    ],
+    "eth1": [
+     "40.40.3.2/24"
+    ]
+   },
+   "lab_conf": {
+    "0": "G",
+    "1": "H"
+   },
+   "loopback": [],
+   "nameserver": [],
+   "nome": "r5",
+   "non_comprese": [],
+   "presenti": {
+    "daemons": true,
+    "dir_bind": false,
+    "dir_www": false,
+    "frr_conf": true,
+    "index_html": false,
+    "named_conf": false,
+    "named_conf_local": false,
+    "named_conf_options": false,
+    "resolv_conf": false,
+    "startup": true,
+    "vtysh_conf": true
+   },
+   "startup": {
+    "file": "r5.startup",
+    "gateway": null,
+    "ip": [
+     {
+      "dev": "eth0",
+      "ip": "40.40.4.1/24",
+      "riga": 1
+     },
+     {
+      "dev": "eth1",
+      "ip": "40.40.3.2/24",
+      "riga": 2
+     }
+    ],
+    "non_comprese": [],
+    "servizi": [
+     {
+      "nome": "frr",
+      "riga": 4
+     }
+    ],
+    "statiche": []
+   },
+   "tipo": "router"
+  },
+  "r6": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": null,
+   "demoni": [
+    "ospfd"
+   ],
+   "dns": null,
+   "frr": {
+    "access_list": {},
+    "altre": [
+     {
+      "riga": 1,
+      "testo": "password zebra"
+     },
+     {
+      "riga": 2,
+      "testo": "enable password zebra"
+     },
+     {
+      "riga": 4,
+      "testo": "log file /var/log/frr/frr.log"
+     }
+    ],
+    "bgp": null,
+    "file": "r6/etc/frr/frr.conf",
+    "interfacce": {},
+    "non_comprese": [],
+    "ospf": {
+     "auto_cost": null,
+     "default_information": [],
+     "network": [
+      {
+       "area": "0.0.0.0",
+       "rete": "40.0.0.0/8",
+       "riga": 8
+      }
+     ],
+     "redistribute": [
+      {
+       "riga": 10,
+       "testo": "connected"
+      }
+     ],
+     "riga": 6,
+     "stub": []
+    },
+    "prefix_list": {},
+    "rip": null,
+    "route_map": {},
+    "statiche": []
+   },
+   "gateway": null,
+   "immagine": "kathara/frr",
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "40.40.2.2/24",
+     "lan": "I"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "40.40.3.1/24",
+     "lan": "H"
+    }
+   ],
+   "ip_per_dev": {
+    "eth0": [
+     "40.40.2.2/24"
+    ],
+    "eth1": [
+     "40.40.3.1/24"
+    ]
+   },
+   "lab_conf": {
+    "0": "I",
+    "1": "H"
+   },
+   "loopback": [],
+   "nameserver": [],
+   "nome": "r6",
+   "non_comprese": [],
+   "presenti": {
+    "daemons": true,
+    "dir_bind": false,
+    "dir_www": false,
+    "frr_conf": true,
+    "index_html": false,
+    "named_conf": false,
+    "named_conf_local": false,
+    "named_conf_options": false,
+    "resolv_conf": false,
+    "startup": true,
+    "vtysh_conf": true
+   },
+   "startup": {
+    "file": "r6.startup",
+    "gateway": null,
+    "ip": [
+     {
+      "dev": "eth0",
+      "ip": "40.40.2.2/24",
+      "riga": 1
+     },
+     {
+      "dev": "eth1",
+      "ip": "40.40.3.1/24",
+      "riga": 2
+     }
+    ],
+    "non_comprese": [],
+    "servizi": [
+     {
+      "nome": "frr",
+      "riga": 4
+     }
+    ],
+    "statiche": []
+   },
+   "tipo": "router"
+  },
+  "r7": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": null,
+   "demoni": [
+    "ospfd"
+   ],
+   "dns": null,
+   "frr": {
+    "access_list": {},
+    "altre": [
+     {
+      "riga": 1,
+      "testo": "password zebra"
+     },
+     {
+      "riga": 2,
+      "testo": "enable password zebra"
+     },
+     {
+      "riga": 4,
+      "testo": "log file /var/log/frr/frr.log"
+     }
+    ],
+    "bgp": null,
+    "file": "r7/etc/frr/frr.conf",
+    "interfacce": {},
+    "non_comprese": [],
+    "ospf": {
+     "auto_cost": null,
+     "default_information": [],
+     "network": [
+      {
+       "area": "0.0.0.0",
+       "rete": "40.0.0.0/8",
+       "riga": 8
+      }
+     ],
+     "redistribute": [
+      {
+       "riga": 10,
+       "testo": "connected"
+      }
+     ],
+     "riga": 6,
+     "stub": []
+    },
+    "prefix_list": {},
+    "rip": null,
+    "route_map": {},
+    "statiche": []
+   },
+   "gateway": null,
+   "immagine": "kathara/frr",
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "40.40.2.1/24",
+     "lan": "I"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "40.40.1.1/24",
+     "lan": "L"
+    },
+    {
+     "dev": "eth2",
+     "idx": 2,
+     "ip": "40.40.5.1/24",
+     "lan": "F"
+    }
+   ],
+   "ip_per_dev": {
+    "eth0": [
+     "40.40.2.1/24"
+    ],
+    "eth1": [
+     "40.40.1.1/24"
+    ],
+    "eth2": [
+     "40.40.5.1/24"
+    ]
+   },
+   "lab_conf": {
+    "0": "I",
+    "1": "L",
+    "2": "F"
+   },
+   "loopback": [],
+   "nameserver": [],
+   "nome": "r7",
+   "non_comprese": [],
+   "presenti": {
+    "daemons": true,
+    "dir_bind": false,
+    "dir_www": false,
+    "frr_conf": true,
+    "index_html": false,
+    "named_conf": false,
+    "named_conf_local": false,
+    "named_conf_options": false,
+    "resolv_conf": false,
+    "startup": true,
+    "vtysh_conf": true
+   },
+   "startup": {
+    "file": "r7.startup",
+    "gateway": null,
+    "ip": [
+     {
+      "dev": "eth0",
+      "ip": "40.40.2.1/24",
+      "riga": 1
+     },
+     {
+      "dev": "eth1",
+      "ip": "40.40.1.1/24",
+      "riga": 2
+     },
+     {
+      "dev": "eth2",
+      "ip": "40.40.5.1/24",
+      "riga": 3
+     }
+    ],
+    "non_comprese": [],
+    "servizi": [
+     {
+      "nome": "frr",
+      "riga": 5
+     }
+    ],
+    "statiche": []
+   },
+   "tipo": "router"
+  },
+  "user": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": null,
+   "demoni": [],
+   "dns": null,
+   "frr": null,
+   "gateway": "40.40.1.1",
+   "immagine": "kathara/base",
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "40.40.1.2/24",
+     "lan": "L"
+    }
+   ],
+   "ip_per_dev": {
+    "eth0": [
+     "40.40.1.2/24"
+    ]
+   },
+   "lab_conf": {
+    "0": "L"
+   },
+   "loopback": [],
+   "nameserver": [],
+   "nome": "user",
+   "non_comprese": [],
+   "presenti": {
+    "daemons": false,
+    "dir_bind": false,
+    "dir_www": false,
+    "frr_conf": false,
+    "index_html": false,
+    "named_conf": false,
+    "named_conf_local": false,
+    "named_conf_options": false,
+    "resolv_conf": false,
+    "startup": true,
+    "vtysh_conf": false
+   },
+   "startup": {
+    "file": "user.startup",
+    "gateway": {
+     "dev": "eth0",
+     "riga": 2,
+     "via": "40.40.1.1"
+    },
+    "ip": [
+     {
+      "dev": "eth0",
+      "ip": "40.40.1.2/24",
+      "riga": 1
+     }
+    ],
+    "non_comprese": [],
+    "servizi": [],
+    "statiche": []
+   },
+   "tipo": "host"
+  },
+  "www": {
+   "altri_ip": [],
+   "apache": true,
+   "asn": null,
+   "demoni": [],
+   "dns": null,
+   "frr": null,
+   "gateway": "50.50.1.1",
+   "immagine": "kathara/base",
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "50.50.1.2/24",
+     "lan": "A"
+    }
+   ],
+   "ip_per_dev": {
+    "eth0": [
+     "50.50.1.2/24"
+    ]
+   },
+   "lab_conf": {
+    "0": "A"
+   },
+   "loopback": [],
+   "nameserver": [],
+   "nome": "www",
+   "non_comprese": [],
+   "presenti": {
+    "daemons": false,
+    "dir_bind": false,
+    "dir_www": true,
+    "frr_conf": false,
+    "index_html": true,
+    "named_conf": false,
+    "named_conf_local": false,
+    "named_conf_options": false,
+    "resolv_conf": false,
+    "startup": true,
+    "vtysh_conf": false
+   },
+   "startup": {
+    "file": "www.startup",
+    "gateway": {
+     "dev": "eth0",
+     "riga": 2,
+     "via": "50.50.1.1"
+    },
+    "ip": [
+     {
+      "dev": "eth0",
+      "ip": "50.50.1.2/24",
+      "riga": 1
+     }
+    ],
+    "non_comprese": [],
+    "servizi": [
+     {
+      "nome": "apache2",
+      "riga": 3
+     }
+    ],
+    "statiche": []
+   },
+   "tipo": "www"
+  }
+ },
+ "lab_conf": "r1[0]=C\nr1[1]=A\nr1[2]=B\nr1[image]=\"kathara/frr\"\n\nr2[0]=D\nr2[1]=C\nr2[image]=\"kathara/frr\"\n\nr3[0]=E\nr3[1]=D\nr3[2]=B\nr3[image]=\"kathara/frr\"\n\nr4[0]=G\nr4[1]=F\nr4[2]=E\nr4[image]=\"kathara/frr\"\n\nr5[0]=G\nr5[1]=H\nr5[image]=\"kathara/frr\"\n\nr6[0]=I\nr6[1]=H\nr6[image]=\"kathara/frr\"\n\nr7[0]=I\nr7[1]=L\nr7[2]=F\nr7[image]=\"kathara/frr\"\n\nuser[0]=L\nuser[image]=\"kathara/base\"\n\nwww[0]=A\nwww[image]=\"kathara/base\"\n",
+ "lan": {
+  "A": {
+   "interfacce": [
+    {
+     "dev": "eth1",
+     "dispositivo": "r1",
+     "ip": "50.50.1.1/24"
+    },
+    {
+     "dev": "eth0",
+     "dispositivo": "www",
+     "ip": "50.50.1.2/24"
+    }
+   ],
+   "membri": [
+    "r1",
+    "www"
+   ],
+   "nome": "A",
+   "subnet": "50.50.1.0/24"
+  },
+  "B": {
+   "interfacce": [
+    {
+     "dev": "eth2",
+     "dispositivo": "r1",
+     "ip": "50.50.2.1/24"
+    },
+    {
+     "dev": "eth2",
+     "dispositivo": "r3",
+     "ip": "50.50.2.2/24"
+    }
+   ],
+   "membri": [
+    "r1",
+    "r3"
+   ],
+   "nome": "B",
+   "subnet": "50.50.2.0/24"
+  },
+  "C": {
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "dispositivo": "r1",
+     "ip": "50.50.3.1/24"
+    },
+    {
+     "dev": "eth1",
+     "dispositivo": "r2",
+     "ip": "50.50.3.2/24"
+    }
+   ],
+   "membri": [
+    "r1",
+    "r2"
+   ],
+   "nome": "C",
+   "subnet": "50.50.3.0/24"
+  },
+  "D": {
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "dispositivo": "r2",
+     "ip": "50.50.4.1/24"
+    },
+    {
+     "dev": "eth1",
+     "dispositivo": "r3",
+     "ip": "50.50.4.2/24"
+    }
+   ],
+   "membri": [
+    "r2",
+    "r3"
+   ],
+   "nome": "D",
+   "subnet": "50.50.4.0/24"
+  },
+  "E": {
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "dispositivo": "r3",
+     "ip": "10.1.0.2/30"
+    },
+    {
+     "dev": "eth2",
+     "dispositivo": "r4",
+     "ip": "10.1.0.1/30"
+    }
+   ],
+   "membri": [
+    "r3",
+    "r4"
+   ],
+   "nome": "E",
+   "subnet": "10.1.0.0/30"
+  },
+  "F": {
+   "interfacce": [
+    {
+     "dev": "eth1",
+     "dispositivo": "r4",
+     "ip": "40.40.5.2/24"
+    },
+    {
+     "dev": "eth2",
+     "dispositivo": "r7",
+     "ip": "40.40.5.1/24"
+    }
+   ],
+   "membri": [
+    "r4",
+    "r7"
+   ],
+   "nome": "F",
+   "subnet": "40.40.5.0/24"
+  },
+  "G": {
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "dispositivo": "r4",
+     "ip": "40.40.4.2/24"
+    },
+    {
+     "dev": "eth0",
+     "dispositivo": "r5",
+     "ip": "40.40.4.1/24"
+    }
+   ],
+   "membri": [
+    "r4",
+    "r5"
+   ],
+   "nome": "G",
+   "subnet": "40.40.4.0/24"
+  },
+  "H": {
+   "interfacce": [
+    {
+     "dev": "eth1",
+     "dispositivo": "r5",
+     "ip": "40.40.3.2/24"
+    },
+    {
+     "dev": "eth1",
+     "dispositivo": "r6",
+     "ip": "40.40.3.1/24"
+    }
+   ],
+   "membri": [
+    "r5",
+    "r6"
+   ],
+   "nome": "H",
+   "subnet": "40.40.3.0/24"
+  },
+  "I": {
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "dispositivo": "r6",
+     "ip": "40.40.2.2/24"
+    },
+    {
+     "dev": "eth0",
+     "dispositivo": "r7",
+     "ip": "40.40.2.1/24"
+    }
+   ],
+   "membri": [
+    "r6",
+    "r7"
+   ],
+   "nome": "I",
+   "subnet": "40.40.2.0/24"
+  },
+  "L": {
+   "interfacce": [
+    {
+     "dev": "eth1",
+     "dispositivo": "r7",
+     "ip": "40.40.1.1/24"
+    },
+    {
+     "dev": "eth0",
+     "dispositivo": "user",
+     "ip": "40.40.1.2/24"
+    }
+   ],
+   "membri": [
+    "r7",
+    "user"
+   ],
+   "nome": "L",
+   "subnet": "40.40.1.0/24"
+  }
+ },
+ "nome": "hourglass_test",
+ "non_comprese": [],
+ "ordine_lab_conf": [
+  "r1",
+  "r2",
+  "r3",
+  "r4",
+  "r5",
+  "r6",
+  "r7",
+  "user",
+  "www"
+ ],
+ "percorso": "<LAB>",
+ "proprietari": {
+  "10.1.0.1": "r4",
+  "10.1.0.2": "r3",
+  "40.40.1.1": "r7",
+  "40.40.1.2": "user",
+  "40.40.2.1": "r7",
+  "40.40.2.2": "r6",
+  "40.40.3.1": "r6",
+  "40.40.3.2": "r5",
+  "40.40.4.1": "r5",
+  "40.40.4.2": "r4",
+  "40.40.5.1": "r7",
+  "40.40.5.2": "r4",
+  "50.50.1.1": "r1",
+  "50.50.1.2": "www",
+  "50.50.2.1": "r1",
+  "50.50.2.2": "r3",
+  "50.50.3.1": "r1",
+  "50.50.3.2": "r2",
+  "50.50.4.1": "r2",
+  "50.50.4.2": "r3"
+ },
+ "xml_nel_lab": true
+}

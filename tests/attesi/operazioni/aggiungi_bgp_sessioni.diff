@@ -1,0 +1,51 @@
+--- prima/r2/etc/frr/daemons
++++ dopo/r2/etc/frr/daemons
+@@ -1,7 +1,7 @@
+ zebra=yes 
+ ripd=no
+ ospfd=yes
+-bgpd=no
++bgpd=yes
+ 
+ ospf6d=no
+ ripngd=no
+--- prima/r2/etc/frr/frr.conf
++++ dopo/r2/etc/frr/frr.conf
+@@ -2,6 +2,10 @@
+ enable password zebra
+ 
+ log file /var/log/frr/frr.log
++
++debug bgp keepalives
++debug bgp updates in
++debug bgp updates out
+ 
+ router ospf
+ 
+@@ -9,8 +13,18 @@
+ 
+     redistribute connected
+     auto-cost reference-bandwidth 100
++    redistribute bgp
+ 
+ 
+ interface eth0
+     ospf cost 100
+ 
++router bgp 20
++
++    no bgp ebgp-requires-policy
++    no bgp network import-check
++
++    network 20.20.2.0/24
++    network 20.20.3.0/24
++    neighbor 20.20.3.2 remote-as 20
++    neighbor 20.20.3.2 description Router r3
+--- prima/r3/etc/frr/frr.conf
++++ dopo/r3/etc/frr/frr.conf
+@@ -24,3 +24,5 @@
+     neighbor 10.1.0.2 remote-as 30
+     neighbor 10.1.0.2 description Router r5
+     network 20.20.0.0/16
++    neighbor 20.20.3.1 remote-as 20
++    neighbor 20.20.3.1 description Router r2

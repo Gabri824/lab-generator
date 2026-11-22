@@ -1,0 +1,7 @@
+# Togli 'redistribute bgp' dal blocco OSPF di un router di confine
+@lab hourglass_test
+@chiama menu_ridistribuzione
+1
+r4
+s
+0

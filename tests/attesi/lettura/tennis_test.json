@@ -1,4 +1,156 @@
 {
+ "collect_lab_ips": [
+  {
+   "iface": "eth0",
+   "ip": "10.20.0.1",
+   "name": "as10r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "10.1.0.1",
+   "name": "as10r1"
+  },
+  {
+   "iface": "eth2",
+   "ip": "10.0.0.1",
+   "name": "as10r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "1.0.0.1",
+   "name": "as1r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "10.1.0.2",
+   "name": "as1r1"
+  },
+  {
+   "iface": "eth2",
+   "ip": "1.20.0.1",
+   "name": "as1r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "20.1.0.1",
+   "name": "as20r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "20.4.0.1",
+   "name": "as20r1"
+  },
+  {
+   "iface": "eth2",
+   "ip": "2.20.0.1",
+   "name": "as20r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "20.1.0.2",
+   "name": "as20r2"
+  },
+  {
+   "iface": "eth1",
+   "ip": "20.2.0.2",
+   "name": "as20r2"
+  },
+  {
+   "iface": "eth2",
+   "ip": "1.20.0.2",
+   "name": "as20r2"
+  },
+  {
+   "iface": "eth0",
+   "ip": "20.3.0.3",
+   "name": "as20r3"
+  },
+  {
+   "iface": "eth1",
+   "ip": "20.2.0.3",
+   "name": "as20r3"
+  },
+  {
+   "iface": "eth2",
+   "ip": "10.20.0.2",
+   "name": "as20r3"
+  },
+  {
+   "iface": "eth0",
+   "ip": "2.20.4.6",
+   "name": "as20r4"
+  },
+  {
+   "iface": "eth1",
+   "ip": "20.4.0.4",
+   "name": "as20r4"
+  },
+  {
+   "iface": "eth2",
+   "ip": "20.3.0.4",
+   "name": "as20r4"
+  },
+  {
+   "iface": "eth0",
+   "ip": "2.20.4.5",
+   "name": "as2r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "2.1.0.1",
+   "name": "as2r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "2.20.0.2",
+   "name": "as2r2"
+  },
+  {
+   "iface": "eth1",
+   "ip": "2.0.0.2",
+   "name": "as2r2"
+  },
+  {
+   "iface": "eth0",
+   "ip": "2.1.0.3",
+   "name": "as2r3"
+  },
+  {
+   "iface": "eth1",
+   "ip": "2.0.0.3",
+   "name": "as2r3"
+  },
+  {
+   "iface": "eth2",
+   "ip": "2.2.0.3",
+   "name": "as2r3"
+  },
+  {
+   "iface": "eth0",
+   "ip": "20.1.0.3",
+   "name": "ns_com"
+  },
+  {
+   "iface": "eth0",
+   "ip": "1.0.0.2",
+   "name": "ns_local"
+  },
+  {
+   "iface": "eth0",
+   "ip": "10.0.0.2",
+   "name": "pc"
+  },
+  {
+   "iface": "eth0",
+   "ip": "20.3.0.2",
+   "name": "root"
+  },
+  {
+   "iface": "eth0",
+   "ip": "2.2.0.2",
+   "name": "web_srv"
+  }
+ ],
  "dati.leggi_lab": {
   "avvisi_config": [],
   "avvisi_topologia": [],
@@ -1414,8 +1566,19 @@
    }
   ],
   "nome": "tennis_test",
-  "xml": true
+  "xml": false
  },
+ "isole_ospf": [
+  [
+   "AS20",
+   [
+    "as20r1",
+    "as20r2",
+    "as20r3",
+    "as20r4"
+   ]
+  ]
+ ],
  "leggi_dispositivi": {
   "as10r1": {
    "altri_ip": [],
@@ -1861,33 +2024,65 @@
   "hosts": [
    {
     "gateway": "10.0.0.1",
+    "gw_dev": "eth0",
+    "interfaces": [
+     {
+      "ip": "10.0.0.2/24",
+      "lan": "P",
+      "name": "eth0"
+     }
+    ],
     "ip": "10.0.0.2/24",
     "lan": "P",
     "name": "pc"
    },
    {
+    "delegations": [
+     {
+      "ip": "20.1.0.3",
+      "ns": "dns.com",
+      "zone": "com"
+     }
+    ],
+    "dns": true,
     "gateway": "20.3.0.3",
     "ip": "20.3.0.2/24",
     "lan": "H",
-    "name": "root"
+    "name": "root",
+    "root_type": "master"
    },
    {
+    "dns": true,
     "gateway": "20.1.0.1",
     "ip": "20.1.0.3/24",
     "lan": "G",
-    "name": "ns_com"
+    "name": "ns_com",
+    "root_type": "hint",
+    "zones": {
+     "com": {
+      "dns.com.": "20.1.0.3",
+      "web.com.": "2.2.0.2"
+     }
+    }
    },
    {
+    "allow_recursion": "any",
+    "dns": true,
+    "dnssec_validation": true,
     "gateway": "1.0.0.1",
     "ip": "1.0.0.2/24",
     "lan": "N",
-    "name": "ns_local"
+    "name": "ns_local",
+    "root_type": "hint"
    }
   ],
   "lab_conf": "as1r1[0]=N\nas1r1[1]=M\nas1r1[2]=K\nas1r1[image]=\"kathara/frr\"\n\nas2r1[0]=E\nas2r1[1]=C\nas2r1[image]=\"kathara/frr\"\n\nas2r2[0]=D\nas2r2[1]=B\nas2r2[image]=\"kathara/frr\"\n\nas2r3[0]=C\nas2r3[1]=B\nas2r3[2]=A\nas2r3[image]=\"kathara/frr\"\n\nas20r1[0]=G\nas20r1[1]=F\nas20r1[2]=D\nas20r1[image]=\"kathara/frr\"\n\nas20r2[0]=G\nas20r2[1]=J\nas20r2[2]=K\nas20r2[image]=\"kathara/frr\"\n\nas20r3[0]=H\nas20r3[1]=J\nas20r3[2]=L\nas20r3[image]=\"kathara/frr\"\n\nas20r4[0]=E\nas20r4[1]=F\nas20r4[2]=H\nas20r4[image]=\"kathara/frr\"\n\nas10r1[0]=L\nas10r1[1]=M\nas10r1[2]=P\nas10r1[image]=\"kathara/frr\"\n\npc[0]=P\npc[image]=\"kathara/base\"\n\nweb_srv[0]=A\nweb_srv[image]=\"kathara/base\"\n\nroot[0]=H\nroot[image]=\"kathara/base\"\n\nns_com[0]=G\nns_com[image]=\"kathara/base\"\n\nns_local[0]=N\nns_local[image]=\"kathara/base\"\n",
   "routers": {
    "as10r1": {
     "asn": "10",
+    "bgp_extra_networks": [
+     "10.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "10.20.0.1/30",
@@ -1911,6 +2106,9 @@
    },
    "as1r1": {
     "asn": "1",
+    "bgp_extra_networks": [
+     "1.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "1.0.0.1/24",
@@ -1934,6 +2132,12 @@
    },
    "as20r1": {
     "asn": "20",
+    "bgp_extra_networks": [
+     "20.0.0.0/8"
+    ],
+    "igp_networks": [
+     "20.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "20.1.0.1/24",
@@ -1951,6 +2155,8 @@
       "name": "eth2"
      }
     ],
+    "ospf_area": "0.0.0.0",
+    "ospf_area_stub": false,
     "protocols": [
      "bgp",
      "ospf"
@@ -1958,6 +2164,12 @@
    },
    "as20r2": {
     "asn": "20",
+    "bgp_extra_networks": [
+     "20.0.0.0/8"
+    ],
+    "igp_networks": [
+     "20.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "20.1.0.2/24",
@@ -1975,6 +2187,8 @@
       "name": "eth2"
      }
     ],
+    "ospf_area": "0.0.0.0",
+    "ospf_area_stub": false,
     "protocols": [
      "bgp",
      "ospf"
@@ -1982,6 +2196,12 @@
    },
    "as20r3": {
     "asn": "20",
+    "bgp_extra_networks": [
+     "20.0.0.0/8"
+    ],
+    "igp_networks": [
+     "20.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "20.3.0.3/24",
@@ -1999,6 +2219,8 @@
       "name": "eth2"
      }
     ],
+    "ospf_area": "0.0.0.0",
+    "ospf_area_stub": false,
     "protocols": [
      "bgp",
      "ospf"
@@ -2006,6 +2228,12 @@
    },
    "as20r4": {
     "asn": "20",
+    "bgp_extra_networks": [
+     "20.0.0.0/8"
+    ],
+    "igp_networks": [
+     "20.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "2.20.4.6/30",
@@ -2023,6 +2251,8 @@
       "name": "eth2"
      }
     ],
+    "ospf_area": "0.0.0.0",
+    "ospf_area_stub": false,
     "protocols": [
      "bgp",
      "ospf"
@@ -2030,6 +2260,13 @@
    },
    "as2r1": {
     "asn": "2",
+    "bgp_extra_networks": [
+     "2.0.0.0/8"
+    ],
+    "igp_networks": [
+     "2.0.0.0/8"
+    ],
+    "igp_redistribute_bgp": false,
     "interfaces": [
      {
       "ip": "2.20.4.5/30",
@@ -2049,6 +2286,12 @@
    },
    "as2r2": {
     "asn": "2",
+    "bgp_extra_networks": [
+     "2.0.0.0/8"
+    ],
+    "igp_networks": [
+     "2.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "2.20.0.2/30",
@@ -2068,6 +2311,9 @@
    },
    "as2r3": {
     "asn": "",
+    "igp_networks": [
+     "2.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "2.1.0.3/24",

@@ -1,0 +1,9 @@
+--- prima/root/etc/bind/db.root
++++ dopo/root/etc/bind/db.root
+@@ -12,3 +12,6 @@
+ 
+ com.            	IN	NS	dns.com.
+ dns.com.        	IN	A	20.1.0.3
++
++org.            	IN	NS	dns.org.
++dns.org.        	IN	A	20.1.0.9

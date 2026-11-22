@@ -1,0 +1,6 @@
+# Gateway fuori dalla rete dell'host, confermato
+@lab papillon_mio
+@chiama cambia_gateway client
+10.9.9.9
+s
+s

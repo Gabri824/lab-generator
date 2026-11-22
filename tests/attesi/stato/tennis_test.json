@@ -1,0 +1,2719 @@
+{
+ "dispositivi": {
+  "as10r1": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": "10",
+   "demoni": [
+    "bgpd"
+   ],
+   "dns": null,
+   "frr": {
+    "access_list": {},
+    "altre": [
+     {
+      "riga": 1,
+      "testo": "password zebra"
+     },
+     {
+      "riga": 2,
+      "testo": "enable password zebra"
+     },
+     {
+      "riga": 4,
+      "testo": "log file /var/log/frr/frr.log"
+     },
+     {
+      "riga": 6,
+      "testo": "debug bgp keepalives"
+     },
+     {
+      "riga": 7,
+      "testo": "debug bgp updates in"
+     },
+     {
+      "riga": 8,
+      "testo": "debug bgp updates out"
+     },
+     {
+      "riga": 12,
+      "testo": "no bgp ebgp-requires-policy"
+     },
+     {
+      "riga": 13,
+      "testo": "no bgp network import-check"
+     }
+    ],
+    "bgp": {
+     "asn": "10",
+     "default_information": [],
+     "neighbor": {
+      "10.1.0.2": {
+       "default_originate": null,
+       "descrizione": "Router as1r1",
+       "dispositivo": "as1r1",
+       "policy": [
+        {
+         "nome": "PREF_IN_10_1_0_2",
+         "riga": 22,
+         "tipo": "route-map",
+         "verso": "in"
+        }
+       ],
+       "remote_as": "1",
+       "righe": [
+        17,
+        18,
+        22
+       ],
+       "tipo": "eBGP",
+       "update_source": null
+      },
+      "10.20.0.2": {
+       "default_originate": null,
+       "descrizione": "Router as20r3",
+       "dispositivo": "as20r3",
+       "policy": [],
+       "remote_as": "20",
+       "righe": [
+        19,
+        20
+       ],
+       "tipo": "eBGP",
+       "update_source": null
+      }
+     },
+     "network": [
+      {
+       "rete": "10.20.0.0/30",
+       "riga": 15
+      },
+      {
+       "rete": "10.1.0.0/30",
+       "riga": 16
+      },
+      {
+       "rete": "10.0.0.0/8",
+       "riga": 21
+      }
+     ],
+     "redistribute": [],
+     "riga": 10
+    },
+    "file": "as10r1/etc/frr/frr.conf",
+    "interfacce": {},
+    "non_comprese": [],
+    "ospf": null,
+    "prefix_list": {},
+    "rip": null,
+    "route_map": {
+     "PREF_IN_10_1_0_2": [
+      {
+       "azione": "permit",
+       "match": [],
+       "riga": 24,
+       "seq": 10,
+       "set": [
+        "local-preference 150"
+       ]
+      }
+     ]
+    },
+    "statiche": []
+   },
+   "gateway": null,
+   "immagine": "kathara/frr",
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "10.20.0.1/30",
+     "lan": "L"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "10.1.0.1/30",
+     "lan": "M"
+    },
+    {
+     "dev": "eth2",
+     "idx": 2,
+     "ip": "10.0.0.1/24",
+     "lan": "P"
+    }
+   ],
+   "ip_per_dev": {
+    "eth0": [
+     "10.20.0.1/30"
+    ],
+    "eth1": [
+     "10.1.0.1/30"
+    ],
+    "eth2": [
+     "10.0.0.1/24"
+    ]
+   },
+   "lab_conf": {
+    "0": "L",
+    "1": "M",
+    "2": "P"
+   },
+   "loopback": [],
+   "nameserver": [],
+   "nome": "as10r1",
+   "non_comprese": [],
+   "presenti": {
+    "daemons": true,
+    "dir_bind": false,
+    "dir_www": false,
+    "frr_conf": true,
+    "index_html": false,
+    "named_conf": false,
+    "named_conf_local": false,
+    "named_conf_options": false,
+    "resolv_conf": false,
+    "startup": true,
+    "vtysh_conf": true
+   },
+   "startup": {
+    "file": "as10r1.startup",
+    "gateway": null,
+    "ip": [
+     {
+      "dev": "eth0",
+      "ip": "10.20.0.1/30",
+      "riga": 1
+     },
+     {
+      "dev": "eth1",
+      "ip": "10.1.0.1/30",
+      "riga": 2
+     },
+     {
+      "dev": "eth2",
+      "ip": "10.0.0.1/24",
+      "riga": 3
+     }
+    ],
+    "non_comprese": [],
+    "servizi": [
+     {
+      "nome": "frr",
+      "riga": 5
+     }
+    ],
+    "statiche": []
+   },
+   "tipo": "router"
+  },
+  "as1r1": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": "1",
+   "demoni": [
+    "bgpd"
+   ],
+   "dns": null,
+   "frr": {
+    "access_list": {},
+    "altre": [
+     {
+      "riga": 1,
+      "testo": "password zebra"
+     },
+     {
+      "riga": 2,
+      "testo": "enable password zebra"
+     },
+     {
+      "riga": 4,
+      "testo": "log file /var/log/frr/frr.log"
+     },
+     {
+      "riga": 6,
+      "testo": "debug bgp keepalives"
+     },
+     {
+      "riga": 7,
+      "testo": "debug bgp updates in"
+     },
+     {
+      "riga": 8,
+      "testo": "debug bgp updates out"
+     },
+     {
+      "riga": 12,
+      "testo": "no bgp ebgp-requires-policy"
+     },
+     {
+      "riga": 13,
+      "testo": "no bgp network import-check"
+     }
+    ],
+    "bgp": {
+     "asn": "1",
+     "default_information": [],
+     "neighbor": {
+      "1.20.0.2": {
+       "default_originate": null,
+       "descrizione": "Router as20r2",
+       "dispositivo": "as20r2",
+       "policy": [],
+       "remote_as": "20",
+       "righe": [
+        19,
+        20
+       ],
+       "tipo": "eBGP",
+       "update_source": null
+      },
+      "10.1.0.1": {
+       "default_originate": null,
+       "descrizione": "Router as10r1",
+       "dispositivo": "as10r1",
+       "policy": [],
+       "remote_as": "10",
+       "righe": [
+        17,
+        18
+       ],
+       "tipo": "eBGP",
+       "update_source": null
+      }
+     },
+     "network": [
+      {
+       "rete": "10.1.0.0/30",
+       "riga": 15
+      },
+      {
+       "rete": "1.20.0.0/30",
+       "riga": 16
+      },
+      {
+       "rete": "1.0.0.0/8",
+       "riga": 21
+      }
+     ],
+     "redistribute": [],
+     "riga": 10
+    },
+    "file": "as1r1/etc/frr/frr.conf",
+    "interfacce": {},
+    "non_comprese": [],
+    "ospf": null,
+    "prefix_list": {},
+    "rip": null,
+    "route_map": {},
+    "statiche": []
+   },
+   "gateway": null,
+   "immagine": "kathara/frr",
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "1.0.0.1/24",
+     "lan": "N"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "10.1.0.2/30",
+     "lan": "M"
+    },
+    {
+     "dev": "eth2",
+     "idx": 2,
+     "ip": "1.20.0.1/30",
+     "lan": "K"
+    }
+   ],
+   "ip_per_dev": {
+    "eth0": [
+     "1.0.0.1/24"
+    ],
+    "eth1": [
+     "10.1.0.2/30"
+    ],
+    "eth2": [
+     "1.20.0.1/30"
+    ]
+   },
+   "lab_conf": {
+    "0": "N",
+    "1": "M",
+    "2": "K"
+   },
+   "loopback": [],
+   "nameserver": [],
+   "nome": "as1r1",
+   "non_comprese": [],
+   "presenti": {
+    "daemons": true,
+    "dir_bind": false,
+    "dir_www": false,
+    "frr_conf": true,
+    "index_html": false,
+    "named_conf": false,
+    "named_conf_local": false,
+    "named_conf_options": false,
+    "resolv_conf": false,
+    "startup": true,
+    "vtysh_conf": true
+   },
+   "startup": {
+    "file": "as1r1.startup",
+    "gateway": null,
+    "ip": [
+     {
+      "dev": "eth0",
+      "ip": "1.0.0.1/24",
+      "riga": 1
+     },
+     {
+      "dev": "eth1",
+      "ip": "10.1.0.2/30",
+      "riga": 2
+     },
+     {
+      "dev": "eth2",
+      "ip": "1.20.0.1/30",
+      "riga": 3
+     }
+    ],
+    "non_comprese": [],
+    "servizi": [
+     {
+      "nome": "frr",
+      "riga": 5
+     }
+    ],
+    "statiche": []
+   },
+   "tipo": "router"
+  },
+  "as20r1": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": "20",
+   "demoni": [
+    "ospfd",
+    "bgpd"
+   ],
+   "dns": null,
+   "frr": {
+    "access_list": {},
+    "altre": [
+     {
+      "riga": 1,
+      "testo": "password zebra"
+     },
+     {
+      "riga": 2,
+      "testo": "enable password zebra"
+     },
+     {
+      "riga": 4,
+      "testo": "log file /var/log/frr/frr.log"
+     },
+     {
+      "riga": 6,
+      "testo": "debug bgp keepalives"
+     },
+     {
+      "riga": 7,
+      "testo": "debug bgp updates in"
+     },
+     {
+      "riga": 8,
+      "testo": "debug bgp updates out"
+     },
+     {
+      "riga": 20,
+      "testo": "no bgp ebgp-requires-policy"
+     },
+     {
+      "riga": 21,
+      "testo": "no bgp network import-check"
+     }
+    ],
+    "bgp": {
+     "asn": "20",
+     "default_information": [],
+     "neighbor": {
+      "2.20.0.2": {
+       "default_originate": null,
+       "descrizione": "Router as2r2",
+       "dispositivo": "as2r2",
+       "policy": [],
+       "remote_as": "2",
+       "righe": [
+        24,
+        25
+       ],
+       "tipo": "eBGP",
+       "update_source": null
+      },
+      "20.1.0.2": {
+       "default_originate": null,
+       "descrizione": "Router as20r2",
+       "dispositivo": "as20r2",
+       "policy": [],
+       "remote_as": "20",
+       "righe": [
+        26,
+        27
+       ],
+       "tipo": "iBGP",
+       "update_source": null
+      },
+      "20.3.0.3": {
+       "default_originate": null,
+       "descrizione": "iBGP as20r3",
+       "dispositivo": "as20r3",
+       "policy": [],
+       "remote_as": "20",
+       "righe": [
+        31,
+        32
+       ],
+       "tipo": "iBGP",
+       "update_source": null
+      },
+      "20.4.0.4": {
+       "default_originate": null,
+       "descrizione": "Router as20r4",
+       "dispositivo": "as20r4",
+       "policy": [],
+       "remote_as": "20",
+       "righe": [
+        28,
+        29
+       ],
+       "tipo": "iBGP",
+       "update_source": null
+      }
+     },
+     "network": [
+      {
+       "rete": "2.20.0.0/30",
+       "riga": 23
+      },
+      {
+       "rete": "20.0.0.0/8",
+       "riga": 30
+      }
+     ],
+     "redistribute": [],
+     "riga": 18
+    },
+    "file": "as20r1/etc/frr/frr.conf",
+    "interfacce": {},
+    "non_comprese": [],
+    "ospf": {
+     "auto_cost": {
+      "riga": 16,
+      "valore": 100
+     },
+     "default_information": [],
+     "network": [
+      {
+       "area": "0.0.0.0",
+       "rete": "20.0.0.0/8",
+       "riga": 12
+      }
+     ],
+     "redistribute": [
+      {
+       "riga": 14,
+       "testo": "connected"
+      },
+      {
+       "riga": 15,
+       "testo": "bgp"
+      }
+     ],
+     "riga": 10,
+     "stub": []
+    },
+    "prefix_list": {},
+    "rip": null,
+    "route_map": {},
+    "statiche": []
+   },
+   "gateway": null,
+   "immagine": "kathara/frr",
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "20.1.0.1/24",
+     "lan": "G"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "20.4.0.1/24",
+     "lan": "F"
+    },
+    {
+     "dev": "eth2",
+     "idx": 2,
+     "ip": "2.20.0.1/30",
+     "lan": "D"
+    }
+   ],
+   "ip_per_dev": {
+    "eth0": [
+     "20.1.0.1/24"
+    ],
+    "eth1": [
+     "20.4.0.1/24"
+    ],
+    "eth2": [
+     "2.20.0.1/30"
+    ]
+   },
+   "lab_conf": {
+    "0": "G",
+    "1": "F",
+    "2": "D"
+   },
+   "loopback": [],
+   "nameserver": [],
+   "nome": "as20r1",
+   "non_comprese": [],
+   "presenti": {
+    "daemons": true,
+    "dir_bind": false,
+    "dir_www": false,
+    "frr_conf": true,
+    "index_html": false,
+    "named_conf": false,
+    "named_conf_local": false,
+    "named_conf_options": false,
+    "resolv_conf": false,
+    "startup": true,
+    "vtysh_conf": true
+   },
+   "startup": {
+    "file": "as20r1.startup",
+    "gateway": null,
+    "ip": [
+     {
+      "dev": "eth0",
+      "ip": "20.1.0.1/24",
+      "riga": 1
+     },
+     {
+      "dev": "eth1",
+      "ip": "20.4.0.1/24",
+      "riga": 2
+     },
+     {
+      "dev": "eth2",
+      "ip": "2.20.0.1/30",
+      "riga": 3
+     }
+    ],
+    "non_comprese": [],
+    "servizi": [
+     {
+      "nome": "frr",
+      "riga": 5
+     }
+    ],
+    "statiche": []
+   },
+   "tipo": "router"
+  },
+  "as20r2": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": "20",
+   "demoni": [
+    "ospfd",
+    "bgpd"
+   ],
+   "dns": null,
+   "frr": {
+    "access_list": {},
+    "altre": [
+     {
+      "riga": 1,
+      "testo": "password zebra"
+     },
+     {
+      "riga": 2,
+      "testo": "enable password zebra"
+     },
+     {
+      "riga": 4,
+      "testo": "log file /var/log/frr/frr.log"
+     },
+     {
+      "riga": 6,
+      "testo": "debug bgp keepalives"
+     },
+     {
+      "riga": 7,
+      "testo": "debug bgp updates in"
+     },
+     {
+      "riga": 8,
+      "testo": "debug bgp updates out"
+     },
+     {
+      "riga": 20,
+      "testo": "no bgp ebgp-requires-policy"
+     },
+     {
+      "riga": 21,
+      "testo": "no bgp network import-check"
+     }
+    ],
+    "bgp": {
+     "asn": "20",
+     "default_information": [],
+     "neighbor": {
+      "1.20.0.1": {
+       "default_originate": null,
+       "descrizione": "Router as1r1",
+       "dispositivo": "as1r1",
+       "policy": [],
+       "remote_as": "1",
+       "righe": [
+        24,
+        25
+       ],
+       "tipo": "eBGP",
+       "update_source": null
+      },
+      "20.1.0.1": {
+       "default_originate": null,
+       "descrizione": "Router as20r1",
+       "dispositivo": "as20r1",
+       "policy": [],
+       "remote_as": "20",
+       "righe": [
+        26,
+        27
+       ],
+       "tipo": "iBGP",
+       "update_source": null
+      },
+      "20.2.0.3": {
+       "default_originate": null,
+       "descrizione": "Router as20r3",
+       "dispositivo": "as20r3",
+       "policy": [],
+       "remote_as": "20",
+       "righe": [
+        28,
+        29
+       ],
+       "tipo": "iBGP",
+       "update_source": null
+      },
+      "20.4.0.4": {
+       "default_originate": null,
+       "descrizione": "iBGP as20r4",
+       "dispositivo": "as20r4",
+       "policy": [],
+       "remote_as": "20",
+       "righe": [
+        31,
+        32
+       ],
+       "tipo": "iBGP",
+       "update_source": null
+      }
+     },
+     "network": [
+      {
+       "rete": "1.20.0.0/30",
+       "riga": 23
+      },
+      {
+       "rete": "20.0.0.0/8",
+       "riga": 30
+      }
+     ],
+     "redistribute": [],
+     "riga": 18
+    },
+    "file": "as20r2/etc/frr/frr.conf",
+    "interfacce": {
+     "eth1": {
+      "costo_ospf": 90,
+      "riga": 34,
+      "riga_costo": 35
+     }
+    },
+    "non_comprese": [],
+    "ospf": {
+     "auto_cost": {
+      "riga": 16,
+      "valore": 100
+     },
+     "default_information": [],
+     "network": [
+      {
+       "area": "0.0.0.0",
+       "rete": "20.0.0.0/8",
+       "riga": 12
+      }
+     ],
+     "redistribute": [
+      {
+       "riga": 14,
+       "testo": "connected"
+      },
+      {
+       "riga": 15,
+       "testo": "bgp"
+      }
+     ],
+     "riga": 10,
+     "stub": []
+    },
+    "prefix_list": {},
+    "rip": null,
+    "route_map": {},
+    "statiche": []
+   },
+   "gateway": null,
+   "immagine": "kathara/frr",
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "20.1.0.2/24",
+     "lan": "G"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "20.2.0.2/24",
+     "lan": "J"
+    },
+    {
+     "dev": "eth2",
+     "idx": 2,
+     "ip": "1.20.0.2/30",
+     "lan": "K"
+    }
+   ],
+   "ip_per_dev": {
+    "eth0": [
+     "20.1.0.2/24"
+    ],
+    "eth1": [
+     "20.2.0.2/24"
+    ],
+    "eth2": [
+     "1.20.0.2/30"
+    ]
+   },
+   "lab_conf": {
+    "0": "G",
+    "1": "J",
+    "2": "K"
+   },
+   "loopback": [],
+   "nameserver": [],
+   "nome": "as20r2",
+   "non_comprese": [],
+   "presenti": {
+    "daemons": true,
+    "dir_bind": false,
+    "dir_www": false,
+    "frr_conf": true,
+    "index_html": false,
+    "named_conf": false,
+    "named_conf_local": false,
+    "named_conf_options": false,
+    "resolv_conf": false,
+    "startup": true,
+    "vtysh_conf": true
+   },
+   "startup": {
+    "file": "as20r2.startup",
+    "gateway": null,
+    "ip": [
+     {
+      "dev": "eth0",
+      "ip": "20.1.0.2/24",
+      "riga": 1
+     },
+     {
+      "dev": "eth1",
+      "ip": "20.2.0.2/24",
+      "riga": 2
+     },
+     {
+      "dev": "eth2",
+      "ip": "1.20.0.2/30",
+      "riga": 3
+     }
+    ],
+    "non_comprese": [],
+    "servizi": [
+     {
+      "nome": "frr",
+      "riga": 5
+     }
+    ],
+    "statiche": []
+   },
+   "tipo": "router"
+  },
+  "as20r3": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": "20",
+   "demoni": [
+    "ospfd",
+    "bgpd"
+   ],
+   "dns": null,
+   "frr": {
+    "access_list": {},
+    "altre": [
+     {
+      "riga": 1,
+      "testo": "password zebra"
+     },
+     {
+      "riga": 2,
+      "testo": "enable password zebra"
+     },
+     {
+      "riga": 4,
+      "testo": "log file /var/log/frr/frr.log"
+     },
+     {
+      "riga": 6,
+      "testo": "debug bgp keepalives"
+     },
+     {
+      "riga": 7,
+      "testo": "debug bgp updates in"
+     },
+     {
+      "riga": 8,
+      "testo": "debug bgp updates out"
+     },
+     {
+      "riga": 20,
+      "testo": "no bgp ebgp-requires-policy"
+     },
+     {
+      "riga": 21,
+      "testo": "no bgp network import-check"
+     }
+    ],
+    "bgp": {
+     "asn": "20",
+     "default_information": [],
+     "neighbor": {
+      "10.20.0.1": {
+       "default_originate": null,
+       "descrizione": "Router as10r1",
+       "dispositivo": "as10r1",
+       "policy": [],
+       "remote_as": "10",
+       "righe": [
+        28,
+        29
+       ],
+       "tipo": "eBGP",
+       "update_source": null
+      },
+      "20.1.0.1": {
+       "default_originate": null,
+       "descrizione": "iBGP as20r1",
+       "dispositivo": "as20r1",
+       "policy": [],
+       "remote_as": "20",
+       "righe": [
+        31,
+        32
+       ],
+       "tipo": "iBGP",
+       "update_source": null
+      },
+      "20.2.0.2": {
+       "default_originate": null,
+       "descrizione": "Router as20r2",
+       "dispositivo": "as20r2",
+       "policy": [],
+       "remote_as": "20",
+       "righe": [
+        24,
+        25
+       ],
+       "tipo": "iBGP",
+       "update_source": null
+      },
+      "20.3.0.4": {
+       "default_originate": null,
+       "descrizione": "Router as20r4",
+       "dispositivo": "as20r4",
+       "policy": [],
+       "remote_as": "20",
+       "righe": [
+        26,
+        27
+       ],
+       "tipo": "iBGP",
+       "update_source": null
+      }
+     },
+     "network": [
+      {
+       "rete": "10.20.0.0/30",
+       "riga": 23
+      },
+      {
+       "rete": "20.0.0.0/8",
+       "riga": 30
+      }
+     ],
+     "redistribute": [],
+     "riga": 18
+    },
+    "file": "as20r3/etc/frr/frr.conf",
+    "interfacce": {
+     "eth1": {
+      "costo_ospf": 90,
+      "riga": 34,
+      "riga_costo": 35
+     }
+    },
+    "non_comprese": [],
+    "ospf": {
+     "auto_cost": {
+      "riga": 16,
+      "valore": 100
+     },
+     "default_information": [],
+     "network": [
+      {
+       "area": "0.0.0.0",
+       "rete": "20.0.0.0/8",
+       "riga": 12
+      }
+     ],
+     "redistribute": [
+      {
+       "riga": 14,
+       "testo": "connected"
+      },
+      {
+       "riga": 15,
+       "testo": "bgp"
+      }
+     ],
+     "riga": 10,
+     "stub": []
+    },
+    "prefix_list": {},
+    "rip": null,
+    "route_map": {},
+    "statiche": []
+   },
+   "gateway": null,
+   "immagine": "kathara/frr",
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "20.3.0.3/24",
+     "lan": "H"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "20.2.0.3/24",
+     "lan": "J"
+    },
+    {
+     "dev": "eth2",
+     "idx": 2,
+     "ip": "10.20.0.2/30",
+     "lan": "L"
+    }
+   ],
+   "ip_per_dev": {
+    "eth0": [
+     "20.3.0.3/24"
+    ],
+    "eth1": [
+     "20.2.0.3/24"
+    ],
+    "eth2": [
+     "10.20.0.2/30"
+    ]
+   },
+   "lab_conf": {
+    "0": "H",
+    "1": "J",
+    "2": "L"
+   },
+   "loopback": [],
+   "nameserver": [],
+   "nome": "as20r3",
+   "non_comprese": [],
+   "presenti": {
+    "daemons": true,
+    "dir_bind": false,
+    "dir_www": false,
+    "frr_conf": true,
+    "index_html": false,
+    "named_conf": false,
+    "named_conf_local": false,
+    "named_conf_options": false,
+    "resolv_conf": false,
+    "startup": true,
+    "vtysh_conf": true
+   },
+   "startup": {
+    "file": "as20r3.startup",
+    "gateway": null,
+    "ip": [
+     {
+      "dev": "eth0",
+      "ip": "20.3.0.3/24",
+      "riga": 1
+     },
+     {
+      "dev": "eth1",
+      "ip": "20.2.0.3/24",
+      "riga": 2
+     },
+     {
+      "dev": "eth2",
+      "ip": "10.20.0.2/30",
+      "riga": 3
+     }
+    ],
+    "non_comprese": [],
+    "servizi": [
+     {
+      "nome": "frr",
+      "riga": 5
+     }
+    ],
+    "statiche": []
+   },
+   "tipo": "router"
+  },
+  "as20r4": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": "20",
+   "demoni": [
+    "ospfd",
+    "bgpd"
+   ],
+   "dns": null,
+   "frr": {
+    "access_list": {},
+    "altre": [
+     {
+      "riga": 1,
+      "testo": "password zebra"
+     },
+     {
+      "riga": 2,
+      "testo": "enable password zebra"
+     },
+     {
+      "riga": 4,
+      "testo": "log file /var/log/frr/frr.log"
+     },
+     {
+      "riga": 6,
+      "testo": "debug bgp keepalives"
+     },
+     {
+      "riga": 7,
+      "testo": "debug bgp updates in"
+     },
+     {
+      "riga": 8,
+      "testo": "debug bgp updates out"
+     },
+     {
+      "riga": 20,
+      "testo": "no bgp ebgp-requires-policy"
+     },
+     {
+      "riga": 21,
+      "testo": "no bgp network import-check"
+     }
+    ],
+    "bgp": {
+     "asn": "20",
+     "default_information": [],
+     "neighbor": {
+      "2.20.4.5": {
+       "default_originate": null,
+       "descrizione": "Router as2r1",
+       "dispositivo": "as2r1",
+       "policy": [],
+       "remote_as": "2",
+       "righe": [
+        24,
+        25
+       ],
+       "tipo": "eBGP",
+       "update_source": null
+      },
+      "20.1.0.2": {
+       "default_originate": null,
+       "descrizione": "iBGP as20r2",
+       "dispositivo": "as20r2",
+       "policy": [],
+       "remote_as": "20",
+       "righe": [
+        31,
+        32
+       ],
+       "tipo": "iBGP",
+       "update_source": null
+      },
+      "20.3.0.3": {
+       "default_originate": null,
+       "descrizione": "Router as20r3",
+       "dispositivo": "as20r3",
+       "policy": [],
+       "remote_as": "20",
+       "righe": [
+        28,
+        29
+       ],
+       "tipo": "iBGP",
+       "update_source": null
+      },
+      "20.4.0.1": {
+       "default_originate": null,
+       "descrizione": "Router as20r1",
+       "dispositivo": "as20r1",
+       "policy": [],
+       "remote_as": "20",
+       "righe": [
+        26,
+        27
+       ],
+       "tipo": "iBGP",
+       "update_source": null
+      }
+     },
+     "network": [
+      {
+       "rete": "2.20.4.4/30",
+       "riga": 23
+      },
+      {
+       "rete": "20.0.0.0/8",
+       "riga": 30
+      }
+     ],
+     "redistribute": [],
+     "riga": 18
+    },
+    "file": "as20r4/etc/frr/frr.conf",
+    "interfacce": {},
+    "non_comprese": [],
+    "ospf": {
+     "auto_cost": {
+      "riga": 16,
+      "valore": 100
+     },
+     "default_information": [],
+     "network": [
+      {
+       "area": "0.0.0.0",
+       "rete": "20.0.0.0/8",
+       "riga": 12
+      }
+     ],
+     "redistribute": [
+      {
+       "riga": 14,
+       "testo": "connected"
+      },
+      {
+       "riga": 15,
+       "testo": "bgp"
+      }
+     ],
+     "riga": 10,
+     "stub": []
+    },
+    "prefix_list": {},
+    "rip": null,
+    "route_map": {},
+    "statiche": []
+   },
+   "gateway": null,
+   "immagine": "kathara/frr",
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "2.20.4.6/30",
+     "lan": "E"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "20.4.0.4/24",
+     "lan": "F"
+    },
+    {
+     "dev": "eth2",
+     "idx": 2,
+     "ip": "20.3.0.4/24",
+     "lan": "H"
+    }
+   ],
+   "ip_per_dev": {
+    "eth0": [
+     "2.20.4.6/30"
+    ],
+    "eth1": [
+     "20.4.0.4/24"
+    ],
+    "eth2": [
+     "20.3.0.4/24"
+    ]
+   },
+   "lab_conf": {
+    "0": "E",
+    "1": "F",
+    "2": "H"
+   },
+   "loopback": [],
+   "nameserver": [],
+   "nome": "as20r4",
+   "non_comprese": [],
+   "presenti": {
+    "daemons": true,
+    "dir_bind": false,
+    "dir_www": false,
+    "frr_conf": true,
+    "index_html": false,
+    "named_conf": false,
+    "named_conf_local": false,
+    "named_conf_options": false,
+    "resolv_conf": false,
+    "startup": true,
+    "vtysh_conf": true
+   },
+   "startup": {
+    "file": "as20r4.startup",
+    "gateway": null,
+    "ip": [
+     {
+      "dev": "eth0",
+      "ip": "2.20.4.6/30",
+      "riga": 1
+     },
+     {
+      "dev": "eth1",
+      "ip": "20.4.0.4/24",
+      "riga": 2
+     },
+     {
+      "dev": "eth2",
+      "ip": "20.3.0.4/24",
+      "riga": 3
+     }
+    ],
+    "non_comprese": [],
+    "servizi": [
+     {
+      "nome": "frr",
+      "riga": 5
+     }
+    ],
+    "statiche": []
+   },
+   "tipo": "router"
+  },
+  "as2r1": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": "2",
+   "demoni": [
+    "ripd",
+    "bgpd"
+   ],
+   "dns": null,
+   "frr": {
+    "access_list": {},
+    "altre": [
+     {
+      "riga": 1,
+      "testo": "password zebra"
+     },
+     {
+      "riga": 2,
+      "testo": "enable password zebra"
+     },
+     {
+      "riga": 4,
+      "testo": "log file /var/log/frr/frr.log"
+     },
+     {
+      "riga": 6,
+      "testo": "debug bgp keepalives"
+     },
+     {
+      "riga": 7,
+      "testo": "debug bgp updates in"
+     },
+     {
+      "riga": 8,
+      "testo": "debug bgp updates out"
+     },
+     {
+      "riga": 18,
+      "testo": "no bgp ebgp-requires-policy"
+     },
+     {
+      "riga": 19,
+      "testo": "no bgp network import-check"
+     }
+    ],
+    "bgp": {
+     "asn": "2",
+     "default_information": [],
+     "neighbor": {
+      "2.0.0.2": {
+       "default_originate": null,
+       "descrizione": "iBGP as2r2",
+       "dispositivo": "as2r2",
+       "policy": [],
+       "remote_as": "2",
+       "righe": [
+        25,
+        26
+       ],
+       "tipo": "iBGP",
+       "update_source": null
+      },
+      "2.20.4.6": {
+       "default_originate": null,
+       "descrizione": "Router as20r4",
+       "dispositivo": "as20r4",
+       "policy": [],
+       "remote_as": "20",
+       "righe": [
+        22,
+        23
+       ],
+       "tipo": "eBGP",
+       "update_source": null
+      }
+     },
+     "network": [
+      {
+       "rete": "2.20.4.4/30",
+       "riga": 21
+      },
+      {
+       "rete": "2.0.0.0/8",
+       "riga": 24
+      }
+     ],
+     "redistribute": [],
+     "riga": 16
+    },
+    "file": "as2r1/etc/frr/frr.conf",
+    "interfacce": {},
+    "non_comprese": [],
+    "ospf": null,
+    "prefix_list": {},
+    "rip": {
+     "default_information": [],
+     "network": [
+      {
+       "rete": "2.0.0.0/8",
+       "riga": 12
+      }
+     ],
+     "redistribute": [
+      {
+       "riga": 14,
+       "testo": "connected"
+      }
+     ],
+     "riga": 10,
+     "route": []
+    },
+    "route_map": {},
+    "statiche": []
+   },
+   "gateway": null,
+   "immagine": "kathara/frr",
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "2.20.4.5/30",
+     "lan": "E"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "2.1.0.1/24",
+     "lan": "C"
+    }
+   ],
+   "ip_per_dev": {
+    "eth0": [
+     "2.20.4.5/30"
+    ],
+    "eth1": [
+     "2.1.0.1/24"
+    ]
+   },
+   "lab_conf": {
+    "0": "E",
+    "1": "C"
+   },
+   "loopback": [],
+   "nameserver": [],
+   "nome": "as2r1",
+   "non_comprese": [],
+   "presenti": {
+    "daemons": true,
+    "dir_bind": false,
+    "dir_www": false,
+    "frr_conf": true,
+    "index_html": false,
+    "named_conf": false,
+    "named_conf_local": false,
+    "named_conf_options": false,
+    "resolv_conf": false,
+    "startup": true,
+    "vtysh_conf": true
+   },
+   "startup": {
+    "file": "as2r1.startup",
+    "gateway": null,
+    "ip": [
+     {
+      "dev": "eth0",
+      "ip": "2.20.4.5/30",
+      "riga": 1
+     },
+     {
+      "dev": "eth1",
+      "ip": "2.1.0.1/24",
+      "riga": 2
+     }
+    ],
+    "non_comprese": [],
+    "servizi": [
+     {
+      "nome": "frr",
+      "riga": 4
+     }
+    ],
+    "statiche": []
+   },
+   "tipo": "router"
+  },
+  "as2r2": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": "2",
+   "demoni": [
+    "ripd",
+    "bgpd"
+   ],
+   "dns": null,
+   "frr": {
+    "access_list": {},
+    "altre": [
+     {
+      "riga": 1,
+      "testo": "password zebra"
+     },
+     {
+      "riga": 2,
+      "testo": "enable password zebra"
+     },
+     {
+      "riga": 4,
+      "testo": "log file /var/log/frr/frr.log"
+     },
+     {
+      "riga": 6,
+      "testo": "debug bgp keepalives"
+     },
+     {
+      "riga": 7,
+      "testo": "debug bgp updates in"
+     },
+     {
+      "riga": 8,
+      "testo": "debug bgp updates out"
+     },
+     {
+      "riga": 19,
+      "testo": "no bgp ebgp-requires-policy"
+     },
+     {
+      "riga": 20,
+      "testo": "no bgp network import-check"
+     }
+    ],
+    "bgp": {
+     "asn": "2",
+     "default_information": [],
+     "neighbor": {
+      "2.1.0.1": {
+       "default_originate": null,
+       "descrizione": "iBGP as2r1",
+       "dispositivo": "as2r1",
+       "policy": [],
+       "remote_as": "2",
+       "righe": [
+        26,
+        27
+       ],
+       "tipo": "iBGP",
+       "update_source": null
+      },
+      "2.20.0.1": {
+       "default_originate": null,
+       "descrizione": "Router as20r1",
+       "dispositivo": "as20r1",
+       "policy": [
+        {
+         "nome": "PREF_IN_2_20_0_1",
+         "riga": 28,
+         "tipo": "route-map",
+         "verso": "in"
+        },
+        {
+         "nome": "LOCALMED_OUT_2_20_0_1",
+         "riga": 29,
+         "tipo": "route-map",
+         "verso": "out"
+        }
+       ],
+       "remote_as": "20",
+       "righe": [
+        23,
+        24,
+        28,
+        29
+       ],
+       "tipo": "eBGP",
+       "update_source": null
+      }
+     },
+     "network": [
+      {
+       "rete": "2.20.0.0/30",
+       "riga": 22
+      },
+      {
+       "rete": "2.0.0.0/8",
+       "riga": 25
+      }
+     ],
+     "redistribute": [],
+     "riga": 17
+    },
+    "file": "as2r2/etc/frr/frr.conf",
+    "interfacce": {},
+    "non_comprese": [],
+    "ospf": null,
+    "prefix_list": {},
+    "rip": {
+     "default_information": [],
+     "network": [
+      {
+       "rete": "2.0.0.0/8",
+       "riga": 12
+      }
+     ],
+     "redistribute": [
+      {
+       "riga": 14,
+       "testo": "connected"
+      },
+      {
+       "riga": 15,
+       "testo": "bgp"
+      }
+     ],
+     "riga": 10,
+     "route": []
+    },
+    "route_map": {
+     "LOCALMED_OUT_2_20_0_1": [
+      {
+       "azione": "permit",
+       "match": [],
+       "riga": 34,
+       "seq": 10,
+       "set": [
+        "metric 20"
+       ]
+      }
+     ],
+     "PREF_IN_2_20_0_1": [
+      {
+       "azione": "permit",
+       "match": [],
+       "riga": 31,
+       "seq": 10,
+       "set": [
+        "local-preference 150"
+       ]
+      }
+     ]
+    },
+    "statiche": []
+   },
+   "gateway": null,
+   "immagine": "kathara/frr",
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "2.20.0.2/30",
+     "lan": "D"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "2.0.0.2/24",
+     "lan": "B"
+    }
+   ],
+   "ip_per_dev": {
+    "eth0": [
+     "2.20.0.2/30"
+    ],
+    "eth1": [
+     "2.0.0.2/24"
+    ]
+   },
+   "lab_conf": {
+    "0": "D",
+    "1": "B"
+   },
+   "loopback": [],
+   "nameserver": [],
+   "nome": "as2r2",
+   "non_comprese": [],
+   "presenti": {
+    "daemons": true,
+    "dir_bind": false,
+    "dir_www": false,
+    "frr_conf": true,
+    "index_html": false,
+    "named_conf": false,
+    "named_conf_local": false,
+    "named_conf_options": false,
+    "resolv_conf": false,
+    "startup": true,
+    "vtysh_conf": true
+   },
+   "startup": {
+    "file": "as2r2.startup",
+    "gateway": null,
+    "ip": [
+     {
+      "dev": "eth0",
+      "ip": "2.20.0.2/30",
+      "riga": 1
+     },
+     {
+      "dev": "eth1",
+      "ip": "2.0.0.2/24",
+      "riga": 2
+     }
+    ],
+    "non_comprese": [],
+    "servizi": [
+     {
+      "nome": "frr",
+      "riga": 4
+     }
+    ],
+    "statiche": []
+   },
+   "tipo": "router"
+  },
+  "as2r3": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": null,
+   "demoni": [
+    "ripd"
+   ],
+   "dns": null,
+   "frr": {
+    "access_list": {},
+    "altre": [
+     {
+      "riga": 1,
+      "testo": "password zebra"
+     },
+     {
+      "riga": 2,
+      "testo": "enable password zebra"
+     },
+     {
+      "riga": 4,
+      "testo": "log file /var/log/frr/frr.log"
+     }
+    ],
+    "bgp": null,
+    "file": "as2r3/etc/frr/frr.conf",
+    "interfacce": {},
+    "non_comprese": [],
+    "ospf": null,
+    "prefix_list": {},
+    "rip": {
+     "default_information": [],
+     "network": [
+      {
+       "rete": "2.0.0.0/8",
+       "riga": 8
+      }
+     ],
+     "redistribute": [
+      {
+       "riga": 10,
+       "testo": "connected"
+      }
+     ],
+     "riga": 6,
+     "route": []
+    },
+    "route_map": {},
+    "statiche": []
+   },
+   "gateway": null,
+   "immagine": "kathara/frr",
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "2.1.0.3/24",
+     "lan": "C"
+    },
+    {
+     "dev": "eth1",
+     "idx": 1,
+     "ip": "2.0.0.3/24",
+     "lan": "B"
+    },
+    {
+     "dev": "eth2",
+     "idx": 2,
+     "ip": "2.2.0.3/24",
+     "lan": "A"
+    }
+   ],
+   "ip_per_dev": {
+    "eth0": [
+     "2.1.0.3/24"
+    ],
+    "eth1": [
+     "2.0.0.3/24"
+    ],
+    "eth2": [
+     "2.2.0.3/24"
+    ]
+   },
+   "lab_conf": {
+    "0": "C",
+    "1": "B",
+    "2": "A"
+   },
+   "loopback": [],
+   "nameserver": [],
+   "nome": "as2r3",
+   "non_comprese": [],
+   "presenti": {
+    "daemons": true,
+    "dir_bind": false,
+    "dir_www": false,
+    "frr_conf": true,
+    "index_html": false,
+    "named_conf": false,
+    "named_conf_local": false,
+    "named_conf_options": false,
+    "resolv_conf": false,
+    "startup": true,
+    "vtysh_conf": true
+   },
+   "startup": {
+    "file": "as2r3.startup",
+    "gateway": null,
+    "ip": [
+     {
+      "dev": "eth0",
+      "ip": "2.1.0.3/24",
+      "riga": 1
+     },
+     {
+      "dev": "eth1",
+      "ip": "2.0.0.3/24",
+      "riga": 2
+     },
+     {
+      "dev": "eth2",
+      "ip": "2.2.0.3/24",
+      "riga": 3
+     }
+    ],
+    "non_comprese": [],
+    "servizi": [
+     {
+      "nome": "frr",
+      "riga": 5
+     }
+    ],
+    "statiche": []
+   },
+   "tipo": "router"
+  },
+  "ns_com": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": null,
+   "demoni": [],
+   "dns": {
+    "allow_recursion": null,
+    "dnssec_validation": null,
+    "forwarders": null,
+    "root": false,
+    "zone": [
+     {
+      "file": "ns_com/etc/bind/db.root",
+      "record": [
+       {
+        "nome": ".",
+        "riga": 1,
+        "scritto": "@",
+        "tipo": "NS",
+        "valore": "ROOT-SERVER."
+       },
+       {
+        "nome": "root-server",
+        "riga": 2,
+        "scritto": "ROOT-SERVER.",
+        "tipo": "A",
+        "valore": "20.3.0.2"
+       }
+      ],
+      "tipo": "hint",
+      "zona": "."
+     },
+     {
+      "file": "ns_com/etc/bind/db.com",
+      "record": [
+       {
+        "nome": "com",
+        "riga": 2,
+        "scritto": "@",
+        "tipo": "SOA",
+        "valore": "dns.com."
+       },
+       {
+        "nome": "com",
+        "riga": 10,
+        "scritto": "@",
+        "tipo": "NS",
+        "valore": "dns.com."
+       },
+       {
+        "nome": "dns.com",
+        "riga": 12,
+        "scritto": "dns.com.",
+        "tipo": "A",
+        "valore": "20.1.0.3"
+       },
+       {
+        "nome": "web.com",
+        "riga": 13,
+        "scritto": "web.com.",
+        "tipo": "A",
+        "valore": "2.2.0.2"
+       }
+      ],
+      "tipo": "master",
+      "zona": "com"
+     }
+    ]
+   },
+   "frr": null,
+   "gateway": "20.1.0.1",
+   "immagine": "kathara/base",
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "20.1.0.3/24",
+     "lan": "G"
+    }
+   ],
+   "ip_per_dev": {
+    "eth0": [
+     "20.1.0.3/24"
+    ]
+   },
+   "lab_conf": {
+    "0": "G"
+   },
+   "loopback": [],
+   "nameserver": [],
+   "nome": "ns_com",
+   "non_comprese": [],
+   "presenti": {
+    "daemons": false,
+    "dir_bind": true,
+    "dir_www": false,
+    "frr_conf": false,
+    "index_html": false,
+    "named_conf": true,
+    "named_conf_local": false,
+    "named_conf_options": true,
+    "resolv_conf": false,
+    "startup": true,
+    "vtysh_conf": false
+   },
+   "startup": {
+    "file": "ns_com.startup",
+    "gateway": {
+     "dev": "eth0",
+     "riga": 2,
+     "via": "20.1.0.1"
+    },
+    "ip": [
+     {
+      "dev": "eth0",
+      "ip": "20.1.0.3/24",
+      "riga": 1
+     }
+    ],
+    "non_comprese": [],
+    "servizi": [
+     {
+      "nome": "named",
+      "riga": 3
+     }
+    ],
+    "statiche": []
+   },
+   "tipo": "dns"
+  },
+  "ns_local": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": null,
+   "demoni": [],
+   "dns": {
+    "allow_recursion": [
+     "any"
+    ],
+    "dnssec_validation": "no",
+    "forwarders": null,
+    "root": false,
+    "zone": [
+     {
+      "file": "ns_local/etc/bind/db.root",
+      "record": [
+       {
+        "nome": ".",
+        "riga": 1,
+        "scritto": "@",
+        "tipo": "NS",
+        "valore": "ROOT-SERVER."
+       },
+       {
+        "nome": "root-server",
+        "riga": 2,
+        "scritto": "ROOT-SERVER.",
+        "tipo": "A",
+        "valore": "20.3.0.2"
+       }
+      ],
+      "tipo": "hint",
+      "zona": "."
+     }
+    ]
+   },
+   "frr": null,
+   "gateway": "1.0.0.1",
+   "immagine": "kathara/base",
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "1.0.0.2/24",
+     "lan": "N"
+    }
+   ],
+   "ip_per_dev": {
+    "eth0": [
+     "1.0.0.2/24"
+    ]
+   },
+   "lab_conf": {
+    "0": "N"
+   },
+   "loopback": [],
+   "nameserver": [],
+   "nome": "ns_local",
+   "non_comprese": [],
+   "presenti": {
+    "daemons": false,
+    "dir_bind": true,
+    "dir_www": false,
+    "frr_conf": false,
+    "index_html": false,
+    "named_conf": true,
+    "named_conf_local": false,
+    "named_conf_options": true,
+    "resolv_conf": false,
+    "startup": true,
+    "vtysh_conf": false
+   },
+   "startup": {
+    "file": "ns_local.startup",
+    "gateway": {
+     "dev": "eth0",
+     "riga": 2,
+     "via": "1.0.0.1"
+    },
+    "ip": [
+     {
+      "dev": "eth0",
+      "ip": "1.0.0.2/24",
+      "riga": 1
+     }
+    ],
+    "non_comprese": [],
+    "servizi": [
+     {
+      "nome": "named",
+      "riga": 3
+     }
+    ],
+    "statiche": []
+   },
+   "tipo": "dns"
+  },
+  "pc": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": null,
+   "demoni": [],
+   "dns": null,
+   "frr": null,
+   "gateway": "10.0.0.1",
+   "immagine": "kathara/base",
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "10.0.0.2/24",
+     "lan": "P"
+    }
+   ],
+   "ip_per_dev": {
+    "eth0": [
+     "10.0.0.2/24"
+    ]
+   },
+   "lab_conf": {
+    "0": "P"
+   },
+   "loopback": [],
+   "nameserver": [
+    "1.0.0.2"
+   ],
+   "nome": "pc",
+   "non_comprese": [],
+   "presenti": {
+    "daemons": false,
+    "dir_bind": false,
+    "dir_www": false,
+    "frr_conf": false,
+    "index_html": false,
+    "named_conf": false,
+    "named_conf_local": false,
+    "named_conf_options": false,
+    "resolv_conf": true,
+    "startup": true,
+    "vtysh_conf": false
+   },
+   "startup": {
+    "file": "pc.startup",
+    "gateway": {
+     "dev": "eth0",
+     "riga": 2,
+     "via": "10.0.0.1"
+    },
+    "ip": [
+     {
+      "dev": "eth0",
+      "ip": "10.0.0.2/24",
+      "riga": 1
+     }
+    ],
+    "non_comprese": [],
+    "servizi": [],
+    "statiche": []
+   },
+   "tipo": "host"
+  },
+  "root": {
+   "altri_ip": [],
+   "apache": false,
+   "asn": null,
+   "demoni": [],
+   "dns": {
+    "allow_recursion": null,
+    "dnssec_validation": null,
+    "forwarders": null,
+    "root": true,
+    "zone": [
+     {
+      "file": "root/etc/bind/db.root",
+      "record": [
+       {
+        "nome": ".",
+        "riga": 2,
+        "scritto": "@",
+        "tipo": "SOA",
+        "valore": "ROOT-SERVER."
+       },
+       {
+        "nome": ".",
+        "riga": 10,
+        "scritto": "@",
+        "tipo": "NS",
+        "valore": "ROOT-SERVER."
+       },
+       {
+        "nome": "root-server",
+        "riga": 11,
+        "scritto": "ROOT-SERVER.",
+        "tipo": "A",
+        "valore": "20.3.0.2"
+       },
+       {
+        "nome": "com",
+        "riga": 13,
+        "scritto": "com.",
+        "tipo": "NS",
+        "valore": "dns.com."
+       },
+       {
+        "nome": "dns.com",
+        "riga": 14,
+        "scritto": "dns.com.",
+        "tipo": "A",
+        "valore": "20.1.0.3"
+       }
+      ],
+      "tipo": "master",
+      "zona": "."
+     }
+    ]
+   },
+   "frr": null,
+   "gateway": "20.3.0.3",
+   "immagine": "kathara/base",
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "20.3.0.2/24",
+     "lan": "H"
+    }
+   ],
+   "ip_per_dev": {
+    "eth0": [
+     "20.3.0.2/24"
+    ]
+   },
+   "lab_conf": {
+    "0": "H"
+   },
+   "loopback": [],
+   "nameserver": [],
+   "nome": "root",
+   "non_comprese": [],
+   "presenti": {
+    "daemons": false,
+    "dir_bind": true,
+    "dir_www": false,
+    "frr_conf": false,
+    "index_html": false,
+    "named_conf": true,
+    "named_conf_local": false,
+    "named_conf_options": true,
+    "resolv_conf": false,
+    "startup": true,
+    "vtysh_conf": false
+   },
+   "startup": {
+    "file": "root.startup",
+    "gateway": {
+     "dev": "eth0",
+     "riga": 2,
+     "via": "20.3.0.3"
+    },
+    "ip": [
+     {
+      "dev": "eth0",
+      "ip": "20.3.0.2/24",
+      "riga": 1
+     }
+    ],
+    "non_comprese": [],
+    "servizi": [
+     {
+      "nome": "named",
+      "riga": 3
+     }
+    ],
+    "statiche": []
+   },
+   "tipo": "dns"
+  },
+  "web_srv": {
+   "altri_ip": [],
+   "apache": true,
+   "asn": null,
+   "demoni": [],
+   "dns": null,
+   "frr": null,
+   "gateway": "2.2.0.3",
+   "immagine": "kathara/base",
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "idx": 0,
+     "ip": "2.2.0.2/24",
+     "lan": "A"
+    }
+   ],
+   "ip_per_dev": {
+    "eth0": [
+     "2.2.0.2/24"
+    ]
+   },
+   "lab_conf": {
+    "0": "A"
+   },
+   "loopback": [],
+   "nameserver": [],
+   "nome": "web_srv",
+   "non_comprese": [],
+   "presenti": {
+    "daemons": false,
+    "dir_bind": false,
+    "dir_www": true,
+    "frr_conf": false,
+    "index_html": true,
+    "named_conf": false,
+    "named_conf_local": false,
+    "named_conf_options": false,
+    "resolv_conf": false,
+    "startup": true,
+    "vtysh_conf": false
+   },
+   "startup": {
+    "file": "web_srv.startup",
+    "gateway": {
+     "dev": "eth0",
+     "riga": 2,
+     "via": "2.2.0.3"
+    },
+    "ip": [
+     {
+      "dev": "eth0",
+      "ip": "2.2.0.2/24",
+      "riga": 1
+     }
+    ],
+    "non_comprese": [],
+    "servizi": [
+     {
+      "nome": "apache2",
+      "riga": 3
+     }
+    ],
+    "statiche": []
+   },
+   "tipo": "www"
+  }
+ },
+ "lab_conf": "as1r1[0]=N\nas1r1[1]=M\nas1r1[2]=K\nas1r1[image]=\"kathara/frr\"\n\nas2r1[0]=E\nas2r1[1]=C\nas2r1[image]=\"kathara/frr\"\n\nas2r2[0]=D\nas2r2[1]=B\nas2r2[image]=\"kathara/frr\"\n\nas2r3[0]=C\nas2r3[1]=B\nas2r3[2]=A\nas2r3[image]=\"kathara/frr\"\n\nas20r1[0]=G\nas20r1[1]=F\nas20r1[2]=D\nas20r1[image]=\"kathara/frr\"\n\nas20r2[0]=G\nas20r2[1]=J\nas20r2[2]=K\nas20r2[image]=\"kathara/frr\"\n\nas20r3[0]=H\nas20r3[1]=J\nas20r3[2]=L\nas20r3[image]=\"kathara/frr\"\n\nas20r4[0]=E\nas20r4[1]=F\nas20r4[2]=H\nas20r4[image]=\"kathara/frr\"\n\nas10r1[0]=L\nas10r1[1]=M\nas10r1[2]=P\nas10r1[image]=\"kathara/frr\"\n\npc[0]=P\npc[image]=\"kathara/base\"\n\nweb_srv[0]=A\nweb_srv[image]=\"kathara/base\"\n\nroot[0]=H\nroot[image]=\"kathara/base\"\n\nns_com[0]=G\nns_com[image]=\"kathara/base\"\n\nns_local[0]=N\nns_local[image]=\"kathara/base\"\n",
+ "lan": {
+  "A": {
+   "interfacce": [
+    {
+     "dev": "eth2",
+     "dispositivo": "as2r3",
+     "ip": "2.2.0.3/24"
+    },
+    {
+     "dev": "eth0",
+     "dispositivo": "web_srv",
+     "ip": "2.2.0.2/24"
+    }
+   ],
+   "membri": [
+    "as2r3",
+    "web_srv"
+   ],
+   "nome": "A",
+   "subnet": "2.2.0.0/24"
+  },
+  "B": {
+   "interfacce": [
+    {
+     "dev": "eth1",
+     "dispositivo": "as2r2",
+     "ip": "2.0.0.2/24"
+    },
+    {
+     "dev": "eth1",
+     "dispositivo": "as2r3",
+     "ip": "2.0.0.3/24"
+    }
+   ],
+   "membri": [
+    "as2r2",
+    "as2r3"
+   ],
+   "nome": "B",
+   "subnet": "2.0.0.0/24"
+  },
+  "C": {
+   "interfacce": [
+    {
+     "dev": "eth1",
+     "dispositivo": "as2r1",
+     "ip": "2.1.0.1/24"
+    },
+    {
+     "dev": "eth0",
+     "dispositivo": "as2r3",
+     "ip": "2.1.0.3/24"
+    }
+   ],
+   "membri": [
+    "as2r1",
+    "as2r3"
+   ],
+   "nome": "C",
+   "subnet": "2.1.0.0/24"
+  },
+  "D": {
+   "interfacce": [
+    {
+     "dev": "eth2",
+     "dispositivo": "as20r1",
+     "ip": "2.20.0.1/30"
+    },
+    {
+     "dev": "eth0",
+     "dispositivo": "as2r2",
+     "ip": "2.20.0.2/30"
+    }
+   ],
+   "membri": [
+    "as20r1",
+    "as2r2"
+   ],
+   "nome": "D",
+   "subnet": "2.20.0.0/30"
+  },
+  "E": {
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "dispositivo": "as20r4",
+     "ip": "2.20.4.6/30"
+    },
+    {
+     "dev": "eth0",
+     "dispositivo": "as2r1",
+     "ip": "2.20.4.5/30"
+    }
+   ],
+   "membri": [
+    "as20r4",
+    "as2r1"
+   ],
+   "nome": "E",
+   "subnet": "2.20.4.4/30"
+  },
+  "F": {
+   "interfacce": [
+    {
+     "dev": "eth1",
+     "dispositivo": "as20r1",
+     "ip": "20.4.0.1/24"
+    },
+    {
+     "dev": "eth1",
+     "dispositivo": "as20r4",
+     "ip": "20.4.0.4/24"
+    }
+   ],
+   "membri": [
+    "as20r1",
+    "as20r4"
+   ],
+   "nome": "F",
+   "subnet": "20.4.0.0/24"
+  },
+  "G": {
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "dispositivo": "as20r1",
+     "ip": "20.1.0.1/24"
+    },
+    {
+     "dev": "eth0",
+     "dispositivo": "as20r2",
+     "ip": "20.1.0.2/24"
+    },
+    {
+     "dev": "eth0",
+     "dispositivo": "ns_com",
+     "ip": "20.1.0.3/24"
+    }
+   ],
+   "membri": [
+    "as20r1",
+    "as20r2",
+    "ns_com"
+   ],
+   "nome": "G",
+   "subnet": "20.1.0.0/24"
+  },
+  "H": {
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "dispositivo": "as20r3",
+     "ip": "20.3.0.3/24"
+    },
+    {
+     "dev": "eth2",
+     "dispositivo": "as20r4",
+     "ip": "20.3.0.4/24"
+    },
+    {
+     "dev": "eth0",
+     "dispositivo": "root",
+     "ip": "20.3.0.2/24"
+    }
+   ],
+   "membri": [
+    "as20r3",
+    "as20r4",
+    "root"
+   ],
+   "nome": "H",
+   "subnet": "20.3.0.0/24"
+  },
+  "J": {
+   "interfacce": [
+    {
+     "dev": "eth1",
+     "dispositivo": "as20r2",
+     "ip": "20.2.0.2/24"
+    },
+    {
+     "dev": "eth1",
+     "dispositivo": "as20r3",
+     "ip": "20.2.0.3/24"
+    }
+   ],
+   "membri": [
+    "as20r2",
+    "as20r3"
+   ],
+   "nome": "J",
+   "subnet": "20.2.0.0/24"
+  },
+  "K": {
+   "interfacce": [
+    {
+     "dev": "eth2",
+     "dispositivo": "as1r1",
+     "ip": "1.20.0.1/30"
+    },
+    {
+     "dev": "eth2",
+     "dispositivo": "as20r2",
+     "ip": "1.20.0.2/30"
+    }
+   ],
+   "membri": [
+    "as1r1",
+    "as20r2"
+   ],
+   "nome": "K",
+   "subnet": "1.20.0.0/30"
+  },
+  "L": {
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "dispositivo": "as10r1",
+     "ip": "10.20.0.1/30"
+    },
+    {
+     "dev": "eth2",
+     "dispositivo": "as20r3",
+     "ip": "10.20.0.2/30"
+    }
+   ],
+   "membri": [
+    "as10r1",
+    "as20r3"
+   ],
+   "nome": "L",
+   "subnet": "10.20.0.0/30"
+  },
+  "M": {
+   "interfacce": [
+    {
+     "dev": "eth1",
+     "dispositivo": "as10r1",
+     "ip": "10.1.0.1/30"
+    },
+    {
+     "dev": "eth1",
+     "dispositivo": "as1r1",
+     "ip": "10.1.0.2/30"
+    }
+   ],
+   "membri": [
+    "as10r1",
+    "as1r1"
+   ],
+   "nome": "M",
+   "subnet": "10.1.0.0/30"
+  },
+  "N": {
+   "interfacce": [
+    {
+     "dev": "eth0",
+     "dispositivo": "as1r1",
+     "ip": "1.0.0.1/24"
+    },
+    {
+     "dev": "eth0",
+     "dispositivo": "ns_local",
+     "ip": "1.0.0.2/24"
+    }
+   ],
+   "membri": [
+    "as1r1",
+    "ns_local"
+   ],
+   "nome": "N",
+   "subnet": "1.0.0.0/24"
+  },
+  "P": {
+   "interfacce": [
+    {
+     "dev": "eth2",
+     "dispositivo": "as10r1",
+     "ip": "10.0.0.1/24"
+    },
+    {
+     "dev": "eth0",
+     "dispositivo": "pc",
+     "ip": "10.0.0.2/24"
+    }
+   ],
+   "membri": [
+    "as10r1",
+    "pc"
+   ],
+   "nome": "P",
+   "subnet": "10.0.0.0/24"
+  }
+ },
+ "nome": "tennis_test",
+ "non_comprese": [],
+ "ordine_lab_conf": [
+  "as1r1",
+  "as2r1",
+  "as2r2",
+  "as2r3",
+  "as20r1",
+  "as20r2",
+  "as20r3",
+  "as20r4",
+  "as10r1",
+  "pc",
+  "web_srv",
+  "root",
+  "ns_com",
+  "ns_local"
+ ],
+ "percorso": "<LAB>",
+ "proprietari": {
+  "1.0.0.1": "as1r1",
+  "1.0.0.2": "ns_local",
+  "1.20.0.1": "as1r1",
+  "1.20.0.2": "as20r2",
+  "10.0.0.1": "as10r1",
+  "10.0.0.2": "pc",
+  "10.1.0.1": "as10r1",
+  "10.1.0.2": "as1r1",
+  "10.20.0.1": "as10r1",
+  "10.20.0.2": "as20r3",
+  "2.0.0.2": "as2r2",
+  "2.0.0.3": "as2r3",
+  "2.1.0.1": "as2r1",
+  "2.1.0.3": "as2r3",
+  "2.2.0.2": "web_srv",
+  "2.2.0.3": "as2r3",
+  "2.20.0.1": "as20r1",
+  "2.20.0.2": "as2r2",
+  "2.20.4.5": "as2r1",
+  "2.20.4.6": "as20r4",
+  "20.1.0.1": "as20r1",
+  "20.1.0.2": "as20r2",
+  "20.1.0.3": "ns_com",
+  "20.2.0.2": "as20r2",
+  "20.2.0.3": "as20r3",
+  "20.3.0.2": "root",
+  "20.3.0.3": "as20r3",
+  "20.3.0.4": "as20r4",
+  "20.4.0.1": "as20r1",
+  "20.4.0.4": "as20r4"
+ },
+ "xml_nel_lab": true
+}

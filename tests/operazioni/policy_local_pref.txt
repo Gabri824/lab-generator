@@ -1,0 +1,10 @@
+# Local preference in ingresso su tutte le rotte di un neighbor
+@lab candy_test
+@chiama policies_menu
+2
+as40r1
+192.168.0.1
+120
+
+s
+0

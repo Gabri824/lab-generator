@@ -1,0 +1,10 @@
+# Prefix-list che esiste già: le reti nuove si aggiungono alle vecchie
+@lab candy_test
+@chiama policies_menu
+1
+as10r1
+192.168.0.2
+in
+170.0.0.0/24
+s
+0

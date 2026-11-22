@@ -1,0 +1,15 @@
+# Server DNS autoritativo (nessuna zona) aggiunto a un lab con altri DNS: tipo hint verso il root
+@lab tennis_test
+@chiama menu_dispositivi
+4
+ns_org
+20.1.0.9/24
+20.1.0.1
+G
+n
+
+n
+n
+
+s
+0

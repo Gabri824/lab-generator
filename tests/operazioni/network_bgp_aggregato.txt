@@ -1,0 +1,7 @@
+# Network BGP aggregata che copre una rete già annunciata, poi tolta
+@lab candy_test
+@chiama aggiungi_network_bgp
+as10r1
+110.0.0.0/16
+s
+s

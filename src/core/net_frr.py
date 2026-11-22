@@ -9,7 +9,9 @@ import re
 from .cli_io import input_asn
 from .file_utils import (
     _append_righe,
+    _esiste_file,
     _leggi_righe,
+    _leggi_testo,
     _rimuovi_righe,
     _rimuovi_route_map,
     _scrivi_righe,
@@ -213,17 +215,25 @@ def mk_bgp_stanza(asn, redistribute=None, networks=None):
     return "\n".join(lines) + "\n\n"
 
 
-def mk_ospf_stanza(networks, area=None, stub=False, redistribute=None):
-    """Costruisce la stanza OSPF."""
+def mk_ospf_stanza(networks, area=None, stub=False, redistribute=None, aree=None, aree_stub=None):
+    """Costruisce la stanza OSPF.
+
+    Con una sola area: tutte le network in `area` (stub se `stub`). Per un router di confine
+    (ABR): `aree` = {rete: area} dà l'area di ogni rete (le reti non elencate stanno in `area`)
+    e `aree_stub` = le aree da dichiarare stub."""
     area = area or '0.0.0.0'
+    aree = {_norm_net(k): v for k, v in (aree or {}).items()}
     lines = ["router ospf", ""]
     seen = set()
     for net in networks or []:
         s = _norm_net(net)
         if s not in seen:
-            lines.append(f"    network {s} area {area}")
+            lines.append(f"    network {s} area {aree.get(s, area)}")
             seen.add(s)
-    if stub:
+    if aree:
+        for a in aree_stub or []:
+            lines.append(f"    area {a} stub")
+    elif stub:
         lines.append(f"    area {area} stub")
     if redistribute:
         lines.append("")
@@ -312,10 +322,9 @@ def static_route_lines(data):
 
 def add_neighbor_if_missing(base_path, src_router, neigh_ip, neigh_asn, desc=None):
     fpath = os.path.join(base_path, src_router, "etc", "frr", "frr.conf")
-    if not os.path.exists(fpath):
+    if not _esiste_file(fpath):
         return
-    with open(fpath, "r", encoding='utf-8') as f:
-        content = f.read()
+    content = _leggi_testo(fpath) or ''
     neigh_ip_stripped = neigh_ip.split('/')[0] if '/' in neigh_ip else neigh_ip
     if f"neighbor {neigh_ip_stripped} remote-as" in content:
         return
@@ -409,19 +418,11 @@ def add_ibgp_loopback_neighbors(base_path, routers):
         f_local = os.path.join(base_path, r_local, 'etc', 'frr', 'frr.conf')
         f_peer = os.path.join(base_path, r_peer, 'etc', 'frr', 'frr.conf')
 
-        if not os.path.exists(f_local) or not os.path.exists(f_peer):
+        if not _esiste_file(f_local) or not _esiste_file(f_peer):
             return
 
-        try:
-            with open(f_local, 'r', encoding='utf-8') as fh:
-                cont_local = fh.read()
-        except Exception:
-            cont_local = ''
-        try:
-            with open(f_peer, 'r', encoding='utf-8') as fh:
-                cont_peer = fh.read()
-        except Exception:
-            cont_peer = ''
+        cont_local = _leggi_testo(f_local) or ''
+        cont_peer = _leggi_testo(f_peer) or ''
 
         to_add_local = []
         if f"neighbor {lb_peer} remote-as" not in cont_local:
@@ -461,10 +462,8 @@ def add_ibgp_loopback_neighbors(base_path, routers):
 
 def ensure_neighbor_exists(fpath, neigh_ip):
     """Se non esiste una riga 'neighbor <ip> remote-as' nel file fpath, chiede ASN e la crea."""
-    try:
-        with open(fpath, 'r', encoding='utf-8') as f:
-            content = f.read()
-    except Exception:
+    content = _leggi_testo(fpath)
+    if content is None:
         return False
     neigh_ip_stripped = neigh_ip.split('/')[0] if '/' in neigh_ip else neigh_ip
     if f"neighbor {neigh_ip_stripped} remote-as" in content:

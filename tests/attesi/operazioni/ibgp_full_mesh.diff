@@ -1,0 +1,19 @@
+--- prima/as2r1/etc/frr/frr.conf
++++ dopo/as2r1/etc/frr/frr.conf
+@@ -30,3 +30,5 @@
+     network 2.5.0.0/24
+     network 2.6.0.0/24
+     network 2.7.0.0/24
++    neighbor 2.3.0.5 remote-as 2
++    neighbor 2.3.0.5 description iBGP as2r5
+--- prima/as2r5/etc/frr/frr.conf
++++ dopo/as2r5/etc/frr/frr.conf
+@@ -31,6 +31,8 @@
+     network 2.6.0.0/24
+     network 2.7.0.0/24
+     neighbor 20.10.0.1 route-map LOCALMED_OUT_20_10_0_1 out
++    neighbor 2.4.0.1 remote-as 2
++    neighbor 2.4.0.1 description iBGP as2r1
+ 
+ route-map LOCALMED_OUT_20_10_0_1 permit 10
+     set metric 20

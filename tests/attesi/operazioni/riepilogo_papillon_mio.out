@@ -1,0 +1,39 @@
+
+=== Riepilogo configurazione ===
+
+✅ Controllo topologia: LAN e subnet coerenti.
+✅ Controlli: nessuna dimenticanza trovata.
+
+r1   [ospf]
+  OSPF: 20.20.0.0/16 area 0.0.0.0   redistribute connected   auto-cost 100
+
+r2   [ospf]
+  OSPF: 20.20.0.0/16 area 0.0.0.0   redistribute connected   auto-cost 100
+  costo OSPF: eth0 100
+
+r3 (AS20)   [bgp ospf]
+  OSPF: 20.20.0.0/16 area 0.0.0.0   redistribute connected, bgp   auto-cost 100
+  network BGP: 10.1.0.0/30, 20.20.0.0/16
+  10.1.0.2        r5         AS30    eBGP  nessuna policy
+
+r4   [ospf]
+  OSPF: 20.20.0.0/16 area 0.0.0.0   redistribute connected   auto-cost 100
+
+r5 (AS30)   [bgp rip]
+  RIP: 30.30.0.0/16   redistribute connected, bgp
+  network BGP: 10.1.0.0/30, 30.30.0.0/16
+  10.1.0.1        r3         AS20    eBGP  nessuna policy
+
+r6   [rip]
+  RIP: 30.30.0.0/16   redistribute connected
+
+r7   [rip]
+  RIP: 30.30.0.0/16   redistribute connected
+
+--- Host e server ---
+client  host  20.20.1.2/24 (LAN A)   gw 20.20.1.1 (r1)
+server  www   30.30.1.2/24 (LAN L)   gw 30.30.1.1 (r6)   apache2 avviato
+
+Controlla ogni frase del testo: filtri (deny), preferenze (local-preference), MED (metric), network annunciate, costi OSPF, gateway e resolver dei pc, deleghe DNS.
+
+[copie di sicurezza create: 0]

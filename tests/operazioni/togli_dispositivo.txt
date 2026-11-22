@@ -1,0 +1,8 @@
+# Router tolto: righe di lab.conf, cartella, startup e neighbor sugli altri router
+@lab candy_test
+@chiama menu_dispositivi
+5
+as80r1
+
+s
+0

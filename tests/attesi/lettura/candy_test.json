@@ -1,4 +1,106 @@
 {
+ "collect_lab_ips": [
+  {
+   "iface": "eth0",
+   "ip": "192.168.0.1",
+   "name": "as10r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "110.0.0.1",
+   "name": "as10r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "192.168.0.9",
+   "name": "as20r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "192.168.0.5",
+   "name": "as20r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "192.168.0.13",
+   "name": "as30r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "130.0.0.1",
+   "name": "as30r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "192.168.0.2",
+   "name": "as40r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "192.168.0.6",
+   "name": "as40r1"
+  },
+  {
+   "iface": "eth2",
+   "ip": "192.168.0.26",
+   "name": "as40r1"
+  },
+  {
+   "iface": "eth3",
+   "ip": "192.168.0.30",
+   "name": "as40r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "192.168.0.18",
+   "name": "as50r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "192.168.0.22",
+   "name": "as50r1"
+  },
+  {
+   "iface": "eth2",
+   "ip": "192.168.0.10",
+   "name": "as50r1"
+  },
+  {
+   "iface": "eth3",
+   "ip": "192.168.0.14",
+   "name": "as50r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "192.168.0.17",
+   "name": "as60r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "160.0.0.1",
+   "name": "as60r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "192.168.0.25",
+   "name": "as70r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "192.168.0.21",
+   "name": "as70r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "192.168.0.29",
+   "name": "as80r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "180.0.0.1",
+   "name": "as80r1"
+  }
+ ],
  "dati.leggi_lab": {
   "avvisi_config": [],
   "avvisi_topologia": [],
@@ -907,8 +1009,9 @@
    }
   ],
   "nome": "candy_test",
-  "xml": true
+  "xml": false
  },
+ "isole_ospf": [],
  "leggi_dispositivi": {
   "as10r1": {
    "altri_ip": [],

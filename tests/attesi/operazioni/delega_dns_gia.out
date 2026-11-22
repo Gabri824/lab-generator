@@ -1,0 +1,16 @@
+
+--- Aggiungi delega DNS sul root ---
+
+Server DNS del lab:
+
+  1) ns_com
+  2) ns_local
+  3) root  (root: master per .)
+
+Seleziona il server root (numero o nome, vuoto per annullare): root
+Zona da delegare (es. com, vuoto per annullare): com
+Nameserver di com (invio = dns.com): 
+IP di dns.com (es. 20.1.0.3): 20.1.0.3
+⚠️ La zona com è già delegata in root/etc/bind/db.root.
+
+[copie di sicurezza create: 0]

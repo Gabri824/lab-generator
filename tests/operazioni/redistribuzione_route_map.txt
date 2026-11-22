@@ -1,0 +1,8 @@
+# Redistribute bgp con route-map eBGP (solo rotte con next-hop nella rete del neighbor)
+@lab hourglass_test
+@chiama menu_ridistribuzione
+3
+r3
+10.2.0.0/30
+s
+0

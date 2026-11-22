@@ -1,0 +1,45 @@
+
+Protocolli attivi su r2: ospf
+a = aggiungi un protocollo, t = togli un protocollo, Invio = annulla: a
+
+Protocollo:
+
+  1) BGP
+  2) RIP
+
+Numero (Invio = annulla): 1
+Numero AS di r2: 20
+Network BGP da annunciare (Invio = 20.20.2.0/24, 20.20.3.0/24): 
+Sessione BGP con r3 (20.20.3.2, AS20)? (S/n): 
+Iniettare in OSPF le rotte imparate da BGP (redistribute bgp)? (S/n): 
+Aggiungo anche su r3: neighbor 20.20.3.1 remote-as 20? (S/n): 
+
+--- Aggiungi BGP a r2: anteprima (3 file) ---
+  r2/etc/frr/daemons
+    - riga   4: bgpd=no
+    + riga   4: bgpd=yes
+  r2/etc/frr/frr.conf
+    + riga   5: 
+    + riga   6: debug bgp keepalives
+    + riga   7: debug bgp updates in
+    + riga   8: debug bgp updates out
+    + riga  16: redistribute bgp
+    + riga  22: router bgp 20
+    + riga  23: 
+    + riga  24: no bgp ebgp-requires-policy
+    + riga  25: no bgp network import-check
+    + riga  26: 
+    + riga  27: network 20.20.2.0/24
+    + riga  28: network 20.20.3.0/24
+    + riga  29: neighbor 20.20.3.2 remote-as 20
+    + riga  30: neighbor 20.20.3.2 description Router r3
+  r3/etc/frr/frr.conf
+    + riga  27: neighbor 20.20.3.1 remote-as 20
+    + riga  28: neighbor 20.20.3.1 description Router r2
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/papillon_mio/AAAAMMGG-HHMMSS
+   (i controlli dell'opzione 8 danno lo stesso esito di prima)
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+
+[copie di sicurezza create: 1]

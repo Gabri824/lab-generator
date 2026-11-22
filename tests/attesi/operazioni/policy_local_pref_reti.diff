@@ -1,0 +1,14 @@
+--- prima/as40r1/etc/frr/frr.conf
++++ dopo/as40r1/etc/frr/frr.conf
+@@ -25,3 +25,11 @@
+     neighbor 192.168.0.25 description Router as70r1
+     neighbor 192.168.0.29 remote-as 80
+     neighbor 192.168.0.29 description Router as80r1
++    neighbor 192.168.0.5 route-map PREF_IN_192_168_0_5 in
++
++route-map PREF_IN_192_168_0_5 permit 10
++    match ip address prefix-list PREF_IN_192_168_0_5_NETS
++    set local-preference 130
++route-map PREF_IN_192_168_0_5 permit 20
++
++ip prefix-list PREF_IN_192_168_0_5_NETS permit 20.0.0.0/8

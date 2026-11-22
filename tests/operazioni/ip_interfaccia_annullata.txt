@@ -1,0 +1,6 @@
+# Come ip_interfaccia, ma alla conferma si risponde no: nessun file cambia
+@lab candy_test
+@chiama modifica_ip_interfaccia as10r1
+2
+110.0.0.5
+n

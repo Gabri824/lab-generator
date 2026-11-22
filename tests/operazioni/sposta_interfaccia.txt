@@ -1,0 +1,6 @@
+# Host spostato su un'altra LAN, con un nuovo IP nella sua rete
+@lab papillon_mio
+@chiama sposta_interfaccia client
+B
+20.20.2.10
+s

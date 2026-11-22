@@ -1,0 +1,26 @@
+
+LAN del lab:
+   A      20.20.1.0/24       client, r1
+   B      20.20.2.0/24       r1, r2
+   C      20.20.3.0/24       r2, r3
+   D      20.20.4.0/24       r3, r4
+   E      20.20.5.0/24       r1, r4
+   F      10.1.0.0/30        r3, r5
+   G      30.30.3.0/24       r5, r7
+   H      30.30.2.0/24       r5, r6
+   I      30.30.4.0/24       r6, r7
+   L      30.30.1.0/24       r6, server
+Nuova LAN per client eth0 (ora A; nome esistente o nuovo, Invio = annulla): Z
+
+--- client eth0: LAN A -> Z: anteprima (1 file) ---
+  lab.conf
+    - riga  33: client[0]=A
+    + riga  33: client[0]=Z
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/papillon_mio/AAAAMMGG-HHMMSS
+   ⚠️ nuovo: Subnet 20.20.1.0/24 usata su LAN diverse (A, Z): probabile nome di LAN sbagliato
+   ⚠️ nuovo: client: il gateway 20.20.1.1 è di r1, che è sulla LAN A: non è sulla stessa LAN del dispositivo (Z).
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+
+[copie di sicurezza create: 1]

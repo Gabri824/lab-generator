@@ -334,7 +334,7 @@ async function apriLab(nome, mantieni) {
     $('#vuoto').hidden = true; $('#vista').hidden = false;
     $('#labNome').textContent = nome;
     $('#xmlNota').hidden = !lab.xml;
-    $('#xmlNota').innerHTML = `Nel lab c'è <code>${esc(nome)}.xml</code> del generatore: <b>cancellalo prima della consegna</b> (l'archivio creato da qui lo esclude già).`;
+    $('#xmlNota').innerHTML = `Nel lab c'è <code>${esc(nome)}.xml</code> del generatore: <b>va tolto prima della consegna</b> (l'archivio creato da qui lo esclude già). Aprendo il lab dalle Opzioni del terminale puoi spostarlo in <code>.labgenerator/</code>, accanto ai lab.`;
     S.colori = colori(lab); S.G = grafo(lab);
     const salvate = mem('pos:' + nome);
     S.varianti = null; S.variante = 0;

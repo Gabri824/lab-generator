@@ -1,4 +1,86 @@
 {
+ "collect_lab_ips": [
+  {
+   "iface": "eth0",
+   "ip": "10.0.0.30",
+   "name": "as1r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "10.0.0.1",
+   "name": "as1r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "10.0.0.2",
+   "name": "as2r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "10.0.0.5",
+   "name": "as2r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "10.0.0.6",
+   "name": "as3r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "10.0.0.9",
+   "name": "as3r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "10.0.0.10",
+   "name": "as4r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "10.0.0.13",
+   "name": "as4r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "10.0.0.14",
+   "name": "as5r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "10.0.0.17",
+   "name": "as5r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "10.0.0.18",
+   "name": "as6r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "10.0.0.21",
+   "name": "as6r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "10.0.0.22",
+   "name": "as7r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "10.0.0.25",
+   "name": "as7r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "10.0.0.26",
+   "name": "as8r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "10.0.0.29",
+   "name": "as8r1"
+  }
+ ],
  "dati.leggi_lab": {
   "avvisi_config": [],
   "avvisi_topologia": [],
@@ -871,8 +953,9 @@
    }
   ],
   "nome": "del-monte-castle_mio",
-  "xml": true
+  "xml": false
  },
+ "isole_ospf": [],
  "leggi_dispositivi": {
   "as1r1": {
    "altri_ip": [],

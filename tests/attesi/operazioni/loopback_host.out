@@ -1,0 +1,30 @@
+
+--- Aggiungi loopback ad un dispositivo ---
+
+Seleziona il dispositivo su cui aggiungere la loopback:
+
+  1) r1 (router, ASN: )
+  2) r2 (router, ASN: )
+  3) r3 (router, ASN: 20)
+  4) r4 (router, ASN: )
+  5) r5 (router, ASN: 30)
+  6) r6 (router, ASN: )
+  7) r7 (router, ASN: )
+  8) server (device)
+  9) client (device)
+
+Seleziona il dispositivo (numero o nome, vuoto per annullare): client
+
+IP loopback (es. 1.2.3.4): 9.9.9.9
+
+--- Loopback 9.9.9.9/32 su client: anteprima (1 file) ---
+  client.startup
+    + riga   3: ip address add 9.9.9.9/32 dev lo
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/papillon_mio/AAAAMMGG-HHMMSS
+   (i controlli dell'opzione 8 danno lo stesso esito di prima)
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+✅ Loopback 9.9.9.9/32 aggiunta a client (startup).
+
+[copie di sicurezza create: 1]

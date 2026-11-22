@@ -1,0 +1,7 @@
+--- prima/as20r1/etc/frr/frr.conf
++++ dopo/as20r1/etc/frr/frr.conf
+@@ -19,3 +19,4 @@
+     neighbor 192.168.0.10 description Router as50r1
+     neighbor 192.168.0.6 remote-as 40
+     neighbor 192.168.0.6 description Router as40r1
++    network 20.0.0.0/8

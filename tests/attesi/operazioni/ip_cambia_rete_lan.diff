@@ -1,0 +1,55 @@
+--- prima/as10r1.startup
++++ dopo/as10r1.startup
+@@ -1,4 +1,4 @@
+-ip address add 192.168.0.1/30 dev eth0
++ip address add 192.168.50.1/30 dev eth0
+ ip address add 110.0.0.1/24 dev eth1
+ 
+ systemctl start frr
+--- prima/as10r1/etc/frr/frr.conf
++++ dopo/as10r1/etc/frr/frr.conf
+@@ -12,13 +12,13 @@
+     no bgp ebgp-requires-policy
+     no bgp network import-check
+ 
+-    network 192.168.0.0/30
++    network 192.168.50.0/30
+     network 110.0.0.0/24
+ 
+-    neighbor 192.168.0.2 remote-as 40
+-    neighbor 192.168.0.2 description Router as40r1
++    neighbor 192.168.50.2 remote-as 40
++    neighbor 192.168.50.2 description Router as40r1
+ 
+-    neighbor 192.168.0.2 prefix-list PL_as10r1_192_168_0_2_in in
++    neighbor 192.168.50.2 prefix-list PL_as10r1_192_168_0_2_in in
+ ip prefix-list PL_as10r1_192_168_0_2_in deny 160.0.0.0/24
+ ip prefix-list PL_as10r1_192_168_0_2_in permit any
+ 
+--- prima/as40r1.startup
++++ dopo/as40r1.startup
+@@ -1,4 +1,4 @@
+-ip address add 192.168.0.2/30 dev eth0
++ip address add 192.168.50.2/30 dev eth0
+ ip address add 192.168.0.6/30 dev eth1
+ ip address add 192.168.0.26/30 dev eth2
+ ip address add 192.168.0.30/30 dev eth3
+--- prima/as40r1/etc/frr/frr.conf
++++ dopo/as40r1/etc/frr/frr.conf
+@@ -12,13 +12,13 @@
+     no bgp ebgp-requires-policy
+     no bgp network import-check
+ 
+-    network 192.168.0.0/30
++    network 192.168.50.0/30
+     network 192.168.0.4/30
+     network 192.168.0.24/30
+     network 192.168.0.28/30
+ 
+-    neighbor 192.168.0.1 remote-as 10
+-    neighbor 192.168.0.1 description Router as10r1
++    neighbor 192.168.50.1 remote-as 10
++    neighbor 192.168.50.1 description Router as10r1
+     neighbor 192.168.0.5 remote-as 20
+     neighbor 192.168.0.5 description Router as20r1
+     neighbor 192.168.0.25 remote-as 70

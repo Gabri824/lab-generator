@@ -1,0 +1,231 @@
+--- prima/as10r1/etc/frr/frr.conf
++++ dopo/as10r1/etc/frr/frr.conf
+@@ -16,7 +16,7 @@
+     network 110.0.0.0/24
+ 
+     neighbor 192.168.0.2 remote-as 40
+-    neighbor 192.168.0.2 description Router as40r1
++    neighbor 192.168.0.2 description Router core1
+ 
+     neighbor 192.168.0.2 prefix-list PL_as10r1_192_168_0_2_in in
+ ip prefix-list PL_as10r1_192_168_0_2_in deny 160.0.0.0/24
+--- prima/as20r1/etc/frr/frr.conf
++++ dopo/as20r1/etc/frr/frr.conf
+@@ -18,4 +18,4 @@
+     neighbor 192.168.0.10 remote-as 50
+     neighbor 192.168.0.10 description Router as50r1
+     neighbor 192.168.0.6 remote-as 40
+-    neighbor 192.168.0.6 description Router as40r1
++    neighbor 192.168.0.6 description Router core1
+--- prima/as40r1.startup
++++ /dev/null
+@@ -1,6 +0,0 @@
+-ip address add 192.168.0.2/30 dev eth0
+-ip address add 192.168.0.6/30 dev eth1
+-ip address add 192.168.0.26/30 dev eth2
+-ip address add 192.168.0.30/30 dev eth3
+-
+-systemctl start frr
+--- prima/as40r1/etc/frr/daemons
++++ /dev/null
+@@ -1,39 +0,0 @@
+-zebra=yes 
+-ripd=no
+-ospfd=no
+-bgpd=yes
+-
+-ospf6d=no
+-ripngd=no
+-isisd=no
+-pimd=no
+-ldpd=no
+-nhrpd=no
+-eigrpd=no
+-babeld=no
+-sharpd=no
+-staticd=no
+-pbrd=no
+-bfdd=no
+-fabricd=no
+-
+-######
+-
+-vtysh_enable=yes
+-zebra_options=" -s 90000000 --daemon -A 127.0.0.1"
+-bgpd_options="   --daemon -A 127.0.0.1"
+-ospfd_options="  --daemon -A 127.0.0.1"
+-ospf6d_options=" --daemon -A ::1"
+-ripd_options="   --daemon -A 127.0.0.1"
+-ripngd_options=" --daemon -A ::1"
+-isisd_options="  --daemon -A 127.0.0.1"
+-pimd_options="  --daemon -A 127.0.0.1"
+-ldpd_options="  --daemon -A 127.0.0.1"
+-nhrpd_options="  --daemon -A 127.0.0.1"
+-eigrpd_options="  --daemon -A 127.0.0.1"
+-babeld_options="  --daemon -A 127.0.0.1"
+-sharpd_options="  --daemon -A 127.0.0.1"
+-staticd_options="  --daemon -A 127.0.0.1"
+-pbrd_options="  --daemon -A 127.0.0.1"
+-bfdd_options="  --daemon -A 127.0.0.1"
+-fabricd_options="  --daemon -A 127.0.0.1"
+--- prima/as40r1/etc/frr/frr.conf
++++ /dev/null
+@@ -1,27 +0,0 @@
+-password zebra
+-enable password zebra
+-
+-log file /var/log/frr/frr.log
+-
+-debug bgp keepalives
+-debug bgp updates in
+-debug bgp updates out
+-
+-router bgp 40
+-
+-    no bgp ebgp-requires-policy
+-    no bgp network import-check
+-
+-    network 192.168.0.0/30
+-    network 192.168.0.4/30
+-    network 192.168.0.24/30
+-    network 192.168.0.28/30
+-
+-    neighbor 192.168.0.1 remote-as 10
+-    neighbor 192.168.0.1 description Router as10r1
+-    neighbor 192.168.0.5 remote-as 20
+-    neighbor 192.168.0.5 description Router as20r1
+-    neighbor 192.168.0.25 remote-as 70
+-    neighbor 192.168.0.25 description Router as70r1
+-    neighbor 192.168.0.29 remote-as 80
+-    neighbor 192.168.0.29 description Router as80r1
+--- prima/as40r1/etc/frr/vtysh.conf
++++ /dev/null
+@@ -1,2 +0,0 @@
+-service integrated-vtysh-config
+-hostname as40r1-frr
+--- prima/as70r1/etc/frr/frr.conf
++++ dopo/as70r1/etc/frr/frr.conf
+@@ -16,6 +16,6 @@
+     network 192.168.0.20/30
+ 
+     neighbor 192.168.0.26 remote-as 40
+-    neighbor 192.168.0.26 description Router as40r1
++    neighbor 192.168.0.26 description Router core1
+     neighbor 192.168.0.22 remote-as 50
+     neighbor 192.168.0.22 description Router as50r1
+--- prima/as80r1/etc/frr/frr.conf
++++ dopo/as80r1/etc/frr/frr.conf
+@@ -16,7 +16,7 @@
+     network 180.0.0.0/24
+ 
+     neighbor 192.168.0.30 remote-as 40
+-    neighbor 192.168.0.30 description Router as40r1
++    neighbor 192.168.0.30 description Router core1
+ 
+     neighbor 192.168.0.30 prefix-list PL_as80r1_192_168_0_30_in in
+ ip prefix-list PL_as80r1_192_168_0_30_in deny 130.0.0.0/24
+--- /dev/null
++++ dopo/core1.startup
+@@ -0,0 +1,6 @@
++ip address add 192.168.0.2/30 dev eth0
++ip address add 192.168.0.6/30 dev eth1
++ip address add 192.168.0.26/30 dev eth2
++ip address add 192.168.0.30/30 dev eth3
++
++systemctl start frr
+--- /dev/null
++++ dopo/core1/etc/frr/daemons
+@@ -0,0 +1,39 @@
++zebra=yes 
++ripd=no
++ospfd=no
++bgpd=yes
++
++ospf6d=no
++ripngd=no
++isisd=no
++pimd=no
++ldpd=no
++nhrpd=no
++eigrpd=no
++babeld=no
++sharpd=no
++staticd=no
++pbrd=no
++bfdd=no
++fabricd=no
++
++######
++
++vtysh_enable=yes
++zebra_options=" -s 90000000 --daemon -A 127.0.0.1"
++bgpd_options="   --daemon -A 127.0.0.1"
++ospfd_options="  --daemon -A 127.0.0.1"
++ospf6d_options=" --daemon -A ::1"
++ripd_options="   --daemon -A 127.0.0.1"
++ripngd_options=" --daemon -A ::1"
++isisd_options="  --daemon -A 127.0.0.1"
++pimd_options="  --daemon -A 127.0.0.1"
++ldpd_options="  --daemon -A 127.0.0.1"
++nhrpd_options="  --daemon -A 127.0.0.1"
++eigrpd_options="  --daemon -A 127.0.0.1"
++babeld_options="  --daemon -A 127.0.0.1"
++sharpd_options="  --daemon -A 127.0.0.1"
++staticd_options="  --daemon -A 127.0.0.1"
++pbrd_options="  --daemon -A 127.0.0.1"
++bfdd_options="  --daemon -A 127.0.0.1"
++fabricd_options="  --daemon -A 127.0.0.1"
+--- /dev/null
++++ dopo/core1/etc/frr/frr.conf
+@@ -0,0 +1,27 @@
++password zebra
++enable password zebra
++
++log file /var/log/frr/frr.log
++
++debug bgp keepalives
++debug bgp updates in
++debug bgp updates out
++
++router bgp 40
++
++    no bgp ebgp-requires-policy
++    no bgp network import-check
++
++    network 192.168.0.0/30
++    network 192.168.0.4/30
++    network 192.168.0.24/30
++    network 192.168.0.28/30
++
++    neighbor 192.168.0.1 remote-as 10
++    neighbor 192.168.0.1 description Router as10r1
++    neighbor 192.168.0.5 remote-as 20
++    neighbor 192.168.0.5 description Router as20r1
++    neighbor 192.168.0.25 remote-as 70
++    neighbor 192.168.0.25 description Router as70r1
++    neighbor 192.168.0.29 remote-as 80
++    neighbor 192.168.0.29 description Router as80r1
+--- /dev/null
++++ dopo/core1/etc/frr/vtysh.conf
+@@ -0,0 +1,2 @@
++service integrated-vtysh-config
++hostname core1-frr
+--- prima/lab.conf
++++ dopo/lab.conf
+@@ -10,11 +10,11 @@
+ as30r1[1]=M
+ as30r1[image]="kathara/frr"
+ 
+-as40r1[0]=A
+-as40r1[1]=B
+-as40r1[2]=F
+-as40r1[3]=E
+-as40r1[image]="kathara/frr"
++core1[0]=A
++core1[1]=B
++core1[2]=F
++core1[3]=E
++core1[image]="kathara/frr"
+ 
+ as50r1[0]=H
+ as50r1[1]=G

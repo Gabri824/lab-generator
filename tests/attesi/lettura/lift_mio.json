@@ -1,4 +1,126 @@
 {
+ "collect_lab_ips": [
+  {
+   "iface": "eth0",
+   "ip": "1.0.0.1",
+   "name": "as100r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "1.0.0.9",
+   "name": "as100r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "10.0.13.1",
+   "name": "as10r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "10.0.12.1",
+   "name": "as10r1"
+  },
+  {
+   "iface": "eth2",
+   "ip": "10.1.0.1",
+   "name": "as10r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "10.2.0.1",
+   "name": "as10r2"
+  },
+  {
+   "iface": "eth1",
+   "ip": "10.0.12.2",
+   "name": "as10r2"
+  },
+  {
+   "iface": "eth2",
+   "ip": "10.0.23.2",
+   "name": "as10r2"
+  },
+  {
+   "iface": "eth0",
+   "ip": "1.0.0.30",
+   "name": "as10r3"
+  },
+  {
+   "iface": "eth1",
+   "ip": "1.0.0.22",
+   "name": "as10r3"
+  },
+  {
+   "iface": "eth2",
+   "ip": "10.0.23.3",
+   "name": "as10r3"
+  },
+  {
+   "iface": "eth3",
+   "ip": "10.0.13.3",
+   "name": "as10r3"
+  },
+  {
+   "iface": "eth4",
+   "ip": "1.0.0.26",
+   "name": "as10r3"
+  },
+  {
+   "iface": "eth0",
+   "ip": "1.0.0.5",
+   "name": "as200r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "1.0.0.2",
+   "name": "as200r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "1.0.0.6",
+   "name": "as300r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "1.0.0.17",
+   "name": "as300r1"
+  },
+  {
+   "iface": "eth2",
+   "ip": "1.0.0.29",
+   "name": "as300r1"
+  },
+  {
+   "iface": "eth3",
+   "ip": "1.0.0.13",
+   "name": "as300r1"
+  },
+  {
+   "iface": "eth4",
+   "ip": "1.0.0.10",
+   "name": "as300r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "1.0.0.14",
+   "name": "as400r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "1.0.0.25",
+   "name": "as400r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "1.0.0.21",
+   "name": "as500r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "1.0.0.18",
+   "name": "as500r1"
+  }
+ ],
  "dati.leggi_lab": {
   "avvisi_config": [],
   "avvisi_topologia": [],
@@ -1009,8 +1131,9 @@
    }
   ],
   "nome": "lift_mio",
-  "xml": true
+  "xml": false
  },
+ "isole_ospf": [],
  "leggi_dispositivi": {
   "as100r1": {
    "altri_ip": [],
@@ -1318,6 +1441,9 @@
    },
    "as10r1": {
     "asn": "",
+    "igp_networks": [
+     "10.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "10.0.13.1/24",
@@ -1341,6 +1467,9 @@
    },
    "as10r2": {
     "asn": "",
+    "igp_networks": [
+     "10.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "10.2.0.1/24",
@@ -1364,6 +1493,14 @@
    },
    "as10r3": {
     "asn": "10",
+    "bgp_extra_networks": [
+     "10.0.0.0/8",
+     "10.1.0.0/24",
+     "10.2.0.0/24"
+    ],
+    "igp_networks": [
+     "10.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "1.0.0.30/30",

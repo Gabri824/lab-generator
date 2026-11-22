@@ -1,0 +1,49 @@
+
+=== Riepilogo configurazione ===
+
+✅ Controllo topologia: LAN e subnet coerenti.
+✅ Controlli: nessuna dimenticanza trovata.
+
+as10r1 (AS10)   [bgp]
+  network BGP: 192.168.0.0/30, 110.0.0.0/24
+  192.168.0.2     as40r1     AS40    eBGP  in : prefix-list deny 160.0.0.0/24; permit any
+
+as20r1 (AS20)   [bgp]
+  network BGP: 192.168.0.8/30, 192.168.0.4/30
+  192.168.0.10    as50r1     AS50    eBGP  nessuna policy
+  192.168.0.6     as40r1     AS40    eBGP  nessuna policy
+
+as30r1 (AS30)   [bgp]
+  network BGP: 192.168.0.12/30, 130.0.0.0/24
+  192.168.0.14    as50r1     AS50    eBGP  in : prefix-list deny 180.0.0.0/24; permit any
+
+as40r1 (AS40)   [bgp]
+  network BGP: 192.168.0.0/30, 192.168.0.4/30, 192.168.0.24/30, 192.168.0.28/30
+  192.168.0.1     as10r1     AS10    eBGP  nessuna policy
+  192.168.0.5     as20r1     AS20    eBGP  nessuna policy
+  192.168.0.25    as70r1     AS70    eBGP  nessuna policy
+  192.168.0.29    as80r1     AS80    eBGP  nessuna policy
+
+as50r1 (AS50)   [bgp]
+  network BGP: 192.168.0.16/30, 192.168.0.20/30, 192.168.0.8/30, 192.168.0.12/30
+  192.168.0.9     as20r1     AS20    eBGP  nessuna policy
+  192.168.0.13    as30r1     AS30    eBGP  nessuna policy
+  192.168.0.17    as60r1     AS60    eBGP  nessuna policy
+  192.168.0.21    as70r1     AS70    eBGP  in : route-map local-preference 110 su tutte
+
+as60r1 (AS60)   [bgp]
+  network BGP: 192.168.0.16/30, 160.0.0.0/24
+  192.168.0.18    as50r1     AS50    eBGP  in : prefix-list deny 110.0.0.0/24; permit any
+
+as70r1 (AS70)   [bgp]
+  network BGP: 192.168.0.24/30, 192.168.0.20/30
+  192.168.0.26    as40r1     AS40    eBGP  nessuna policy
+  192.168.0.22    as50r1     AS50    eBGP  nessuna policy
+
+as80r1 (AS80)   [bgp]
+  network BGP: 192.168.0.28/30, 180.0.0.0/24
+  192.168.0.30    as40r1     AS40    eBGP  in : prefix-list deny 130.0.0.0/24; permit any
+
+Controlla ogni frase del testo: filtri (deny), preferenze (local-preference), MED (metric), network annunciate, costi OSPF, gateway e resolver dei pc, deleghe DNS.
+
+[copie di sicurezza create: 0]

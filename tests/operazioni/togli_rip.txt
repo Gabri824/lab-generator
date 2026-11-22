@@ -1,0 +1,6 @@
+# RIP tolto da un router BGP+RIP
+@lab garden_umbrella_mio
+@chiama modifica_protocolli as6r1
+t
+2
+s

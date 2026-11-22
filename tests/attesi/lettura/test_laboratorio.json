@@ -1,4 +1,36 @@
 {
+ "collect_lab_ips": [
+  {
+   "iface": "eth0",
+   "ip": "10.0.0.1",
+   "name": "r1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "20.0.0.1",
+   "name": "r1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "10.0.0.2",
+   "name": "r2"
+  },
+  {
+   "iface": "eth1",
+   "ip": "30.0.0.1",
+   "name": "r2"
+  },
+  {
+   "iface": "eth0",
+   "ip": "20.0.0.2",
+   "name": "r3"
+  },
+  {
+   "iface": "eth0",
+   "ip": "30.0.0.2",
+   "name": "r4"
+  }
+ ],
  "dati.leggi_lab": {
   "avvisi_config": [
    "r1 (frr.conf riga 23): la prefix-list peer_r2_out non è definita: FRR non dà errori e la sessione resta Established, ma verso 10.0.0.2 non passa nessuna rotta. Tutte le sue righe sono scartate: correggile.",
@@ -440,8 +472,9 @@
    }
   ],
   "nome": "test_laboratorio",
-  "xml": true
+  "xml": false
  },
+ "isole_ospf": [],
  "leggi_dispositivi": {
   "r1": {
    "altri_ip": [],

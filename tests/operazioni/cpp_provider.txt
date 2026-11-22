@@ -1,0 +1,12 @@
+# Customer-Provider-Peer: il vicino è il provider
+@lab candy_test
+@chiama policies_menu
+5
+as10r1
+as40r1
+1
+1
+110.0.0.0/24
+
+s
+0

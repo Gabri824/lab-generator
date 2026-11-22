@@ -1,0 +1,10 @@
+# OSPF aggiunto in un'area stub a un router BGP
+@lab candy_test
+@chiama modifica_protocolli as20r1
+a
+1
+
+
+1.1.1.1
+s
+s

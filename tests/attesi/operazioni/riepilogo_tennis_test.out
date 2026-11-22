@@ -1,0 +1,77 @@
+
+=== Riepilogo configurazione ===
+
+✅ Controllo topologia: LAN e subnet coerenti.
+✅ Controlli: nessuna dimenticanza trovata.
+
+as1r1 (AS1)   [bgp]
+  network BGP: 10.1.0.0/30, 1.20.0.0/30, 1.0.0.0/8
+  10.1.0.1        as10r1     AS10    eBGP  nessuna policy
+  1.20.0.2        as20r2     AS20    eBGP  nessuna policy
+
+as2r1 (AS2)   [bgp rip]
+  RIP: 2.0.0.0/8   redistribute connected
+  network BGP: 2.20.4.4/30, 2.0.0.0/8
+  2.20.4.6        as20r4     AS20    eBGP  nessuna policy
+  2.0.0.2         as2r2      AS2     iBGP  nessuna policy
+
+as2r2 (AS2)   [bgp rip]
+  RIP: 2.0.0.0/8   redistribute connected, bgp
+  network BGP: 2.20.0.0/30, 2.0.0.0/8
+  2.20.0.1        as20r1     AS20    eBGP  in : route-map local-preference 150 su tutte
+                                       out: route-map metric 20 su tutte
+  2.1.0.1         as2r1      AS2     iBGP  nessuna policy
+
+as2r3   [rip]
+  RIP: 2.0.0.0/8   redistribute connected
+
+as20r1 (AS20)   [bgp ospf]
+  OSPF: 20.0.0.0/8 area 0.0.0.0   redistribute connected, bgp   auto-cost 100
+  network BGP: 2.20.0.0/30, 20.0.0.0/8
+  2.20.0.2        as2r2      AS2     eBGP  nessuna policy
+  20.1.0.2        as20r2     AS20    iBGP  nessuna policy
+  20.4.0.4        as20r4     AS20    iBGP  nessuna policy
+  20.3.0.3        as20r3     AS20    iBGP  nessuna policy
+
+as20r2 (AS20)   [bgp ospf]
+  OSPF: 20.0.0.0/8 area 0.0.0.0   redistribute connected, bgp   auto-cost 100
+  costo OSPF: eth1 90
+  network BGP: 1.20.0.0/30, 20.0.0.0/8
+  1.20.0.1        as1r1      AS1     eBGP  nessuna policy
+  20.1.0.1        as20r1     AS20    iBGP  nessuna policy
+  20.2.0.3        as20r3     AS20    iBGP  nessuna policy
+  20.4.0.4        as20r4     AS20    iBGP  nessuna policy
+
+as20r3 (AS20)   [bgp ospf]
+  OSPF: 20.0.0.0/8 area 0.0.0.0   redistribute connected, bgp   auto-cost 100
+  costo OSPF: eth1 90
+  network BGP: 10.20.0.0/30, 20.0.0.0/8
+  20.2.0.2        as20r2     AS20    iBGP  nessuna policy
+  20.3.0.4        as20r4     AS20    iBGP  nessuna policy
+  10.20.0.1       as10r1     AS10    eBGP  nessuna policy
+  20.1.0.1        as20r1     AS20    iBGP  nessuna policy
+
+as20r4 (AS20)   [bgp ospf]
+  OSPF: 20.0.0.0/8 area 0.0.0.0   redistribute connected, bgp   auto-cost 100
+  network BGP: 2.20.4.4/30, 20.0.0.0/8
+  2.20.4.5        as2r1      AS2     eBGP  nessuna policy
+  20.4.0.1        as20r1     AS20    iBGP  nessuna policy
+  20.3.0.3        as20r3     AS20    iBGP  nessuna policy
+  20.1.0.2        as20r2     AS20    iBGP  nessuna policy
+
+as10r1 (AS10)   [bgp]
+  network BGP: 10.20.0.0/30, 10.1.0.0/30, 10.0.0.0/8
+  10.1.0.2        as1r1      AS1     eBGP  in : route-map local-preference 150 su tutte
+  10.20.0.2       as20r3     AS20    eBGP  nessuna policy
+
+--- Host e server ---
+pc        host  10.0.0.2/24 (LAN P)   gw 10.0.0.1 (as10r1)   resolver 1.0.0.2 (ns_local)
+web_srv   www   2.2.0.2/24 (LAN A)   gw 2.2.0.3 (as2r3)   apache2 avviato
+ns_com    dns   20.1.0.3/24 (LAN G)   gw 20.1.0.1 (as20r1)   zone: . (hint), com (master)
+ns_local  dns   1.0.0.2/24 (LAN N)   gw 1.0.0.1 (as1r1)   zone: . (hint)
+root      dns   20.3.0.2/24 (LAN H)   gw 20.3.0.3 (as20r3)   zone: . (master)
+                delega com -> dns.com 20.1.0.3 (ns_com)
+
+Controlla ogni frase del testo: filtri (deny), preferenze (local-preference), MED (metric), network annunciate, costi OSPF, gateway e resolver dei pc, deleghe DNS.
+
+[copie di sicurezza create: 0]

@@ -1,0 +1,31 @@
+
+--- Aggiungi loopback ad un dispositivo ---
+
+Seleziona il dispositivo su cui aggiungere la loopback:
+
+  1) rxa4 (router, ASN: 7)
+  2) rdy8 (router, ASN: 8)
+  3) rabe1 (router, ASN: 100)
+  4) rbc2 (router, ASN: )
+  5) rcdf3 (router, ASN: 100)
+  6) reg4 (router, ASN: )
+  7) rgf5 (router, ASN: )
+
+Seleziona il dispositivo (numero o nome, vuoto per annullare): rabe1
+IP loopback (es. 1.2.3.4): 2.2.2.22
+
+--- Loopback 2.2.2.22/32 su rabe1: anteprima (2 file) ---
+  rabe1.startup
+    + riga   6: ip address add 2.2.2.22/32 dev lo
+  rabe1/etc/frr/frr.conf
+    + riga  18: network 2.2.2.22/32
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/smile_test/AAAAMMGG-HHMMSS
+   (i controlli dell'opzione 8 danno lo stesso esito di prima)
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+
+
+✅ Loopback 2.2.2.22/32 aggiunta a router rabe1 (startup aggiornato).
+
+[copie di sicurezza create: 1]

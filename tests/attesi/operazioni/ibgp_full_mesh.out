@@ -1,0 +1,27 @@
+
+--- Aggiungi sessioni iBGP (full mesh nell'AS) ---
+
+AS con più router BGP:
+
+  1) AS2: as2r1, as2r5
+
+Seleziona l'AS (numero nella lista o numero AS, vuoto per annullare): 2
+⚠️ Controlla il testo: alcuni esercizi vietano l'iBGP (es. butterfly).
+
+--- Sessioni iBGP nell'AS 2: anteprima (2 file) ---
+  as2r1/etc/frr/frr.conf
+    + riga  33: neighbor 2.3.0.5 remote-as 2
+    + riga  34: neighbor 2.3.0.5 description iBGP as2r5
+  as2r5/etc/frr/frr.conf
+    + riga  34: neighbor 2.4.0.1 remote-as 2
+    + riga  35: neighbor 2.4.0.1 description iBGP as2r1
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/galaxy_mio/AAAAMMGG-HHMMSS
+   ✔ risolto: AS2: sessioni iBGP mancanti (as2r1 -> as2r5; as2r5 -> as2r1). Se il testo le chiede -> Opzioni 7; se le vieta (es. butterfly) va bene così.
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+✅ as2r1: 2.3.0.5
+✅ as2r5: 2.4.0.1
+Sessioni iBGP aggiunte: 2
+
+[copie di sicurezza create: 1]

@@ -1,0 +1,31 @@
+--- prima/as10r1/etc/frr/daemons
++++ dopo/as10r1/etc/frr/daemons
+@@ -1,6 +1,6 @@
+ zebra=yes 
+ ripd=no
+-ospfd=no
++ospfd=yes
+ bgpd=yes
+ 
+ ospf6d=no
+--- prima/as10r1/etc/frr/frr.conf
++++ dopo/as10r1/etc/frr/frr.conf
+@@ -6,6 +6,13 @@
+ debug bgp keepalives
+ debug bgp updates in
+ debug bgp updates out
++
++router ospf
++
++    network 110.0.0.0/8 area 0.0.0.0
++
++    redistribute connected
++    redistribute bgp
+ 
+ router bgp 10
+ 
+@@ -21,4 +28,3 @@
+     neighbor 192.168.0.2 prefix-list PL_as10r1_192_168_0_2_in in
+ ip prefix-list PL_as10r1_192_168_0_2_in deny 160.0.0.0/24
+ ip prefix-list PL_as10r1_192_168_0_2_in permit any
+-

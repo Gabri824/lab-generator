@@ -1,0 +1,39 @@
+
+Protocolli attivi su r1: ospf
+a = aggiungi un protocollo, t = togli un protocollo, Invio = annulla: a
+
+Protocollo:
+
+  1) BGP
+  2) RIP
+
+Numero (Invio = annulla): 1
+Numero AS di r1: 20
+Network BGP da annunciare (Invio = 20.20.1.0/24, 20.20.2.0/24, 20.20.5.0/24): 
+Iniettare in OSPF le rotte imparate da BGP (redistribute bgp)? (S/n): 
+
+--- Aggiungi BGP a r1: anteprima (2 file) ---
+  r1/etc/frr/daemons
+    - riga   4: bgpd=no
+    + riga   4: bgpd=yes
+  r1/etc/frr/frr.conf
+    + riga   5: 
+    + riga   6: debug bgp keepalives
+    + riga   7: debug bgp updates in
+    + riga   8: debug bgp updates out
+    + riga  16: redistribute bgp
+    + riga  18: router bgp 20
+    + riga  19: 
+    + riga  20: no bgp ebgp-requires-policy
+    + riga  21: no bgp network import-check
+    + riga  22: 
+    + riga  23: network 20.20.1.0/24
+    + riga  24: network 20.20.2.0/24
+    + riga  25: network 20.20.5.0/24
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/papillon_mio/AAAAMMGG-HHMMSS
+   ⚠️ nuovo: AS20: sessioni iBGP mancanti (r1 -> r3; r3 -> r1). Se il testo le chiede -> Opzioni 7; se le vieta (es. butterfly) va bene così.
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+
+[copie di sicurezza create: 1]

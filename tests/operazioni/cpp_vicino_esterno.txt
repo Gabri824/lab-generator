@@ -1,0 +1,12 @@
+# Customer-Provider-Peer verso un vicino fuori dal lab (nome, IP e AS scritti a mano)
+@lab candy_test
+@chiama policies_menu
+5
+as30r1
+
+esterno
+9.9.9.9
+999
+2
+s
+0

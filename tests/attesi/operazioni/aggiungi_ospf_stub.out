@@ -1,0 +1,35 @@
+
+Protocolli attivi su as20r1: bgp
+a = aggiungi un protocollo, t = togli un protocollo, Invio = annulla: a
+
+Protocollo:
+
+  1) OSPF
+  2) RIP
+
+Numero (Invio = annulla): 1
+Network OSPF da annunciare, separate da virgola (Invio = 192.0.0.0/8): 
+Iniettare in OSPF le rotte imparate da BGP (redistribute bgp)? (S/n): 
+Area OSPF (Invio = 0.0.0.0): 1.1.1.1
+Area stub? (s/N): s
+
+--- Aggiungi OSPF a as20r1: anteprima (2 file) ---
+  as20r1/etc/frr/daemons
+    - riga   3: ospfd=no
+    + riga   3: ospfd=yes
+  as20r1/etc/frr/frr.conf
+    + riga   9: 
+    + riga  10: router ospf
+    + riga  11: 
+    + riga  12: network 192.0.0.0/8 area 1.1.1.1
+    + riga  13: area 1.1.1.1 stub
+    + riga  14: 
+    + riga  15: redistribute connected
+    + riga  16: redistribute bgp
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/candy_test/AAAAMMGG-HHMMSS
+   (i controlli dell'opzione 8 danno lo stesso esito di prima)
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+
+[copie di sicurezza create: 1]

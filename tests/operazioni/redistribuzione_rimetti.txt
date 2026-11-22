@@ -1,0 +1,7 @@
+# Rimetti 'redistribute bgp' in RIP su un router che non l'ha
+@lab tennis_test
+@chiama menu_ridistribuzione
+2
+as2r1
+s
+0

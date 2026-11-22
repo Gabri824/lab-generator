@@ -1,0 +1,14 @@
+--- prima/lab.conf
++++ dopo/lab.conf
+@@ -35,3 +35,6 @@
+ 
+ server[0]=L
+ server[image]="kathara/base"
++
++pc2[0]=A
++pc2[image]="kathara/base"
+--- /dev/null
++++ dopo/pc2.startup
+@@ -0,0 +1,2 @@
++ip address add 20.20.1.20/24 dev eth0
++ip route add default via 20.20.1.1 dev eth0

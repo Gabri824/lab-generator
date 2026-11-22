@@ -1,9 +1,98 @@
 {
+ "collect_lab_ips": [
+  {
+   "iface": "eth0",
+   "ip": "100.1.4.1",
+   "name": "rabe1"
+  },
+  {
+   "iface": "eth1",
+   "ip": "50.7.1.1",
+   "name": "rabe1"
+  },
+  {
+   "iface": "eth2",
+   "ip": "100.1.2.1",
+   "name": "rabe1"
+  },
+  {
+   "iface": "lo",
+   "ip": "2.2.2.2",
+   "name": "rabe1"
+  },
+  {
+   "iface": "eth0",
+   "ip": "100.1.2.2",
+   "name": "rbc2"
+  },
+  {
+   "iface": "eth1",
+   "ip": "100.2.3.2",
+   "name": "rbc2"
+  },
+  {
+   "iface": "eth0",
+   "ip": "100.3.5.3",
+   "name": "rcdf3"
+  },
+  {
+   "iface": "eth1",
+   "ip": "100.2.3.3",
+   "name": "rcdf3"
+  },
+  {
+   "iface": "eth2",
+   "ip": "50.3.8.3",
+   "name": "rcdf3"
+  },
+  {
+   "iface": "lo",
+   "ip": "3.3.3.3",
+   "name": "rcdf3"
+  },
+  {
+   "iface": "eth0",
+   "ip": "8.8.8.8",
+   "name": "rdy8"
+  },
+  {
+   "iface": "eth1",
+   "ip": "50.3.8.8",
+   "name": "rdy8"
+  },
+  {
+   "iface": "eth0",
+   "ip": "100.1.4.4",
+   "name": "reg4"
+  },
+  {
+   "iface": "eth1",
+   "ip": "100.4.5.4",
+   "name": "reg4"
+  },
+  {
+   "iface": "eth0",
+   "ip": "100.4.5.5",
+   "name": "rgf5"
+  },
+  {
+   "iface": "eth1",
+   "ip": "100.3.5.5",
+   "name": "rgf5"
+  },
+  {
+   "iface": "eth0",
+   "ip": "7.7.7.7",
+   "name": "rxa4"
+  },
+  {
+   "iface": "eth1",
+   "ip": "50.7.1.7",
+   "name": "rxa4"
+  }
+ ],
  "dati.leggi_lab": {
-  "avvisi_config": [
-   "rabe1 (frr.conf riga 33): la prefix-list myNeighbors è definita ma non è usata da nessuna parte (nome scritto diverso dove dovrebbe essere usata?).",
-   "rcdf3 (frr.conf riga 33): la prefix-list myNeighbors è definita ma non è usata da nessuna parte (nome scritto diverso dove dovrebbe essere usata?)."
-  ],
+  "avvisi_config": [],
   "avvisi_topologia": [],
   "dispositivi": [
    {
@@ -118,14 +207,7 @@
      ],
      "redistribute_bgp": []
     },
-    "riferimenti_frr": [
-     {
-      "gravita": "avviso",
-      "messaggio": "la prefix-list myNeighbors è definita ma non è usata da nessuna parte (nome scritto diverso dove dovrebbe essere usata?).",
-      "riga": 33,
-      "testo": "prefix-list myNeighbors"
-     }
-    ],
+    "riferimenti_frr": [],
     "tipo": "router",
     "zone": []
    },
@@ -310,14 +392,7 @@
      ],
      "redistribute_bgp": []
     },
-    "riferimenti_frr": [
-     {
-      "gravita": "avviso",
-      "messaggio": "la prefix-list myNeighbors è definita ma non è usata da nessuna parte (nome scritto diverso dove dovrebbe essere usata?).",
-      "riga": 33,
-      "testo": "prefix-list myNeighbors"
-     }
-    ],
+    "riferimenti_frr": [],
     "tipo": "router",
     "zone": []
    },
@@ -671,8 +746,9 @@
    }
   ],
   "nome": "smile_test",
-  "xml": true
+  "xml": false
  },
+ "isole_ospf": [],
  "leggi_dispositivi": {
   "rabe1": {
    "altri_ip": [],
@@ -902,6 +978,14 @@
   "routers": {
    "rabe1": {
     "asn": "100",
+    "bgp_extra_networks": [
+     "100.0.0.0/8",
+     "2.2.2.2/32"
+    ],
+    "igp_networks": [
+     "100.0.0.0/8",
+     "2.2.2.2/32"
+    ],
     "interfaces": [
      {
       "ip": "100.1.4.1/24",
@@ -919,6 +1003,9 @@
       "name": "eth2"
      }
     ],
+    "loopbacks": [
+     "2.2.2.2/32"
+    ],
     "protocols": [
      "bgp",
      "rip"
@@ -926,6 +1013,9 @@
    },
    "rbc2": {
     "asn": "",
+    "igp_networks": [
+     "100.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "100.1.2.2/24",
@@ -944,6 +1034,14 @@
    },
    "rcdf3": {
     "asn": "100",
+    "bgp_extra_networks": [
+     "100.0.0.0/8",
+     "3.3.3.3/32"
+    ],
+    "igp_networks": [
+     "100.0.0.0/8",
+     "3.3.3.3/32"
+    ],
     "interfaces": [
      {
       "ip": "100.3.5.3/24",
@@ -961,6 +1059,9 @@
       "name": "eth2"
      }
     ],
+    "loopbacks": [
+     "3.3.3.3/32"
+    ],
     "protocols": [
      "bgp",
      "rip"
@@ -968,6 +1069,9 @@
    },
    "rdy8": {
     "asn": "8",
+    "bgp_extra_networks": [
+     "8.8.8.0/24"
+    ],
     "interfaces": [
      {
       "ip": "8.8.8.8/25",
@@ -986,6 +1090,9 @@
    },
    "reg4": {
     "asn": "",
+    "igp_networks": [
+     "100.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "100.1.4.4/24",
@@ -1004,6 +1111,9 @@
    },
    "rgf5": {
     "asn": "",
+    "igp_networks": [
+     "100.0.0.0/8"
+    ],
     "interfaces": [
      {
       "ip": "100.4.5.5/24",
@@ -1022,6 +1132,9 @@
    },
    "rxa4": {
     "asn": "7",
+    "bgp_extra_networks": [
+     "7.7.7.0/24"
+    ],
     "interfaces": [
      {
       "ip": "7.7.7.7/25",

@@ -29,6 +29,7 @@ from gui import dati  # noqa: E402
 
 FIXTURE_LABS = os.path.join(TESTS, 'fixtures', 'labs')
 SCENARI = os.path.join(TESTS, 'scenari')
+OPERAZIONI = os.path.join(TESTS, 'operazioni')
 ATTESI = os.path.join(TESTS, 'attesi')
 
 # Variabile d'ambiente con il percorso di esercizi/lab-bgp (soluzioni ufficiali, fuori dalla repo)
@@ -134,13 +135,22 @@ def produci_lettura(lab_path):
             _, routers, hosts, wwws, lab_conf = core.load_lab_from_xml(xml)
             dispositivi = core.leggi_dispositivi(copia)
             gui = dati.leggi_lab(core, copia)
+            ips = sorted(core.collect_lab_ips(copia), key=lambda e: (e['name'], str(e['iface']), e['ip']))
+            isole = [(et, rs) for et, rs, _ in core.isole_ospf(copia)]
         dato = {
             'rebuild_lab_metadata_and_export': {
                 'routers': routers, 'hosts': hosts, 'wwws': wwws, 'lab_conf': lab_conf},
             'leggi_dispositivi': dispositivi,
             'dati.leggi_lab': gui,
+            'collect_lab_ips': ips,
+            'isole_ospf': isole,
         }
         return _json(dato, copia)
+
+
+def produci_stato(lab_path):
+    """Il modello del lettore unico (core/stato.py), senza i testi dei file, come testo JSON."""
+    return _json(core.senza_testi(core.leggi_stato(lab_path)), lab_path)
 
 
 # ---------------------------------------------------------------- rigenerazione
@@ -178,6 +188,23 @@ def produci_diff_opzioni(lab_path, rigenerato):
             'rigenerato/' + rel if a is not None else '/dev/null',
             'reale/' + rel if b is not None else '/dev/null', lineterm='')
     return '\n'.join(righe) + ('\n' if righe else '')
+
+
+def produci_andata_ritorno(lab_dir):
+    """Rigenera l'XML dai file del lab, ricrea il lab da quell'XML e restituisce (originale, ricreato)."""
+    nome = os.path.basename(os.path.normpath(lab_dir))
+    with tempfile.TemporaryDirectory() as tmp:
+        lab = os.path.join(tmp, 'originale', nome)
+        shutil.copytree(lab_dir, lab)
+        for f in os.listdir(lab):
+            if f.endswith('.xml'):
+                os.remove(os.path.join(lab, f))
+        with silenzio():
+            xml = core.rebuild_lab_metadata_and_export(lab)
+            n, routers, hosts, wwws, lab_conf = core.load_lab_from_xml(xml)
+            out = core.recreate_lab_from_data(n, os.path.join(tmp, 'ricreato'), routers, hosts, wwws,
+                                              lab_conf_text=lab_conf, resolver=core.leggi_resolver(xml))
+        return leggi_albero(lab_dir, escludi_xml=True), leggi_albero(out, escludi_xml=True)
 
 
 # ---------------------------------------------------------------- scenari del wizard
@@ -219,6 +246,127 @@ def produci_scenario(nome):
             return leggi_albero(os.path.join(tmp, nome))
     finally:
         builtins.input = vero_input
+
+
+# ---------------------------------------------------------------- operazioni del menu Opzioni
+
+# come chiamare ogni funzione: (lab, routers dell'XML, argomenti dello scenario)
+CHIAMATE = {
+    'modifica_ip_interfaccia': lambda f, lab, r, a: f(lab, r, *a),
+    'rinumera_lan_menu': lambda f, lab, r, a: f(lab, r, *a),
+    'sposta_interfaccia': lambda f, lab, r, a: f(lab, r, *a),
+    'cambia_gateway': lambda f, lab, r, a: f(lab, r, *a),
+    'cambia_as': lambda f, lab, r, a: f(lab, r, *a),
+    'modifica_protocolli': lambda f, lab, r, a: f(lab, r, *a),
+    'modifica_righe': lambda f, lab, r, a: f(lab, r, *a),
+    'aggiungi_default_originate': lambda f, lab, r, a: f(lab, r),
+    'aggiungi_default_igp': lambda f, lab, r, a: f(lab, *a),
+    'assegna_costo_interfaccia': lambda f, lab, r, a: f(lab, r),
+    'imposta_auto_cost': lambda f, lab, r, a: f(lab),
+    'aggiungi_loopback_menu': lambda f, lab, r, a: f(lab, r),
+    'aggiungi_network_bgp': lambda f, lab, r, a: f(lab, r),
+    'aggiungi_ibgp_full_mesh': lambda f, lab, r, a: f(lab, r),
+    'menu_ridistribuzione': lambda f, lab, r, a: f(lab, r),
+    'assegna_resolv_conf': lambda f, lab, r, a: f(lab),
+    'aggiungi_delega_dns': lambda f, lab, r, a: f(lab),
+    'policies_menu': lambda f, lab, r, a: f(lab, r),
+    'rinomina_dispositivo': lambda f, lab, r, a: f(lab, r, *a),
+    'menu_dispositivi': lambda f, lab, r, a: f(lab, r),
+    'aggiungi_interfaccia': lambda f, lab, r, a: f(lab, r, *a),
+    'togli_interfaccia': lambda f, lab, r, a: f(lab, r, *a),
+    'riepilogo_configurazione': lambda f, lab, r, a: f(lab, r),
+}
+_RE_ORA = re.compile(r'\b\d{8}-\d{6}\b')
+
+
+def elenco_operazioni():
+    if not os.path.isdir(OPERAZIONI):
+        return []
+    return sorted(f[:-4] for f in os.listdir(OPERAZIONI) if f.endswith('.txt'))
+
+
+def leggi_operazione(nome):
+    """{'lab', 'funzione', 'argomenti', 'risposte'} da tests/operazioni/<nome>.txt.
+
+    '@lab <lab>' e '@chiama <funzione> [argomenti]' indicano cosa eseguire; le altre righe sono
+    le risposte (riga vuota = Invio, '#' all'inizio = commento)."""
+    op = {'risposte': []}
+    with open(os.path.join(OPERAZIONI, nome + '.txt'), encoding='utf-8') as fh:
+        for r in fh:
+            r = r.rstrip('\n')
+            if r.startswith('#'):
+                continue
+            if r.startswith('@lab '):
+                op['lab'] = r.split(None, 1)[1].strip()
+            elif r.startswith('@chiama '):
+                parti = r.split()[1:]
+                op['funzione'], op['argomenti'] = parti[0], parti[1:]
+            else:
+                op['risposte'].append(r)
+    return op
+
+
+def _con_risposte(risposte, eseguire):
+    """Esegue eseguire() rispondendo alle domande con `risposte`; restituisce il testo stampato."""
+    dialogo = []
+
+    def finto_input(prompt=''):
+        if not risposte:
+            raise ScenarioErrato(f"risposte finite alla domanda: {prompt!r}\n" + '\n'.join(dialogo[-10:]))
+        r = risposte.pop(0)
+        dialogo.append(f"{prompt}{r}")
+        print(f"{prompt}{r}")
+        return r
+
+    vero_input = builtins.input
+    builtins.input = finto_input
+    try:
+        with silenzio() as out:
+            eseguire()
+    finally:
+        builtins.input = vero_input
+    stampato = out.getvalue()
+    if '❌' in stampato:
+        riga = next(r for r in stampato.splitlines() if '❌' in r)
+        raise ScenarioErrato(f"una risposta è stata rifiutata: {riga}\n" + '\n'.join(dialogo[-10:]))
+    if risposte:
+        raise ScenarioErrato(f"risposte non usate: {risposte}")
+    return stampato
+
+
+def produci_operazione(nome):
+    """Esegue un'operazione del menu Opzioni su una copia del lab.
+
+    Restituisce (differenze rispetto al lab di partenza, testo stampato), entrambi normalizzati."""
+    op = leggi_operazione(nome)
+    funzione = getattr(core, op['funzione'])
+    with tempfile.TemporaryDirectory() as tmp:
+        lab = os.path.join(tmp, op['lab'])
+        shutil.copytree(os.path.join(FIXTURE_LABS, op['lab']), lab)
+        prima = leggi_albero(lab)
+        # come il menu Opzioni dalla fase 1.6: i router si ricavano dai file, non dall'XML
+        routers = core.routers_dai_file(lab)
+        stampato = _con_risposte(
+            list(op['risposte']), lambda: CHIAMATE[op['funzione']](funzione, lab, routers, op['argomenti']))
+        diff = diff_testo(prima, leggi_albero(lab))
+        copie = os.path.join(tmp, '.backup_labgenerator')
+        stampato = stampato.replace(tmp, '<BASE>')
+        stampato = _RE_ORA.sub('AAAAMMGG-HHMMSS', stampato)
+        n_copie = len(os.listdir(os.path.join(copie, op['lab']))) if os.path.isdir(os.path.join(copie, op['lab'])) else 0
+        stampato += f"\n[copie di sicurezza create: {n_copie}]\n"
+        return diff, stampato
+
+
+def diff_testo(prima, dopo):
+    """Differenze tra due alberi di file come testo unified diff (formato dei file .diff attesi)."""
+    diff = []
+    for rel in sorted(set(prima) | set(dopo)):
+        if prima.get(rel) != dopo.get(rel):
+            diff += difflib.unified_diff(
+                (prima.get(rel) or '').splitlines(), (dopo.get(rel) or '').splitlines(),
+                'prima/' + rel if rel in prima else '/dev/null',
+                'dopo/' + rel if rel in dopo else '/dev/null', lineterm='')
+    return '\n'.join(diff) + ('\n' if diff else '')
 
 
 # ---------------------------------------------------------------- soluzioni ufficiali

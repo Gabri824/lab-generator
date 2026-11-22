@@ -1,0 +1,6 @@
+# Seconda loopback su un router che ha già l'iBGP su loopback
+@lab smile_test
+@chiama aggiungi_loopback_menu
+rabe1
+2.2.2.22
+s

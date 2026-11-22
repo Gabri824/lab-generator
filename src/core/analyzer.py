@@ -10,11 +10,32 @@ import re
 from .cli_io import correggi_nome_kathara, input, nome_kathara_valido
 from .file_utils import _leggi_righe
 from .net_frr import _as_number, _contiene, _norm_net, _strip_cidr
-from .persistence import parse_lab_conf_for_nodes
-from .templates import _RE_APACHE, _RE_GW, _RE_IP_ADD
+from . import stato as stato_mod
 
 
-def collect_lab_ips(lab_path, routers=None):
+
+def _stato(lab_path, stato):
+    return stato if stato is not None else stato_mod.leggi_stato(lab_path)
+
+
+def _nodi(stato):
+    """Come parse_lab_conf_for_nodes, ma dal lettore unico (stesso ordine di lab.conf)."""
+    return {n: {'interfaces': stato['dispositivi'][n]['lab_conf'], 'image': stato['dispositivi'][n]['immagine']}
+            for n in stato['ordine_lab_conf']}
+
+
+def _righe_di(stato, nome, chiave):
+    """Righe di un file del dispositivo letto dal lettore unico ([] se manca)."""
+    d = stato['dispositivi'].get(nome)
+    return stato_mod.righe(d['testi'].get(chiave)) if d else []
+
+
+def _ha_frr(stato, nome):
+    d = stato['dispositivi'].get(nome)
+    return bool(d and d['presenti']['frr_conf'])
+
+
+def collect_lab_ips(lab_path, routers=None, stato=None):
     """Raccoglie gli endpoint del lab: tutti gli IP associati a interfacce."""
     endpoints = []
     seen = set()
@@ -28,6 +49,7 @@ def collect_lab_ips(lab_path, routers=None):
                         seen.add(key)
                         endpoints.append({'ip': ip, 'name': rname, 'iface': iface.get('name')})
 
+    stato = _stato(lab_path, stato)
     try:
         for fname in os.listdir(lab_path):
             if not fname.endswith('.startup'):
@@ -35,24 +57,28 @@ def collect_lab_ips(lab_path, routers=None):
             node_name = fname[:-8]
             fpath = os.path.join(lab_path, fname)
             try:
-                with open(fpath, 'r', encoding='utf-8') as f:
-                    for L in f:
-                        if 'ip address add' in L:
-                            parts = L.strip().split()
-                            if len(parts) >= 4:
-                                ip = _strip_cidr(parts[3])
-                                iface = None
-                                if 'dev' in parts:
-                                    try:
-                                        dev_idx = parts.index('dev')
-                                        if dev_idx + 1 < len(parts):
-                                            iface = parts[dev_idx + 1]
-                                    except Exception:
-                                        iface = None
-                                key = (ip, node_name, iface)
-                                if ip and key not in seen:
-                                    seen.add(key)
-                                    endpoints.append({'ip': ip, 'name': node_name, 'iface': iface})
+                if node_name in stato['dispositivi']:
+                    righe = _righe_di(stato, node_name, 'startup')
+                else:
+                    with open(fpath, 'r', encoding='utf-8') as f:
+                        righe = f.read().split('\n')
+                for L in righe:
+                    if 'ip address add' in L:
+                        parts = L.strip().split()
+                        if len(parts) >= 4:
+                            ip = _strip_cidr(parts[3])
+                            iface = None
+                            if 'dev' in parts:
+                                try:
+                                    dev_idx = parts.index('dev')
+                                    if dev_idx + 1 < len(parts):
+                                        iface = parts[dev_idx + 1]
+                                except Exception:
+                                    iface = None
+                            key = (ip, node_name, iface)
+                            if ip and key not in seen:
+                                seen.add(key)
+                                endpoints.append({'ip': ip, 'name': node_name, 'iface': iface})
             except Exception:
                 continue
     except Exception:
@@ -208,9 +234,10 @@ def _descrivi_route_map(cfg, nome):
     return '; '.join(voci) if voci else '(route-map non definita!)'
 
 
-def controlla_topologia(lab_path):
+def controlla_topologia(lab_path, stato=None):
     """Cerca refusi di LAN/IP leggendo lab.conf e gli startup del lab."""
-    nodes, _ = parse_lab_conf_for_nodes(lab_path)
+    stato = _stato(lab_path, stato)
+    nodes = _nodi(stato)
     avvisi = [
         f"Nome '{n}' non valido per Kathará (solo lettere minuscole, cifre e _): il lab non si "
         f"avvierà. Apri il lab dal menu 5 (Opzioni): propone di rinominarlo in "
@@ -220,7 +247,7 @@ def controlla_topologia(lab_path):
     per_lan = {}
     for node, meta in nodes.items():
         ips = {}
-        for l in _leggi_righe(os.path.join(lab_path, f"{node}.startup")):
+        for l in _righe_di(stato, node, 'startup'):
             m = re.match(r'\s*ip\s+a(?:ddr(?:ess)?)?\s+add\s+(\S+)\s+dev\s+(\S+)', l)
             if m:
                 ips.setdefault(m.group(2), m.group(1))
@@ -258,8 +285,8 @@ def controlla_topologia(lab_path):
     return avvisi
 
 
-def stampa_controllo_topologia(lab_path):
-    avvisi = controlla_topologia(lab_path)
+def stampa_controllo_topologia(lab_path, stato=None):
+    avvisi = controlla_topologia(lab_path, stato)
     if avvisi:
         print("\n⚠️ Controllo topologia: possibili errori di LAN/IP")
         for a in avvisi:
@@ -349,11 +376,12 @@ def riferimenti_frr(righe):
         if m:
             usi.append((n, s, 'access-list', m.group(2), ('neighbor', m.group(1), m.group(3))))
             continue
-        m = re.match(r'match ip address prefix-list (\S+)', s)
+        # 'match ip next-hop' usa una prefix-list o access-list come 'match ip address'
+        m = re.match(r'match ip (?:address|next-hop) prefix-list (\S+)', s)
         if m:
             usi.append((n, s, 'prefix-list', m.group(1), ('match',)))
             continue
-        m = re.match(r'match ip address (\S+)$', s)
+        m = re.match(r'match ip (?:address|next-hop) (\S+)$', s)
         if m:
             usi.append((n, s, 'access-list', m.group(1), ('match',)))
             continue
@@ -433,14 +461,14 @@ def riferimenti_frr(righe):
     return sorted(out, key=lambda x: x['riga'])
 
 
-def isole_ospf(lab_path):
+def isole_ospf(lab_path, stato=None):
     """Domini OSPF del lab: router OSPF collegati da LAN e dello stesso AS."""
-    nodes, _ = parse_lab_conf_for_nodes(lab_path)
+    stato = _stato(lab_path, stato)
+    nodes = _nodi(stato)
     cfg = {}
     for n in nodes:
-        f = os.path.join(lab_path, n, 'etc', 'frr', 'frr.conf')
-        if os.path.exists(f):
-            c = _analizza_frr(_leggi_righe(f))
+        if _ha_frr(stato, n):
+            c = _analizza_frr(_righe_di(stato, n, 'frr_conf'))
             if 'ospf' in c['igp']:
                 cfg[n] = c
     as_di = {n: str(c['asn'] or '') for n, c in cfg.items()}
@@ -474,112 +502,47 @@ def isole_ospf(lab_path):
 
 def _file_bind(lab_path, nome, f):
     """Percorso locale di un file citato in named.conf."""
-    if f.startswith('/'):
-        return os.path.join(lab_path, nome, *f.strip('/').split('/'))
-    return os.path.join(lab_path, nome, 'etc', 'bind', *f.split('/'))
+    return os.path.join(lab_path, *stato_mod._file_bind(nome, f).split('/'))
 
 
-def _zone_bind(lab_path, nome):
+def _zone_bind(lab_path, nome, stato=None):
     """[{'zona', 'tipo', 'file'}] dichiarate in named.conf e named.conf.local."""
-    zone = []
-    for f in ('named.conf', 'named.conf.local'):
-        testo = '\n'.join(_leggi_righe(os.path.join(lab_path, nome, 'etc', 'bind', f)))
-        for m in re.finditer(r'zone\s+"([^"]+)"\s*(?:IN\s*)?\{(.*?)\}\s*;', testo, re.S):
-            t = re.search(r'\btype\s+(\w+)', m.group(2))
-            fl = re.search(r'\bfile\s+"([^"]+)"', m.group(2))
-            zone.append({
-                'zona': m.group(1).rstrip('.').lower() or '.',
-                'tipo': t.group(1) if t else '?',
-                'file': _file_bind(lab_path, nome, fl.group(1)) if fl else None
-            })
-    return zone
+    if stato is None:
+        stato = stato_mod.leggi_stato(lab_path)
+    d = stato['dispositivi'].get(nome)
+    zone = d['dns']['zone'] if d and d['dns'] else []
+    return [{'zona': z['zona'], 'tipo': z['tipo'],
+             'file': os.path.join(lab_path, *z['file'].split('/')) if z['file'] else None} for z in zone]
 
 
-def _nome_assoluto(nome, origine):
-    if nome == '@':
-        return origine or '.'
-    if nome.endswith('.'):
-        return nome.rstrip('.').lower() or '.'
-    return f"{nome}.{origine}".lower() if origine else nome.lower()
+_nome_assoluto = stato_mod._nome_assoluto
 
 
-def _record_dns(path, zona):
-    """[(nome, tipo, valore)] di un file di zona, con i nomi assoluti."""
-    origine = '' if zona == '.' else zona.lower()
-    tipi = ('A', 'NS', 'SOA', 'CNAME', 'MX', 'PTR', 'AAAA', 'TXT')
-    out, ultimo, in_par = [], origine or '.', False
-    for raw in _leggi_righe(path):
-        riga = raw.split(';', 1)[0]
-        if in_par:
-            in_par = ')' not in riga
-            continue
-        if '(' in riga and ')' not in riga:
-            in_par = True
-        m = re.match(r'\s*\$ORIGIN\s+(\S+)', riga)
-        if m:
-            origine = m.group(1).rstrip('.').lower()
-            continue
-        if not riga.strip() or riga.lstrip().startswith('$'):
-            continue
-        tok = riga.split()
-        i = next((k for k, t in enumerate(tok) if t.upper() in tipi), None)
-        if i is None or i + 1 >= len(tok):
-            continue
-        if riga[:1].isspace() or i == 0 or tok[0].upper() == 'IN' or tok[0].isdigit():
-            nome = ultimo
-        else:
-            nome = _nome_assoluto(tok[0], origine)
-        ultimo = nome
-        out.append((nome, tok[i].upper(), tok[i + 1]))
-    return out
+def _record_dns(path, zona, stato=None):
+    """[(nome, tipo, valore)] di un file di zona, con i nomi assoluti (dal lettore unico se c'è)."""
+    if stato is not None:
+        for d in stato['dispositivi'].values():
+            for z in (d['dns'] or {}).get('zone', []):
+                if z['file'] and os.path.join(stato['percorso'], *z['file'].split('/')) == path:
+                    return stato_mod.record_dns(d['testi'].get('zona:' + z['zona']), zona)
+    return stato_mod.record_dns('\n'.join(_leggi_righe(path)) if os.path.exists(path) else None, zona)
 
 
-def leggi_dispositivi(lab_path):
-    """Tutti i dispositivi del lab letti dai file: tipo, interfacce, gateway, resolver, zone DNS, demoni FRR e AS."""
-    nodes, _ = parse_lab_conf_for_nodes(lab_path)
+def leggi_dispositivi(lab_path, stato=None):
+    """Tutti i dispositivi del lab: tipo, interfacce, gateway, resolver, zone DNS, demoni FRR e AS.
+
+    I dati vengono dal lettore unico (core/stato.py); il formato è quello di sempre."""
+    if stato is None:
+        stato = stato_mod.leggi_stato(lab_path)
     disp = {}
-    for nome, meta in sorted(nodes.items()):
-        startup = _leggi_righe(os.path.join(lab_path, f"{nome}.startup"))
-        ips, gw = {}, None
-        for riga in startup:
-            m = _RE_IP_ADD.match(riga)
-            if m:
-                ips.setdefault(m.group(2), []).append(m.group(1))
-            m = _RE_GW.match(riga)
-            if m:
-                gw = (m.group(1) or m.group(2)).split('/')[0]
-        d = os.path.join(lab_path, nome)
-        testo = '\n'.join(startup)
-        frr = os.path.join(d, 'etc', 'frr', 'frr.conf')
-        if os.path.exists(frr) or 'frr' in (meta.get('image') or ''):
-            tipo = 'router'
-        elif os.path.isfile(os.path.join(d, 'etc', 'bind', 'named.conf')) or re.search(r'\bnamed\b', testo):
-            tipo = 'dns'
-        elif os.path.isdir(os.path.join(d, 'var', 'www')) or 'apache2' in testo:
-            tipo = 'www'
-        else:
-            tipo = 'host'
-        interfacce = [
-            {'dev': f"eth{i}", 'idx': i, 'lan': lan, 'ip': (ips.get(f"eth{i}") or [''])[0]}
-            for i, lan in sorted((k, v) for k, v in meta.get('interfaces', {}).items() if isinstance(k, int))
-        ]
-        demoni = re.findall(
-            r'^\s*(bgpd|ospfd|ripd)\s*=\s*yes',
-            '\n'.join(_leggi_righe(os.path.join(d, 'etc', 'frr', 'daemons'))),
-            re.M
-        )
-        cfg = _analizza_frr(_leggi_righe(frr)) if os.path.exists(frr) else None
-        resolv = '\n'.join(_leggi_righe(os.path.join(d, 'etc', 'resolv.conf')))
-        altri_ip = [
-            (dev, ip) for dev, lista in ips.items() for ip in lista
-            if dev != 'lo' and not any(it['dev'] == dev for it in interfacce)
-        ]
+    for nome, d in stato['dispositivi'].items():
         disp[nome] = {
-            'nome': nome, 'tipo': tipo, 'interfacce': interfacce, 'loopback': ips.get('lo', []),
-            'altri_ip': altri_ip, 'gateway': gw, 'apache': bool(_RE_APACHE.search(testo)),
-            'nameserver': re.findall(r'^\s*nameserver\s+(\S+)', resolv, re.M),
-            'zone': _zone_bind(lab_path, nome) if tipo == 'dns' else [],
-            'demoni': demoni, 'asn': (cfg or {}).get('asn'), 'frr': os.path.exists(frr)
+            'nome': nome, 'tipo': d['tipo'], 'interfacce': [dict(it) for it in d['interfacce']],
+            'loopback': list(d['loopback']), 'altri_ip': list(d['altri_ip']), 'gateway': d['gateway'],
+            'apache': d['apache'], 'nameserver': list(d['nameserver']),
+            'zone': _zone_bind(lab_path, nome, stato) if d['tipo'] == 'dns' else [],
+            'demoni': [x for x in d['demoni'] if x in ('bgpd', 'ospfd', 'ripd')],
+            'asn': d['asn'], 'frr': d['presenti']['frr_conf']
         }
     return disp
 
@@ -618,13 +581,13 @@ def _segmenti(disp):
     return {l: radice(l) for l in seg}
 
 
-def _deleghe_dns(d, disp):
+def _deleghe_dns(d, disp, stato=None):
     """[(file, zona_padre, figlia, nameserver, ip_glue)] delle deleghe scritte nelle zone master di d."""
     out = []
     for z in d['zone']:
         if z['tipo'] != 'master' or not z['file']:
             continue
-        rec = _record_dns(z['file'], z['zona'])
+        rec = _record_dns(z['file'], z['zona'], stato)
         a = {}
         for n, t, v in rec:
             if t == 'A':
@@ -637,9 +600,10 @@ def _deleghe_dns(d, disp):
     return out
 
 
-def controlli_host(lab_path, disp=None):
+def controlli_host(lab_path, disp=None, stato=None):
     """Controlli su pc, www e dns: [(dispositivo, messaggio)]."""
-    disp = disp or leggi_dispositivi(lab_path)
+    stato = _stato(lab_path, stato)
+    disp = disp or leggi_dispositivi(lab_path, stato)
     own = _proprietari(disp)
     seg = _segmenti(disp)
     master = {}
@@ -698,7 +662,7 @@ def controlli_host(lab_path, disp=None):
         for z in d['zone']:
             if z['tipo'] not in ('master', 'hint') or not z['file'] or not os.path.isfile(z['file']):
                 continue
-            rec = _record_dns(z['file'], z['zona'])
+            rec = _record_dns(z['file'], z['zona'], stato)
             fname = os.path.basename(z['file'])
             if z['tipo'] == 'hint':
                 ns = {_nome_assoluto(v, '') for nn, t, v in rec if t == 'NS'}
@@ -717,7 +681,7 @@ def controlli_host(lab_path, disp=None):
                             ))
                 continue
             glue = set()
-            for _f, padre, figlia, nsn, ip in _deleghe_dns({'zone': [z]}, disp):
+            for _f, padre, figlia, nsn, ip in _deleghe_dns({'zone': [z]}, disp, stato):
                 if ip is None:
                     continue
                 glue.add((nsn, ip))
@@ -739,9 +703,10 @@ def controlli_host(lab_path, disp=None):
     return out
 
 
-def stampa_host_e_server(lab_path, disp=None):
+def stampa_host_e_server(lab_path, disp=None, stato=None):
     """Riepilogo di pc, www e dns: IP e LAN, gateway, resolver, apache2, zone e deleghe."""
-    disp = disp or leggi_dispositivi(lab_path)
+    stato = _stato(lab_path, stato)
+    disp = disp or leggi_dispositivi(lab_path, stato)
     altri = [d for d in disp.values() if d['tipo'] != 'router']
     if not altri:
         return
@@ -767,19 +732,20 @@ def stampa_host_e_server(lab_path, disp=None):
         if d['zone']:
             parti.append('zone: ' + ', '.join(f"{z['zona']} ({z['tipo']})" for z in d['zone']))
         print('   '.join(parti))
-        for _f, padre, figlia, ns, ip in _deleghe_dns(d, disp):
+        for _f, padre, figlia, ns, ip in _deleghe_dns(d, disp, stato):
             print(
                 f"{'':<{larg}}        delega {figlia} -> {ns} {ip or '(senza glue)'}"
                 + (f" ({chi(ip)})" if ip else '')
             )
 
 
-def controlli_configurazione(lab_path):
+def controlli_configurazione(lab_path, stato=None):
     """Cerca le dimenticanze tipiche leggendo solo i file del lab."""
-    nodes, _ = parse_lab_conf_for_nodes(lab_path)
+    stato = _stato(lab_path, stato)
+    nodes = _nodi(stato)
     ips, rotte, default_statica = {}, {}, {}
     for node in nodes:
-        for l in _leggi_righe(os.path.join(lab_path, f"{node}.startup")):
+        for l in _righe_di(stato, node, 'startup'):
             m = re.match(r'\s*ip\s+a(?:ddr(?:ess)?)?\s+add\s+(\S+)\s+dev\s+(\S+)', l)
             if m:
                 try:
@@ -792,9 +758,8 @@ def controlli_configurazione(lab_path):
                     default_statica[node] = True
     cfg = {}
     for node in nodes:
-        f = os.path.join(lab_path, node, 'etc', 'frr', 'frr.conf')
-        if os.path.exists(f):
-            cfg[node] = _analizza_frr(_leggi_righe(f))
+        if _ha_frr(stato, node):
+            cfg[node] = _analizza_frr(_righe_di(stato, node, 'frr_conf'))
     owner = {str(i.ip): n for (n, _), i in ips.items()}
     lan_membri = {}
     for node, meta in nodes.items():
@@ -890,7 +855,7 @@ def controlli_configurazione(lab_path):
 
     # 4. route-map / prefix-list / access-list usate ma non definite, o definite ma non usate
     for n in sorted(cfg):
-        for x in riferimenti_frr(_leggi_righe(os.path.join(lab_path, n, 'etc', 'frr', 'frr.conf'))):
+        for x in riferimenti_frr(_righe_di(stato, n, 'frr_conf')):
             avvisi.append(f"{n} (frr.conf riga {x['riga']}): {x['messaggio']}")
 
     # 5. host senza gateway
@@ -899,7 +864,7 @@ def controlli_configurazione(lab_path):
             avvisi.append(f"{n}: nessun default gateway, non raggiungerà nulla fuori dalla sua LAN.")
 
     # 6. costi OSPF espliciti senza auto-cost
-    for et, rs, cfgs in isole_ospf(lab_path):
+    for et, rs, cfgs in isole_ospf(lab_path, stato):
         costi = [f"{r} {c}" for r in rs for c in cfgs[r]['costi']]
         senza = [r for r in rs if not cfgs[r]['auto_cost']]
         if costi and senza:
@@ -911,7 +876,7 @@ def controlli_configurazione(lab_path):
             )
 
     # 7. pc, www e dns
-    for n, msg in controlli_host(lab_path):
+    for n, msg in controlli_host(lab_path, stato=stato):
         avvisi.append(f"{n}: {msg}")
 
     # 8. router che generano la default route
@@ -932,8 +897,8 @@ def controlli_configurazione(lab_path):
     return avvisi
 
 
-def stampa_controlli_configurazione(lab_path):
-    avvisi = controlli_configurazione(lab_path)
+def stampa_controlli_configurazione(lab_path, stato=None):
+    avvisi = controlli_configurazione(lab_path, stato)
     if avvisi:
         print("\n⚠️ Controlli: possibili dimenticanze (verifica con il testo)")
         for a in avvisi:
@@ -955,12 +920,12 @@ def riepilogo_configurazione(base_path, routers):
             if it.get('ip'):
                 owner[it['ip'].split('/')[0]] = rn
     print('\n=== Riepilogo configurazione ===')
-    avvisi = stampa_controllo_topologia(base_path) + stampa_controlli_configurazione(base_path)
+    stato = stato_mod.leggi_stato(base_path)
+    avvisi = stampa_controllo_topologia(base_path, stato) + stampa_controlli_configurazione(base_path, stato)
     for rn in routers:
-        fpath = os.path.join(base_path, rn, 'etc', 'frr', 'frr.conf')
-        if not os.path.exists(fpath):
+        if not _ha_frr(stato, rn):
             continue
-        cfg = _analizza_frr(_leggi_righe(fpath))
+        cfg = _analizza_frr(_righe_di(stato, rn, 'frr_conf'))
         protos = ' '.join(routers[rn].get('protocols', []))
         print(f"\n{rn}" + (f" (AS{cfg['asn']})" if cfg['asn'] else '') + f"   [{protos}]")
         for igp in ('ospf', 'rip'):
@@ -1004,8 +969,8 @@ def riepilogo_configurazione(base_path, routers):
                         cosa = f"{t} {nome}"
                     testa = f"  {ip:<15} {chi:<10} AS{asn:<5} {tipo}" if i == 0 else ' ' * 37
                     print(f"{testa}  {direz:<3}: {cosa}")
-    disp = leggi_dispositivi(base_path)
-    stampa_host_e_server(base_path, disp)
+    disp = leggi_dispositivi(base_path, stato)
+    stampa_host_e_server(base_path, disp, stato)
     print(
         "\nControlla ogni frase del testo: filtri (deny), preferenze (local-preference),"
         " MED (metric), network annunciate, costi OSPF, gateway e resolver dei pc, deleghe DNS."

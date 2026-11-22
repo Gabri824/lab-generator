@@ -1,0 +1,30 @@
+
+Protocolli attivi su as6r1: bgp, rip
+a = aggiungi un protocollo, t = togli un protocollo, Invio = annulla: t
+
+Protocollo:
+
+  1) BGP
+  2) RIP
+
+Numero (Invio = annulla): 2
+
+--- Togli RIP da as6r1: anteprima (2 file) ---
+  as6r1/etc/frr/daemons
+    - riga   2: ripd=yes
+    + riga   2: ripd=no
+  as6r1/etc/frr/frr.conf
+    - riga   9: 
+    - riga  10: router rip
+    - riga  11: 
+    - riga  12: network 6.0.0.0/8
+    - riga  13: 
+    - riga  14: redistribute connected
+    - riga  15: redistribute bgp
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/garden_umbrella_mio/AAAAMMGG-HHMMSS
+   (i controlli dell'opzione 8 danno lo stesso esito di prima)
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+
+[copie di sicurezza create: 1]

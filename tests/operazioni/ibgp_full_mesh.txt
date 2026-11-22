@@ -1,0 +1,5 @@
+# Sessioni iBGP mancanti tra i router BGP di un AS
+@lab galaxy_mio
+@chiama aggiungi_ibgp_full_mesh
+2
+s

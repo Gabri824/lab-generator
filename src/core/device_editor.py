@@ -10,6 +10,7 @@ import subprocess
 from .analyzer import _problemi_di, _proprietari, leggi_dispositivi, riferimenti_frr
 from .cli_io import (
     _si,
+    chiedi_aree_ospf,
     asn_valido,
     input,
     input_area,
@@ -18,25 +19,15 @@ from .cli_io import (
     print_menu,
 )
 from .file_utils import (
-    _applica_modifiche,
+    _esegui_piano,
     _avvisi_lab,
     _file_di_testo,
-    _fine_blocco,
-    _inizio_blocco,
-    _inserisci_nel_blocco,
     _righe_file,
-    _set_demone,
     ripristina_copia,
 )
-from .net_frr import (
-    _norm_net,
-    default_igp_networks,
-    mk_bgp_stanza,
-    mk_ospf_stanza,
-    mk_rip_stanza,
-)
-from .persistence import _aggiorna_xml, _xml_sostituisci
-from .templates import _FRR_GLOBALI, _RE_GW, _RE_IP_ADD, _RE_TOKEN_IP
+from . import operazioni
+from .stato import leggi_stato
+from .templates import _FRR_GLOBALI, _RE_TOKEN_IP
 
 
 def modifica_router_menu(base_path, routers):
@@ -155,7 +146,8 @@ def editor_righe(lab_path, rel):
                 print('Nessuna modifica da salvare.')
                 mostra = False
                 continue
-            if _applica_modifiche(lab_path, {rel: (originali, righe)}, f"Modifica di {rel.replace(os.sep, '/')}"):
+            piano = operazioni.calcola_righe(leggi_stato(lab_path), rel, righe, vecchie=originali)
+            if _esegui_piano(lab_path, piano):
                 originali, storia = _righe_file(path), []
                 righe = list(originali)
             continue
@@ -292,22 +284,14 @@ def _reti_da_controllare(lab_path, modifiche, coppie):
     return avvisi
 
 
-def _esegui_sostituzione(lab_path, routers, ip_map, iface_map, net_map, titolo, extra=None, xml_extra=None):
-    f = _sostituzione_ip(ip_map, iface_map, net_map)
-    modifiche = _piano_sostituzioni(lab_path, f)
-    for rel, (v, n) in (extra or {}).items():
-        modifiche[rel] = (v, [f(x) for x in n])
-    coppie = [(ipaddress.ip_network(a), ipaddress.ip_network(b)) for a, b in net_map.items()]
-    note = _reti_da_controllare(lab_path, modifiche, coppie) if coppie else []
-    if not _applica_modifiche(lab_path, modifiche, titolo, note):
+def _esegui_piano_dispositivo(lab_path, routers, calcolo):
+    """Calcola (gestendo gli errori) ed esegue un piano di core/operazioni.py, XML compreso."""
+    try:
+        piano = calcolo(leggi_stato(lab_path))
+    except operazioni.ErroreOperazione as e:
+        print(e)
         return False
-
-    def trasforma(r, h, w):
-        _xml_sostituisci(f)(r, h, w)
-        if xml_extra:
-            xml_extra(r, h, w)
-    _aggiorna_xml(lab_path, routers, trasforma)
-    return True
+    return _esegui_piano(lab_path, piano, routers)
 
 
 # --- Scelte comuni ---
@@ -420,14 +404,8 @@ def modifica_ip_interfaccia(lab_path, routers, nome):
         if s != '2':
             print('Annullato.')
             return
-    net_map = {str(vecchio.network): str(nuovo.network)} if nuovo.network != vecchio.network and not altri else {}
-    _esegui_sostituzione(
-        lab_path, routers,
-        {str(vecchio.ip): str(nuovo.ip)},
-        {str(vecchio): str(nuovo)},
-        net_map,
-        f"IP di {nome} {it['dev']}: {vecchio} -> {nuovo}"
-    )
+    _esegui_piano_dispositivo(lab_path, routers, lambda st: operazioni.calcola_ip_interfaccia(
+        st, nome, it['dev'], str(nuovo), solo_questo=True))
 
 
 def rinumera_lan_menu(lab_path, routers, nome):
@@ -462,44 +440,31 @@ def rinumera_lan(lab_path, routers, lan, nuova_rete=None, fissi=None):
     if fuori and not _si(f"⚠️ La rete {nuova_rete} contiene già IP di altre LAN ({', '.join(fuori)}). Continuo? (s/N): "):
         print('Annullato.')
         return
-    occupati = {ip for ip, (n, dev, l) in own.items() if l != lan}
-    nuovi = {}
+    stato = leggi_stato(lab_path)
+    scelti = dict(fissi or {})
+    _, _, nuovi = operazioni.proposta_rinumera_lan(stato, lan, nuova_rete, scelti)
     for n, x in membri:
         k, v = (n, x['dev']), ipaddress.ip_interface(x['ip'])
-        if fissi and k in fissi:
-            nuovi[k] = fissi[k]
+        if nuovi[k] is not None:
             continue
-        cand, off = None, int(v.ip) - int(vecchia.network_address)
-        if 0 <= off < nuova_rete.num_addresses:
-            c = ipaddress.ip_interface(f"{ipaddress.ip_address(int(nuova_rete.network_address) + off)}/{nuova_rete.prefixlen}")
-            if not (nuova_rete.prefixlen < 31 and c.ip in (nuova_rete.network_address, nuova_rete.broadcast_address)):
-                cand = c
-        if cand is None or str(cand.ip) in occupati or cand in nuovi.values():
-            while True:
-                cand = _chiedi_nuovo_ip(
-                    f"IP per {n} {x['dev']} in {nuova_rete} (era {v}; Invio = annulla tutto): ",
-                    own, rete=nuova_rete, dentro=nuova_rete,
-                    propri=[str(m['ip']).split('/')[0] for _, m in membri]
-                )
-                if cand is None:
-                    print('Annullato.')
-                    return
-                if cand in nuovi.values():
-                    print(f"❌ {cand.ip} l'hai già dato a un altro dispositivo della LAN.")
-                    continue
-                break
-        nuovi[k] = cand
+        while True:
+            cand = _chiedi_nuovo_ip(
+                f"IP per {n} {x['dev']} in {nuova_rete} (era {v}; Invio = annulla tutto): ",
+                own, rete=nuova_rete, dentro=nuova_rete,
+                propri=[str(m['ip']).split('/')[0] for _, m in membri]
+            )
+            if cand is None:
+                print('Annullato.')
+                return
+            if cand in nuovi.values():
+                print(f"❌ {cand.ip} l'hai già dato a un altro dispositivo della LAN.")
+                continue
+            break
+        nuovi[k] = scelti[k] = cand
     print(f"\nLAN {lan}: {vecchia} -> {nuova_rete}")
     for n, x in membri:
         print(f"   {n:<10} {x['dev']}  {x['ip']} -> {nuovi[(n, x['dev'])]}")
-    vecchi = {(n, x['dev']): ipaddress.ip_interface(x['ip']) for n, x in membri}
-    _esegui_sostituzione(
-        lab_path, routers,
-        {str(vecchi[k].ip): str(nuovi[k].ip) for k in vecchi},
-        {str(vecchi[k]): str(nuovi[k]) for k in vecchi},
-        {str(vecchia): str(nuova_rete)},
-        f"Rete della LAN {lan}: {vecchia} -> {nuova_rete}"
-    )
+    _esegui_piano_dispositivo(lab_path, routers, lambda st: operazioni.calcola_rinumera_lan(st, lan, nuova_rete, scelti))
 
 
 def sposta_interfaccia(lab_path, routers, nome):
@@ -525,20 +490,7 @@ def sposta_interfaccia(lab_path, routers, nome):
     if nuova == it['lan']:
         print('È già su quella LAN.')
         return
-    lc = 'lab.conf'
-    vecchie = _righe_file(os.path.join(lab_path, lc))
-    rx = re.compile(rf'^(\s*{re.escape(nome)}\s*\[\s*{it["idx"]}\s*\]\s*=\s*)(\S+?)(\s*)$')
-    nuove, trovata = [], False
-    for l in vecchie:
-        m = rx.match(l)
-        if m and not trovata:
-            q = '"' if m.group(2).startswith('"') else ''
-            l, trovata = f"{m.group(1)}{q}{nuova}{q}", True
-        nuove.append(l)
-    if not trovata:
-        print(f"Non trovo la riga {nome}[{it['idx']}]=... in lab.conf.")
-        return
-    ip_map, iface_map = {}, {}
+    n_ip = None
     rete = _rete_lan(disp, nuova)
     if it['ip'] and rete and ipaddress.ip_interface(it['ip']).network != rete:
         v = ipaddress.ip_interface(it['ip'])
@@ -547,40 +499,18 @@ def sposta_interfaccia(lab_path, routers, nome):
             f"Nuovo IP in {rete} (Invio = lascia {v}): ",
             own, rete=rete, dentro=rete, propri=(str(v.ip),)
         )
-        if n_ip:
-            ip_map, iface_map = {str(v.ip): str(n_ip.ip)}, {str(v): str(n_ip)}
-    if len(_membri_lan(disp, it['lan'])) == 1:
-        print(f"Nota: la LAN {it['lan']} resterà senza dispositivi.")
-
-    def xml_lan(r, h, w):
-        for dati in [r.get(nome)] + [x for x in h + w if x.get('name') == nome]:
-            if not dati:
-                continue
-            for i in dati.get('interfaces') or []:
-                if i.get('name') == it['dev']:
-                    i['lan'] = nuova
-            if it['idx'] == 0 and 'lan' in dati:
-                dati['lan'] = nuova
-
-    _esegui_sostituzione(
-        lab_path, routers, ip_map, iface_map, {},
-        f"{nome} {it['dev']}: LAN {it['lan']} -> {nuova}",
-        extra={lc: (vecchie, nuove)}, xml_extra=xml_lan
-    )
+    _esegui_piano_dispositivo(lab_path, routers, lambda st: operazioni.calcola_sposta_interfaccia(
+        st, nome, it['dev'], nuova, str(n_ip) if n_ip else None))
 
 
 def cambia_gateway(lab_path, routers, nome):
-    disp = leggi_dispositivi(lab_path)
-    d = disp[nome]
-    if d['tipo'] == 'router':
+    stato = leggi_stato(lab_path)
+    info = operazioni.opzioni_gateway(stato, nome)
+    if info['tipo'] == 'router':
         print("Il default gateway si cambia su pc, www e dns.")
         return
-    cand = []
-    for it in d['interfacce']:
-        for n, x in _membri_lan(disp, it['lan']):
-            if n != nome and x['ip'] and (disp[n]['tipo'] == 'router' or len(disp[n]['interfacce']) > 1):
-                cand.append((x['ip'].split('/')[0], n, it['dev']))
-    print(f"\nGateway attuale di {nome}: {d['gateway'] or 'nessuno'}")
+    cand = info['candidati']
+    print(f"\nGateway attuale di {nome}: {info['attuale'] or 'nessuno'}")
     if cand:
         print_menu('Router sulle sue LAN:', [f"{ip}  ({n})" for ip, n, _ in cand])
     s = input("Nuovo gateway (numero dell'elenco o IP, Invio = annulla): ").strip()
@@ -595,34 +525,14 @@ def cambia_gateway(lab_path, routers, nome):
         except ValueError:
             print('❌ IP non valido.')
             return
-    dev = next(
-        (it['dev'] for it in d['interfacce']
-         if it['ip'] and ipaddress.ip_address(gw) in ipaddress.ip_interface(it['ip']).network),
-        None
-    )
-    if dev is None:
+    try:
+        piano = operazioni.calcola_gateway(stato, nome, gw)
+    except operazioni.ErroreOperazione:
         if not _si(f"⚠️ {gw} non è nella rete di nessuna interfaccia di {nome}. Lo metto comunque? (s/N): "):
             print('Annullato.')
             return
-        dev = d['interfacce'][0]['dev'] if d['interfacce'] else 'eth0'
-    rel = f"{nome}.startup"
-    vecchie = _righe_file(os.path.join(lab_path, rel))
-    nuove, fatto = [], False
-    for l in vecchie:
-        m = _RE_GW.match(l)
-        if m and not fatto:
-            l, fatto = re.sub(r'(via|gw)\s+\S+', rf'\g<1> {gw}', l, count=1), True
-            l = re.sub(r'\bdev\s+\S+', f"dev {dev}", l) if ' dev ' in l else l
-        nuove.append(l)
-    if not fatto:
-        ultimo = max((k for k, l in enumerate(nuove) if _RE_IP_ADD.match(l)), default=-1)
-        nuove.insert(ultimo + 1, f"ip route add default via {gw} dev {dev}")
-    if _applica_modifiche(lab_path, {rel: (vecchie, nuove)}, f"Gateway di {nome}: {d['gateway'] or '-'} -> {gw}"):
-        def xml_gw(r, h, w):
-            for x in h + w:
-                if x.get('name') == nome:
-                    x['gateway'] = gw
-        _aggiorna_xml(lab_path, routers, xml_gw)
+        piano = operazioni.calcola_gateway(stato, nome, gw, forza=True)
+    _esegui_piano(lab_path, piano, routers)
 
 
 # --- Protocolli e AS ---
@@ -633,44 +543,14 @@ def _ip_del_router(d):
 def cambia_as(lab_path, routers, nome):
     disp = leggi_dispositivi(lab_path)
     d = disp[nome]
-    rel = os.path.join(nome, 'etc', 'frr', 'frr.conf')
     if not d['asn']:
         print(f"{nome} non ha 'router bgp': aggiungi BGP con la voce Protocolli.")
         return
-    vecchio = d['asn']
-    s = input(f"Nuovo AS di {nome} (ora {vecchio}; Invio = annulla): ").strip()
+    s = input(f"Nuovo AS di {nome} (ora {d['asn']}; Invio = annulla): ").strip()
     if not s:
         print('Annullato.')
         return
-    if not asn_valido(s) or s == vecchio:
-        print('❌ AS non valido o uguale a quello attuale.')
-        return
-    modifiche = {}
-    righe = _righe_file(os.path.join(lab_path, rel))
-    modifiche[rel] = (righe, [re.sub(rf'^(\s*router\s+bgp\s+){vecchio}\b', rf'\g<1>{s}', l) for l in righe])
-    miei = _ip_del_router(d)
-    for n, dd in disp.items():
-        if n == nome or not dd['frr']:
-            continue
-        r2 = os.path.join(n, 'etc', 'frr', 'frr.conf')
-        v = _righe_file(os.path.join(lab_path, r2))
-        nu = []
-        for l in v:
-            m = re.match(rf'^(\s*neighbor\s+(\S+)\s+remote-as\s+){vecchio}(\s*)$', l)
-            nu.append(f"{m.group(1)}{s}{m.group(3)}" if m and m.group(2) in miei else l)
-        modifiche[r2] = (v, nu)
-    note = [
-        f"{rel.replace(os.sep, '/')} riga {k}: '{l.strip()}' contiene ancora {vecchio}: controllala."
-        for k, l in enumerate(righe, 1) if 'as-path' in l and re.search(rf'\b{vecchio}\b', l)
-    ]
-    if re.match(rf'as{vecchio}r', nome):
-        note.append(f"Il nome {nome} contiene ancora AS{vecchio}: il dispositivo non viene rinominato.")
-
-    def xml_as(r, h, w):
-        if nome in r:
-            r[nome]['asn'] = s
-    if _applica_modifiche(lab_path, modifiche, f"AS di {nome}: {vecchio} -> {s}", note):
-        _aggiorna_xml(lab_path, routers, xml_as)
+    _esegui_piano_dispositivo(lab_path, routers, lambda st: operazioni.calcola_as(st, nome, s))
 
 
 def modifica_protocolli(lab_path, routers, nome):
@@ -698,140 +578,108 @@ def modifica_protocolli(lab_path, routers, nome):
 
 
 def _aggiungi_protocollo(lab_path, routers, disp, nome, p, attivi):
-    d = disp[nome]
-    rel = os.path.join(nome, 'etc', 'frr', 'frr.conf')
-    reld = os.path.join(nome, 'etc', 'frr', 'daemons')
-    righe = _righe_file(os.path.join(lab_path, rel))
-    while righe and not righe[-1].strip():
-        righe.pop()
-    dm = _righe_file(os.path.join(lab_path, reld))
-    modifiche = {reld: (dm, _set_demone(dm, f"{p}d", 'yes'))}
-    dati = {'asn': d['asn'] or '', 'interfaces': [{'ip': it['ip']} for it in d['interfacce'] if it['ip']]}
-    xml = {}
+    stato = leggi_stato(lab_path)
+    info = operazioni.opzioni_protocolli(stato, nome)
     if p in ('ospf', 'rip'):
-        proposta = default_igp_networks(nome, dati)
+        proposta = info['proposta_igp']
         reti = input_reti(
             f"Network {p.upper()} da annunciare, separate da virgola (Invio = {', '.join(proposta)}): ",
             default=proposta
         )
-        redis = ['redistribute connected']
-        if 'bgp' in attivi and _si(f"Iniettare in {p.upper()} le rotte imparate da BGP (redistribute bgp)? (S/n): ", True):
-            redis.append('redistribute bgp')
+        redis = 'bgp' in attivi and _si(f"Iniettare in {p.upper()} le rotte imparate da BGP (redistribute bgp)? (S/n): ", True)
+        area, stub, aree, aree_stub = '0.0.0.0', False, None, None
         if p == 'ospf':
             area = input_area("Area OSPF (Invio = 0.0.0.0): ", default='0.0.0.0')
             stub = area not in ('0', '0.0.0.0') and _si("Area stub? (s/N): ")
-            blocco = mk_ospf_stanza(reti, area, stub, redis).rstrip('\n').split('\n')
-            xml.update(ospf_area=area, ospf_area_stub=stub)
-        else:
-            blocco = mk_rip_stanza(reti, redis).rstrip('\n').split('\n')
-        xml['igp_networks'] = reti
-        if 'bgp' in attivi and 'redistribute bgp' not in redis:
-            xml['igp_redistribute_bgp'] = False
-        i = _inizio_blocco(righe, r'router bgp\b')
-        nuove = righe + [''] + blocco if i is None else righe[:i] + blocco + [''] + righe[i:]
-        modifiche[rel] = (_righe_file(os.path.join(lab_path, rel)), nuove)
+            aree, aree_stub = chiedi_aree_ospf(reti, area, stub)
+        calcolo = lambda st: operazioni.calcola_aggiungi_protocollo(
+            st, nome, p, reti=reti, redistribute_bgp=redis, area=area, stub=stub, aree=aree, aree_stub=aree_stub)
     else:
-        m = re.match(r'as(\d+)r', nome)
+        m = info['asn_proposto']
         while True:
-            s = input(f"Numero AS di {nome}" + (f" (Invio = {m.group(1)})" if m else '') + ": ").strip() or (m.group(1) if m else '')
+            s = input(f"Numero AS di {nome}" + (f" (Invio = {m})" if m else '') + ": ").strip() or (m or '')
             if asn_valido(s):
                 asn = s
                 break
             print("❌ Numero AS non valido: solo cifre (es. 20).")
-        proprie = [_norm_net(it['ip']) for it in d['interfacce'] if it['ip']]
+        proprie = info['proposta_bgp']
         reti = input_reti(
             f"Network BGP da annunciare (Invio = {', '.join(proprie) or 'nessuna'}): ",
             default=proprie, opzionale=True
         )
-        blocco = mk_bgp_stanza(asn, networks=reti).rstrip('\n').split('\n')
-        scelti = []
-        for it in d['interfacce']:
-            for n2, x in _membri_lan(disp, it['lan']):
-                d2 = disp[n2]
-                if n2 == nome or not x['ip'] or 'bgpd' not in d2['demoni']:
-                    continue
-                ip2 = x['ip'].split('/')[0]
-                if _si(f"Sessione BGP con {n2} ({ip2}, AS{d2['asn'] or '?'})? (S/n): ", True):
-                    blocco += [
-                        f"    neighbor {ip2} remote-as {d2['asn']}",
-                        f"    neighbor {ip2} description Router {n2}"
-                    ]
-                    scelti.append((n2, it['ip'].split('/')[0], d2))
-        if not any(l.strip().startswith('debug bgp') for l in righe):
-            i = next((k for k, l in enumerate(righe) if l.strip().startswith('log file')), len(righe) - 1)
-            righe = righe[:i + 1] + ['', 'debug bgp keepalives', 'debug bgp updates in', 'debug bgp updates out'] + righe[i + 1:]
-        for igp in ('ospf', 'rip'):
-            if igp in attivi and _si(f"Iniettare in {igp.upper()} le rotte imparate da BGP (redistribute bgp)? (S/n): ", True):
-                con = _inserisci_nel_blocco(righe, rf'router {igp}\b', ['redistribute bgp'])
-                righe = con if con is not None else righe
-        modifiche[rel] = (_righe_file(os.path.join(lab_path, rel)), righe + [''] + blocco)
-        for n2, mio_ip, d2 in scelti:
-            if _si(f"Aggiungo anche su {n2}: neighbor {mio_ip} remote-as {asn}? (S/n): ", True):
-                r2 = os.path.join(n2, 'etc', 'frr', 'frr.conf')
-                v = _righe_file(os.path.join(lab_path, r2))
-                con = _inserisci_nel_blocco(
-                    v, r'router bgp\b',
-                    [f"neighbor {mio_ip} remote-as {asn}", f"neighbor {mio_ip} description Router {nome}"]
-                )
-                if con is not None:
-                    modifiche[r2] = (v, con)
-        xml['asn'] = asn
-
-    def xml_p(r, h, w):
-        if nome in r:
-            if p not in r[nome].setdefault('protocols', []):
-                r[nome]['protocols'].append(p)
-            r[nome].update(xml)
-    if _applica_modifiche(lab_path, modifiche, f"Aggiungi {p.upper()} a {nome}"):
-        _aggiorna_xml(lab_path, routers, xml_p)
+        sessioni = [v['nome'] for v in info['vicini_bgp']
+                    if _si(f"Sessione BGP con {v['nome']} ({v['ip']}, AS{v['asn'] or '?'})? (S/n): ", True)]
+        inietta = [igp for igp in ('ospf', 'rip') if igp in attivi
+                   and _si(f"Iniettare in {igp.upper()} le rotte imparate da BGP (redistribute bgp)? (S/n): ", True)]
+        vicini = [v['nome'] for v in info['vicini_bgp'] if v['nome'] in sessioni
+                  and _si(f"Aggiungo anche su {v['nome']}: neighbor {v['mio_ip']} remote-as {asn}? (S/n): ", True)]
+        calcolo = lambda st: operazioni.calcola_aggiungi_protocollo(
+            st, nome, 'bgp', reti=reti, asn=asn, sessioni=sessioni, inietta=inietta, anche_sui_vicini=vicini)
+    _esegui_piano_dispositivo(lab_path, routers, calcolo)
 
 
 def _togli_protocollo(lab_path, routers, disp, nome, p, attivi):
-    d = disp[nome]
-    rel = os.path.join(nome, 'etc', 'frr', 'frr.conf')
-    reld = os.path.join(nome, 'etc', 'frr', 'daemons')
-    righe = _righe_file(os.path.join(lab_path, rel))
-    dm = _righe_file(os.path.join(lab_path, reld))
-    nuove = list(righe)
-    i = _inizio_blocco(nuove, rf'router {p}\b')
-    if i is not None:
-        f = _fine_blocco(nuove, i)
-        while f < len(nuove) and not nuove[f].strip():
-            f += 1
-        del nuove[i:f]
-    nuove = [
-        l for l in nuove
-        if not re.match(rf'\s*redistribute\s+{p}\b', l)
-        and not (p == 'bgp' and re.match(r'\s*debug\s+bgp\b', l))
-    ]
-    modifiche = {rel: (righe, nuove), reld: (dm, _set_demone(dm, f"{p}d", 'no'))}
-    note = []
+    vicini = False
     if p == 'bgp':
-        miei = _ip_del_router(d)
-        altri = {}
-        for n2, d2 in disp.items():
-            if n2 == nome or not d2['frr']:
-                continue
-            r2 = os.path.join(n2, 'etc', 'frr', 'frr.conf')
-            v = _righe_file(os.path.join(lab_path, r2))
-            nu = [l for l in v if not (re.match(r'\s*neighbor\s+(\S+)\s', l) and l.split()[1] in miei)]
-            if nu != v:
-                altri[r2] = (v, nu)
-        if altri and _si(
+        altri = operazioni.neighbor_verso(leggi_stato(lab_path), nome)
+        vicini = bool(altri) and _si(
             f"Tolgo anche le righe 'neighbor' che puntano a {nome} su "
             f"{', '.join(sorted(r.split(os.sep)[0] for r in altri))}? (S/n): ",
             True
-        ):
-            modifiche.update(altri)
-        note.append("Route-map e prefix-list del router restano: i controlli le segnaleranno se non sono più usate.")
+        )
+    _esegui_piano_dispositivo(lab_path, routers, lambda st: operazioni.calcola_togli_protocollo(
+        st, nome, p, anche_sui_vicini=vicini))
 
-    def xml_p(r, h, w):
-        if nome in r:
-            r[nome]['protocols'] = [x for x in r[nome].get('protocols', []) if x != p]
-            if p == 'bgp':
-                r[nome]['asn'] = ''
-    if _applica_modifiche(lab_path, modifiche, f"Togli {p.upper()} da {nome}", note):
-        _aggiorna_xml(lab_path, routers, xml_p)
+
+def aggiungi_interfaccia(lab_path, routers, nome):
+    disp = leggi_dispositivi(lab_path)
+    own = _proprietari(disp)
+    print(f"\nInterfacce di {nome}: " + (', '.join(f"{it['dev']} (LAN {it['lan']})" for it in disp[nome]['interfacce']) or 'nessuna'))
+    lan = input("LAN della nuova interfaccia (es. A; Invio = annulla): ").strip().upper()
+    if not lan:
+        print('Annullato.')
+        return
+    if not lan.isalnum():
+        print("❌ Nome LAN non valido: solo lettere e numeri (es. A o A1).")
+        return
+    rete = _rete_lan(disp, lan)
+    print(f"La LAN {lan} " + (f"ha la rete {rete}: " + ', '.join(n for n, _ in _membri_lan(disp, lan)) if rete else "è nuova."))
+    ip = _chiedi_nuovo_ip(
+        f"IP della nuova interfaccia" + (f" in {rete}" if rete else " con la maschera (es. 10.0.9.1/24)") + " (Invio = annulla): ",
+        own, rete=rete, dentro=rete
+    )
+    if ip is None:
+        print('Annullato.')
+        return
+    _esegui_piano_dispositivo(lab_path, routers, lambda st: operazioni.calcola_aggiungi_interfaccia(st, nome, lan, str(ip)))
+
+
+def togli_interfaccia(lab_path, routers, nome):
+    disp = leggi_dispositivi(lab_path)
+    if len(disp[nome]['interfacce']) <= 1:
+        print(f"{nome} ha una sola interfaccia: per toglierla togli il dispositivo (Opzioni 13).")
+        return
+    it = _scegli_interfaccia(disp[nome], 'Interfaccia da togliere')
+    if not it:
+        return
+    stato = leggi_stato(lab_path)
+    con = operazioni.calcola_togli_interfaccia(stato, nome, it['dev'], togli_neighbor=True)
+    senza = operazioni.calcola_togli_interfaccia(stato, nome, it['dev'], togli_neighbor=False)
+    vicini = True
+    if con['modifiche'] != senza['modifiche']:
+        vicini = _si(f"Tolgo anche i neighbor BGP che passano da {it['dev']} ({it['ip'] or 'senza IP'})? (S/n): ", True)
+    _esegui_piano(lab_path, con if vicini else senza, routers)
+
+
+def rinomina_dispositivo(lab_path, routers, nome):
+    """Rinomina il dispositivo; restituisce il nome nuovo se l'ha cambiato."""
+    s = input(f"Nuovo nome per {nome} (solo minuscole, cifre e _; Invio = annulla): ").strip()
+    if not s:
+        print('Annullato.')
+        return None
+    if _esegui_piano_dispositivo(lab_path, routers, lambda st: operazioni.calcola_rinomina(st, nome, s)):
+        return s
+    return None
 
 
 # --- Menu del dispositivo ---
@@ -860,6 +708,7 @@ def modifica_dispositivo_menu(base_path, routers, nome=None):
     """Opzioni 11: modifica guidata di un dispositivo (IP, LAN, gateway, protocolli, AS) o a righe."""
     while True:
         disp = leggi_dispositivi(base_path)
+        routers = operazioni.routers_dello_stato(leggi_stato(base_path))
         if not disp:
             print('Nessun dispositivo in lab.conf.')
             return
@@ -872,7 +721,9 @@ def modifica_dispositivo_menu(base_path, routers, nome=None):
         voci = [
             ("IP di un'interfaccia", modifica_ip_interfaccia),
             ('Rete di una LAN (cambia gli IP di tutti i dispositivi della LAN)', rinumera_lan_menu),
-            ("Sposta un'interfaccia su un'altra LAN", sposta_interfaccia)
+            ("Sposta un'interfaccia su un'altra LAN", sposta_interfaccia),
+            ("Aggiungi un'interfaccia", aggiungi_interfaccia),
+            ("Togli un'interfaccia", togli_interfaccia)
         ]
         if d['tipo'] == 'router':
             voci.append(('Protocolli (aggiungi o togli BGP, OSPF, RIP)', modifica_protocolli))
@@ -881,6 +732,7 @@ def modifica_dispositivo_menu(base_path, routers, nome=None):
         else:
             voci.append(('Default gateway', cambia_gateway))
         voci += [
+            ('Rinomina il dispositivo', rinomina_dispositivo),
             ('Modifica a righe dei file (startup, frr.conf, resolv.conf, DNS)', modifica_righe),
             ('Ripristina il lab da una copia di sicurezza', ripristina_copia)
         ]
@@ -896,6 +748,8 @@ def modifica_dispositivo_menu(base_path, routers, nome=None):
             nome = None
             continue
         if s.isdigit() and 1 <= int(s) <= len(voci):
-            voci[int(s) - 1][1](base_path, routers, nome)
+            esito = voci[int(s) - 1][1](base_path, routers, nome)
+            if voci[int(s) - 1][1] is rinomina_dispositivo and esito:
+                nome = esito
         else:
             print('Scelta non valida, riprova.')

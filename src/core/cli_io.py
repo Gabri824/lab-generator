@@ -3,8 +3,27 @@ src/core/cli_io.py
 Gestione dell'I/O da terminale, validazioni, navigazione guidata e compatibilità multipiattaforma.
 """
 import builtins
-import ipaddress
 import re
+
+# le regole sui singoli valori stanno in modello.py (le usa anche la GUI);
+# qui restano le domande, i messaggi a video e la navigazione.
+# area_valida, correggi_nome_kathara e nome_kathara_valido sono reimportate per gli altri moduli.
+from .modello import (  # noqa: F401
+    area_valida,
+    asn_valido,
+    correggi_nome_kathara,
+    errore_area,
+    errore_asn,
+    errore_destinazione,
+    errore_ip,
+    errore_ip_cidr,
+    errore_ipv4,
+    errore_lan,
+    errore_nome_lab,
+    errore_protocolli,
+    nome_kathara_valido,
+    parse_reti,
+)
 
 # Fix per freccette (cronologia/cursore) e bracketed paste su Linux
 try:
@@ -54,28 +73,20 @@ def input_lan(prompt):
     """Chiede il nome della LAN e valida che contenga solo lettere e numeri."""
     while True:
         s = input_non_vuoto(prompt).strip().upper()
-        if s.isalnum():
+        e = errore_lan(s)
+        if not e:
             return s
-        print("❌ Nome LAN non valido. Usa solo lettere e numeri (es. A o A1). Evita punti o indirizzi IP.")
-
-
-def nome_kathara_valido(nome):
-    """Nomi dei dispositivi in lab.conf: solo minuscole, cifre e '_'."""
-    return bool(re.fullmatch(r"[a-z0-9_]+", nome or ''))
-
-
-def correggi_nome_kathara(nome):
-    """Proposta di nome valido: minuscolo, caratteri vietati sostituiti da '_'."""
-    return re.sub(r"[^a-z0-9_]", "_", (nome or '').strip().lower()) or 'dispositivo'
+        print(f"❌ {e}")
 
 
 def input_lab_name(prompt):
     """Chiede il nome del laboratorio: solo minuscole, numeri, '_' e '-'."""
     while True:
         s = input_non_vuoto(prompt).strip()
-        if re.fullmatch(r"[a-z0-9_-]+", s):
+        e = errore_nome_lab(s)
+        if not e:
             return s
-        print("❌ Nome non valido. Usa solo lettere minuscole, numeri, '_' e '-' (es. bgp_es1). Niente spazi, accenti, '/' o '.'.")
+        print(f"❌ {e}")
 
 
 def input_int(prompt, min_val=0):
@@ -94,48 +105,29 @@ def valida_ip_cidr(prompt):
     """Valida e ritorna un indirizzo con CIDR (es. 10.0.0.1/24)."""
     while True:
         s = input(prompt).strip()
-        if '/' not in s:
-            print("❌ Inserisci la maschera usando '/' alla fine (es. 192.168.1.1/24)")
-            continue
-        try:
-            ipaddress.ip_interface(s)
+        e = errore_ip_cidr(s)
+        if not e:
             return s
-        except Exception:
-            print("❌ Formato non valido. Usa x.x.x.x/yy (es. 192.168.1.1/24)")
+        print(f"❌ {e}")
 
 
 def valida_ip_senza_cidr(prompt):
     while True:
         s = input(prompt).strip()
-        try:
-            ipaddress.ip_address(s)
+        e = errore_ipv4(s)
+        if not e:
             return s
-        except Exception:
-            print("❌ IP non valido. Inserisci un IPv4 (es. 10.0.0.2)")
-
-
-def asn_valido(s):
-    return s.isdigit() and 1 <= int(s) <= 4294967295
+        print(f"❌ {e}")
 
 
 def input_asn(prompt):
     """Numero AS: solo cifre."""
     while True:
         s = input_non_vuoto(prompt).strip()
-        if asn_valido(s):
+        e = errore_asn(s)
+        if not e:
             return s
-        print("❌ Numero AS non valido: solo cifre (es. 20).")
-
-
-def area_valida(s):
-    """Area OSPF: un numero (0) o il formato x.x.x.x (0.0.0.0)."""
-    if s.isdigit():
-        return int(s) <= 4294967295
-    try:
-        ipaddress.IPv4Address(s)
-        return True
-    except ValueError:
-        return False
+        print(f"❌ {e}")
 
 
 def input_area(prompt, default=None):
@@ -144,51 +136,49 @@ def input_area(prompt, default=None):
         s = input(prompt).strip()
         if not s and default is not None:
             return default
-        if s and area_valida(s):
+        if s and not errore_area(s):
             return s
         if s:
-            print("❌ Area OSPF non valida: un numero (es. 0) o x.x.x.x (es. 1.1.1.1).")
+            print(f"❌ {errore_area(s)}")
 
 
-def parse_reti(s):
-    """'10.0.0.0/8, 20.1.0.0/16' -> ['10.0.0.0/8', '20.1.0.0/16']."""
-    out = []
-    for tok in s.replace(',', ' ').split():
-        if '/' not in tok:
-            raise ValueError(f"manca la maschera in '{tok}' (es. 10.0.0.0/8)")
-        n = str(ipaddress.ip_network(tok, strict=False))
-        if n not in out:
-            out.append(n)
-    return out
+def chiedi_aree_ospf(reti, area, stub):
+    """Router di confine OSPF (ABR): area di ogni rete.
+
+    Restituisce (aree, aree_stub): aree = {rete: area}, aree_stub = aree da dichiarare stub;
+    (None, None) se tutte le reti stanno in `area` (il caso normale, una sola area)."""
+    if len(reti) < 2:
+        return None, None
+    if input(f"Tutte le network OSPF nell'area {area}? (S/n): ").strip().lower() != 'n':
+        return None, None
+    aree = {rete: input_area(f"  Area OSPF di {rete} (Invio = {area}): ", default=area) for rete in reti}
+    if all(a == area for a in aree.values()):
+        return None, None
+    aree_stub = [area] if stub and area not in ('0', '0.0.0.0') else []
+    for a in dict.fromkeys(aree.values()):
+        if a != area and a not in ('0', '0.0.0.0') and input(f"  Area {a} stub? (s/N): ").strip().lower().startswith('s'):
+            aree_stub.append(a)
+    return aree, aree_stub
 
 
 def input_destinazione(prompt):
     """Destinazione di una rotta statica: una rete con maschera oppure 'default'."""
     while True:
         s = input_non_vuoto(prompt).strip()
-        if s.lower() == 'default':
-            return 'default'
-        try:
-            reti = parse_reti(s)
-        except ValueError as e:
-            print(f"❌ Rete non valida: {e}")
+        e = errore_destinazione(s)
+        if e:
+            print(f"❌ {e}")
             continue
-        if len(reti) == 1:
-            return reti[0]
-        print("❌ Inserisci una sola rete.")
+        return 'default' if s.lower() == 'default' else parse_reti(s)[0]
 
 
 def valida_protocols(prompt):
-    allowed = {"bgp", "ospf", "rip", "statico"}
     while True:
         s = input(prompt).strip().lower().replace(",", " ")
-        if not s:
-            print("❌ Inserisci almeno un protocollo (bgp/ospf/rip/statico).")
-            continue
-        toks = [t for t in s.split() if t]
-        if toks and all(t in allowed for t in toks):
-            return list(dict.fromkeys(toks))
-        print("❌ Usa solo: bgp ospf rip statico")
+        e = errore_protocolli(s)
+        if not e:
+            return list(dict.fromkeys(t for t in s.split() if t))
+        print(f"❌ {e}")
 
 
 def input_reti(prompt, default=None, opzionale=False):
@@ -214,12 +204,10 @@ def valida_gateway(prompt, opzionale=False):
         s = input(prompt).strip()
         if not s and opzionale:
             return ''
-        ip = s.split('/')[0]
-        try:
-            ipaddress.ip_address(ip)
-            return ip
-        except ValueError:
-            print("❌ IP non valido (es. 10.0.0.1)" + (", invio per nessuno" if opzionale else ""))
+        e = errore_ip(s)
+        if not e:
+            return s.split('/')[0]
+        print(f"❌ {e}" + (", invio per nessuno" if opzionale else ""))
 
 
 def _si(prompt, default=False):
@@ -240,11 +228,9 @@ def _chiedi(prompt, vuoto_ok=False):
 def _chiedi_ip(prompt):
     while True:
         s = _chiedi(prompt).split('/')[0]
-        try:
-            ipaddress.ip_address(s)
+        if not errore_ip(s):
             return s
-        except ValueError:
-            print("❌ IP non valido (es. 10.0.0.2). Invio a vuoto per annullare.")
+        print("❌ IP non valido (es. 10.0.0.2). Invio a vuoto per annullare.")
 
 
 def _chiedi_asn(prompt):

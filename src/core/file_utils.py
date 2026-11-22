@@ -2,8 +2,9 @@
 src/core/file_utils.py
 Funzioni di lettura/scrittura file, manipolazione blocchi FRR, backup e diff con conferma.
 """
+import contextlib
+import contextvars
 import datetime
-import difflib
 import os
 import re
 import shutil
@@ -12,12 +13,93 @@ from .cli_io import input, print_menu
 from .templates import _FRR_GLOBALI
 
 
-def _leggi_righe(fpath):
+# --- File in memoria ---
+# Dentro `with file_virtuali(lab):` le letture e le scritture fatte con le funzioni qui sotto
+# (_leggi_testo, _scrivi_testo, _esiste_file e quelle che le usano) avvengono su una copia in
+# memoria: il disco non cambia e le differenze diventano un piano di modifica (core/modifiche.py).
+# Così le Opzioni calcolano cosa cambierebbero con la stessa logica che usano per scrivere.
+_VIRTUALI = contextvars.ContextVar('file_virtuali', default=None)
+
+
+class FileVirtuali:
+    def __init__(self, base):
+        self.base = os.path.abspath(base)
+        self.testi = {}         # percorso assoluto -> testo attuale (None = file assente)
+        self.originali = {}     # percorso assoluto -> testo sul disco all'inizio (None = assente)
+
+    def _carica(self, path):
+        k = os.path.abspath(path)
+        if k not in self.testi:
+            try:
+                with open(k, 'r', encoding='utf-8') as f:
+                    testo = f.read()
+            except OSError:
+                testo = None
+            self.testi[k] = self.originali[k] = testo
+        return k
+
+    def leggi(self, path):
+        return self.testi[self._carica(path)]
+
+    def scrivi(self, path, testo):
+        self.testi[self._carica(path)] = testo
+
+    def esiste(self, path):
+        k = os.path.abspath(path)
+        return self.testi[k] is not None if k in self.testi else os.path.isfile(k)
+
+    def modifiche(self):
+        """{percorso relativo al lab: (righe vecchie, righe nuove)} dei file cambiati (None = assente)."""
+        def righe(t):
+            if t is None:
+                return None
+            r = t.split('\n')
+            if r and r[-1] == '':
+                r.pop()
+            return r
+        return {os.path.relpath(k, self.base): (righe(self.originali[k]), righe(t))
+                for k, t in self.testi.items() if t != self.originali[k]}
+
+
+@contextlib.contextmanager
+def file_virtuali(base):
+    fs = FileVirtuali(base)
+    token = _VIRTUALI.set(fs)
     try:
-        with open(fpath, 'r', encoding='utf-8') as f:
-            return f.read().split('\n')
+        yield fs
+    finally:
+        _VIRTUALI.reset(token)
+
+
+def _leggi_testo(path):
+    """Testo di un file (None se manca), dal disco o dai file in memoria."""
+    fs = _VIRTUALI.get()
+    if fs is not None:
+        return fs.leggi(path)
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return f.read()
     except OSError:
-        return []
+        return None
+
+
+def _scrivi_testo(path, testo):
+    fs = _VIRTUALI.get()
+    if fs is not None:
+        fs.scrivi(path, testo)
+        return
+    with open(path, 'w', encoding='utf-8', newline='\n') as f:
+        f.write(testo)
+
+
+def _esiste_file(path):
+    fs = _VIRTUALI.get()
+    return fs.esiste(path) if fs is not None else os.path.exists(path)
+
+
+def _leggi_righe(fpath):
+    testo = _leggi_testo(fpath)
+    return testo.split('\n') if testo is not None else []
 
 
 def _scrivi_righe(fpath, righe):
@@ -27,8 +109,7 @@ def _scrivi_righe(fpath, righe):
         if l.strip() == '' and out and out[-1].strip() == '':
             continue
         out.append(l.rstrip())
-    with open(fpath, 'w', encoding='utf-8', newline='\n') as f:
-        f.write('\n'.join(out).rstrip('\n') + '\n')
+    _scrivi_testo(fpath, '\n'.join(out).rstrip('\n') + '\n')
 
 
 def _righe_file(path):
@@ -41,8 +122,7 @@ def _righe_file(path):
 
 def _scrivi_esatte(path, righe):
     """Scrive le righe così come sono (a differenza di _scrivi_righe non toglie righe vuote)."""
-    with open(path, 'w', encoding='utf-8', newline='\n') as f:
-        f.write('\n'.join(righe) + '\n')
+    _scrivi_testo(path, '\n'.join(righe) + '\n')
 
 
 def _rimuovi_righe(fpath, pred):
@@ -74,11 +154,10 @@ def _append_righe(fpath, righe):
 
 def append_frr_stanza(base_path, router, stanza):
     fpath = os.path.join(base_path, router, "etc", "frr", "frr.conf")
-    if not os.path.exists(fpath):
+    if not _esiste_file(fpath):
         print(f"⚠️ frr.conf non trovato per {router}: {fpath}")
         return False
-    with open(fpath, 'a', encoding='utf-8', newline='\n') as f:
-        f.write("\n" + stanza + "\n")
+    _scrivi_testo(fpath, (_leggi_testo(fpath) or '') + "\n" + stanza + "\n")
     return True
 
 
@@ -86,12 +165,16 @@ def insert_lines_into_protocol_block(fpath, proto='bgp', asn=None, lines=None):
     """Inserisce `lines` (lista di stringhe, senza newline) dentro la sezione 'router <proto>' di fpath."""
     if lines is None:
         return False
-    try:
-        with open(fpath, 'r', encoding='utf-8') as f:
-            content = f.readlines()
-    except Exception as e:
-        print(f"❌ Errore leggendo {fpath}: {e}")
+    testo = _leggi_testo(fpath)
+    if testo is None:
+        print(f"❌ Errore leggendo {fpath}: file non trovato")
         return False
+    # come readlines(): righe con il loro a capo, divise solo su '\n'
+    content = [l + '\n' for l in testo.split('\n')]
+    if content and content[-1] == '\n':
+        content.pop()
+    elif content:
+        content[-1] = content[-1][:-1]
 
     idx = None
     target_start = f'router {proto}'.lower()
@@ -105,11 +188,7 @@ def insert_lines_into_protocol_block(fpath, proto='bgp', asn=None, lines=None):
 
     if idx is None:
         try:
-            with open(fpath, 'a', encoding='utf-8', newline='\n') as f:
-                if os.path.getsize(fpath) > 0:
-                    f.write('\n')
-                for l in lines:
-                    f.write(l + '\n')
+            _scrivi_testo(fpath, testo + ('\n' if testo else '') + ''.join(l + '\n' for l in lines))
             return True
         except Exception as e:
             print(f"❌ Errore scrivendo (append) su {fpath}: {e}")
@@ -137,8 +216,7 @@ def insert_lines_into_protocol_block(fpath, proto='bgp', asn=None, lines=None):
     new_content = content[:j] + [l + '\n' for l in ind_lines] + content[j:]
 
     try:
-        with open(fpath, 'w', encoding='utf-8', newline='\n') as f:
-            f.writelines(new_content)
+        _scrivi_testo(fpath, ''.join(new_content))
         return True
     except Exception as e:
         print(f"❌ Errore scrivendo su {fpath}: {e}")
@@ -239,7 +317,7 @@ def copia_di_sicurezza(lab_path, etichetta=''):
 
 
 def ripristina_copia(lab_path, routers=None, _nome=None):
-    from .persistence import _ricarica_routers
+    from .persistence import rigenera_xml
 
     base = _cartella_copie(lab_path)
     copie = sorted(
@@ -265,53 +343,80 @@ def ripristina_copia(lab_path, routers=None, _nome=None):
     shutil.rmtree(lab_path)
     shutil.copytree(src, lab_path)
     print(f"✅ Lab ripristinato. Lo stato di prima del ripristino è salvato in: {attuale}")
-    _ricarica_routers(lab_path, routers)
+    rigenera_xml(lab_path)
     return True
 
 
 def _avvisi_lab(lab_path):
     from .analyzer import controlla_topologia, controlli_configurazione
-    return set(controlla_topologia(lab_path)) | set(controlli_configurazione(lab_path))
+    from .stato import leggi_stato
+    stato = leggi_stato(lab_path)          # una lettura sola per tutti i controlli
+    return set(controlla_topologia(lab_path, stato)) | set(controlli_configurazione(lab_path, stato))
 
 
-def _stampa_diff(rel, vecchie, nuove):
-    print(f"  {rel.replace(os.sep, '/')}")
-    sm = difflib.SequenceMatcher(a=vecchie, b=nuove, autojunk=False)
-    for tag, i1, i2, j1, j2 in sm.get_opcodes():
-        if tag == 'equal':
-            continue
-        for k in range(i1, i2):
-            print(f"    - riga {k + 1:>3}: {vecchie[k].strip()}")
-        for k in range(j1, j2):
-            print(f"    + riga {k + 1:>3}: {nuove[k].strip()}")
+def _stampa_anteprima(file_ant):
+    """Stampa le differenze di un file dell'anteprima (core/modifiche.anteprima)."""
+    if file_ant.get('da'):
+        print(f"  {file_ant['file']}  (era {file_ant['da']})")
+    else:
+        print(f"  {file_ant['file']}")
+    for r in file_ant['righe']:
+        print(f"    {r['segno']} riga {r['numero']:>3}: {r['testo'].strip()}")
 
 
-def _applica_modifiche(lab_path, modifiche, titolo, note=None):
+def _applica_modifiche(lab_path, modifiche, titolo, note=None, spostati=None):
     """modifiche = {percorso relativo: (righe vecchie, righe nuove)}. Anteprima, conferma,
-    copia di sicurezza, scrittura e controlli prima/dopo. True se ha scritto."""
-    modifiche = {r: v for r, v in modifiche.items() if v[0] != v[1]}
-    if not modifiche:
+    copia di sicurezza, scrittura e controlli prima/dopo. True se ha scritto.
+
+    Il calcolo e la scrittura sono in core/modifiche.py; qui restano le domande e le stampe
+    del terminale. Se un file cambia mentre si aspetta la conferma, non scrive nulla."""
+    from .modifiche import Conflitto, anteprima, nuovo_piano, scrivi_piano
+
+    piano = nuovo_piano(titolo, modifiche, note, spostati)
+    if not piano['modifiche']:
         print('Nessuna modifica da fare.')
         return False
-    print(f"\n--- {titolo}: anteprima ({len(modifiche)} file) ---")
-    for rel in sorted(modifiche):
-        _stampa_diff(rel, *modifiche[rel])
-    for n in note or []:
+    ant = anteprima(piano)
+    print(f"\n--- {titolo}: anteprima ({len(ant)} file) ---")
+    for f in ant:
+        _stampa_anteprima(f)
+    for n in piano['note']:
         print(f"  ⚠️ {n}")
     if input("\nConfermi le modifiche? (s/N): ").strip().lower() not in ('s', 'si', 'sì'):
         print('Annullato: nessun file modificato.')
         return False
-    prima = _avvisi_lab(lab_path)
-    copia = copia_di_sicurezza(lab_path)
-    for rel, (_, nuove) in modifiche.items():
-        _scrivi_esatte(os.path.join(lab_path, rel), nuove)
-    print(f"✅ Modifiche scritte. Copia del lab com'era prima: {copia}")
-    dopo = _avvisi_lab(lab_path)
-    for a in sorted(prima - dopo):
+    try:
+        esito = scrivi_piano(lab_path, piano)
+    except Conflitto as e:
+        print("⚠️ Nel frattempo sono cambiati: " + ', '.join(f.replace(os.sep, '/') for f in e.file))
+        print("   (forse dalla GUI o da un editor). Nessuna modifica scritta: riapri l'operazione.")
+        return False
+    print(f"✅ Modifiche scritte. Copia del lab com'era prima: {esito['copia']}")
+    for a in esito['risolti']:
         print(f"   ✔ risolto: {a}")
-    for a in sorted(dopo - prima):
+    for a in esito['nuovi']:
         print(f"   ⚠️ nuovo: {a}")
-    if not (prima ^ dopo):
+    if not (esito['risolti'] or esito['nuovi']):
         print("   (i controlli dell'opzione 8 danno lo stesso esito di prima)")
     print("   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).")
+    return True
+
+
+def _esegui_piano(base_path, piano, routers=None):
+    """Terminale: anteprima, conferma e scrittura di un piano di core/operazioni.py, poi i messaggi
+    di esito e l'XML dei metadati rigenerato dai file. True se ha scritto."""
+    if not piano['modifiche']:
+        if piano.get('vuoto'):
+            print(piano['vuoto'])
+        else:
+            print('\n'.join(piano.get('messaggi') or []) or 'Nessuna modifica da fare.')
+            for n in piano.get('note') or []:
+                print(f"⚠️ {n}")
+        return False
+    if not _applica_modifiche(base_path, piano['modifiche'], piano['titolo'], piano['note'], piano.get('spostati')):
+        return False
+    for m in piano.get('messaggi') or []:
+        print(m)
+    from .persistence import rigenera_xml
+    rigenera_xml(base_path)            # XML dei metadati allineato ai file, fuori dal lab
     return True

@@ -1,0 +1,9 @@
+# OSPF aggiunto a un router BGP: network proposte, redistribute bgp, area 0
+@lab candy_test
+@chiama modifica_protocolli as10r1
+a
+1
+
+
+
+s

@@ -1,0 +1,97 @@
+--- prima/as10r1/etc/frr/frr.conf
++++ dopo/as10r1/etc/frr/frr.conf
+@@ -19,6 +19,8 @@
+     neighbor 192.168.0.2 description Router as40r1
+ 
+     neighbor 192.168.0.2 prefix-list PL_as10r1_192_168_0_2_in in
++    neighbor 110.0.0.9 remote-as 90
++    neighbor 110.0.0.9 description Router as90r1
+ ip prefix-list PL_as10r1_192_168_0_2_in deny 160.0.0.0/24
+ ip prefix-list PL_as10r1_192_168_0_2_in permit any
+ 
+--- /dev/null
++++ dopo/as90r1.startup
+@@ -0,0 +1,4 @@
++ip address add 110.0.0.9/24 dev eth0
++ip address add 190.0.0.1/24 dev eth1
++
++systemctl start frr
+--- /dev/null
++++ dopo/as90r1/etc/frr/daemons
+@@ -0,0 +1,39 @@
++zebra=yes 
++ripd=no
++ospfd=no
++bgpd=yes
++
++ospf6d=no
++ripngd=no
++isisd=no
++pimd=no
++ldpd=no
++nhrpd=no
++eigrpd=no
++babeld=no
++sharpd=no
++staticd=no
++pbrd=no
++bfdd=no
++fabricd=no
++
++######
++
++vtysh_enable=yes
++zebra_options=" -s 90000000 --daemon -A 127.0.0.1"
++bgpd_options="   --daemon -A 127.0.0.1"
++ospfd_options="  --daemon -A 127.0.0.1"
++ospf6d_options=" --daemon -A ::1"
++ripd_options="   --daemon -A 127.0.0.1"
++ripngd_options=" --daemon -A ::1"
++isisd_options="  --daemon -A 127.0.0.1"
++pimd_options="  --daemon -A 127.0.0.1"
++ldpd_options="  --daemon -A 127.0.0.1"
++nhrpd_options="  --daemon -A 127.0.0.1"
++eigrpd_options="  --daemon -A 127.0.0.1"
++babeld_options="  --daemon -A 127.0.0.1"
++sharpd_options="  --daemon -A 127.0.0.1"
++staticd_options="  --daemon -A 127.0.0.1"
++pbrd_options="  --daemon -A 127.0.0.1"
++bfdd_options="  --daemon -A 127.0.0.1"
++fabricd_options="  --daemon -A 127.0.0.1"
+--- /dev/null
++++ dopo/as90r1/etc/frr/frr.conf
+@@ -0,0 +1,19 @@
++password zebra
++enable password zebra
++
++log file /var/log/frr/frr.log
++
++debug bgp keepalives
++debug bgp updates in
++debug bgp updates out
++
++router bgp 90
++
++    no bgp ebgp-requires-policy
++    no bgp network import-check
++
++    network 110.0.0.0/24
++    network 190.0.0.0/24
++    neighbor 110.0.0.1 remote-as 10
++    neighbor 110.0.0.1 description Router as10r1
++
+--- /dev/null
++++ dopo/as90r1/etc/frr/vtysh.conf
+@@ -0,0 +1,2 @@
++service integrated-vtysh-config
++hostname as90r1-frr
+--- prima/lab.conf
++++ dopo/lab.conf
+@@ -33,3 +33,7 @@
+ as80r1[0]=E
+ as80r1[1]=I
+ as80r1[image]="kathara/frr"
++
++as90r1[0]=L
++as90r1[1]=Q
++as90r1[image]="kathara/frr"

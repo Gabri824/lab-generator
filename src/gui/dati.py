@@ -8,8 +8,6 @@ import ipaddress
 import os
 import re
 
-RE_IP = re.compile(r'\s*ip\s+a(?:ddr(?:ess)?)?\s+add\s+(\S+)\s+dev\s+(\S+)')
-RE_GW = re.compile(r'\s*(?:ip\s+route\s+add\s+default\s+via\s+(\S+)|route\s+add\s+default\s+gw\s+(\S+))')
 RE_NOME = re.compile(r'^[A-Za-z0-9_.-]+$')
 
 
@@ -34,74 +32,59 @@ def _leggi(path):
         return None
 
 
-def _tipo(lab_path, nome, immagine, startup):
-    d = os.path.join(lab_path, nome)
-    if os.path.exists(os.path.join(d, 'etc', 'frr', 'frr.conf')) or 'frr' in (immagine or ''):
+def _tipo(d, startup):
+    p = d['presenti']
+    if p['frr_conf'] or 'frr' in (d['immagine'] or ''):
         return 'router'
-    if os.path.isdir(os.path.join(d, 'etc', 'bind')) or 'named' in startup:
+    if p['dir_bind'] or 'named' in startup:
         return 'dns'
-    if os.path.isdir(os.path.join(d, 'var', 'www')) or 'apache2' in startup:
+    if p['dir_www'] or 'apache2' in startup:
         return 'www'
     return 'host'
 
 
-def _demoni(lab_path, nome):
-    testo = _leggi(os.path.join(lab_path, nome, 'etc', 'frr', 'daemons')) or ''
-    return [m.group(1) for m in re.finditer(r'^\s*(\w+d)\s*=\s*yes', testo, re.M) if m.group(1) != 'zebra']
-
-
-def _zone_dns(lab_path, nome):
+def _zone_dns(d):
     """[(zona, tipo)] da named.conf (anche se include named.conf.local)."""
     zone = []
-    bind = os.path.join(lab_path, nome, 'etc', 'bind')
-    for f in ('named.conf', 'named.conf.local'):
-        testo = _leggi(os.path.join(bind, f)) or ''
+    for chiave in ('named_conf', 'named_conf_local'):
+        testo = d['testi'].get(chiave) or ''
         for m in re.finditer(r'zone\s+"([^"]+)"\s*(?:IN\s*)?\{([^}]*)\}', testo, re.S):
             t = re.search(r'type\s+(\w+)', m.group(2))
             zone.append((m.group(1), t.group(1) if t else '?'))
     return zone
 
 
-def leggi_lab(gen, lab_path):
-    """Dispositivi, LAN, riepilogo e controlli di un lab."""
-    nodi, _ = gen.parse_lab_conf_for_nodes(lab_path)
+def leggi_lab(gen, lab_path, stato=None):
+    """Dispositivi, LAN, riepilogo e controlli di un lab.
+
+    I file vengono letti una volta sola dal lettore unico (core/stato.py)."""
+    if stato is None:
+        stato = gen.leggi_stato(lab_path)
     dispositivi = {}
-    for nome, meta in sorted(nodi.items()):
-        startup = _leggi(os.path.join(lab_path, f"{nome}.startup")) or ''
-        ips, gw = {}, None
-        for riga in startup.splitlines():
-            m = RE_IP.match(riga)
-            if m:
-                ips.setdefault(m.group(2), []).append(m.group(1))
-            m = RE_GW.match(riga)
-            if m:
-                gw = m.group(1) or m.group(2)
+    for nome, sd in stato['dispositivi'].items():
+        startup = sd['testi'].get('startup') or ''
         cfg, riferimenti = None, []
-        frr = os.path.join(lab_path, nome, 'etc', 'frr', 'frr.conf')
-        if os.path.exists(frr):
-            cfg = gen._analizza_frr(gen._leggi_righe(frr))
-            riferimenti = gen.riferimenti_frr(gen._leggi_righe(frr))
-        interfacce = []
+        if sd['frr']:
+            righe_frr = gen.righe_testo(sd["testi"]["frr_conf"])
+            cfg = gen._analizza_frr(righe_frr)
+            riferimenti = gen.riferimenti_frr(righe_frr)
         # solo le chiavi numeriche: le altre sono opzioni di lab.conf (es. r1[ipv6]=...)
-        for idx, lan in sorted((k, v) for k, v in meta.get('interfaces', {}).items() if isinstance(k, int)):
-            dev = f"eth{idx}"
-            interfacce.append({'dev': dev, 'lan': lan, 'ip': (ips.get(dev) or [''])[0]})
+        interfacce = [{'dev': it['dev'], 'lan': it['lan'], 'ip': it['ip']} for it in sd['interfacce']]
         asn = (cfg or {}).get('asn')
         if not asn:
             m = re.match(r'as(\d+)r', nome, re.I)
             asn = m.group(1) if m else None
-        resolv = _leggi(os.path.join(lab_path, nome, 'etc', 'resolv.conf')) or ''
         dispositivi[nome] = {
             'nome': nome,
-            'immagine': meta.get('image') or '',
-            'tipo': _tipo(lab_path, nome, meta.get('image'), startup),
+            'immagine': sd['immagine'],
+            'tipo': _tipo(sd, startup),
             'asn': asn,
             'interfacce': interfacce,
-            'loopback': ips.get('lo', []),
-            'gateway': gw,
-            'demoni': _demoni(lab_path, nome),
-            'nameserver': re.findall(r'^\s*nameserver\s+(\S+)', resolv, re.M),
-            'zone': _zone_dns(lab_path, nome),
+            'loopback': list(sd['loopback']),
+            'gateway': sd['startup']['gateway']['via'] if sd['startup']['gateway'] else None,
+            'demoni': [x for x in sd['demoni'] if x != 'zebra'],
+            'nameserver': list(sd['nameserver']),
+            'zone': _zone_dns(sd),
             'riferimenti_frr': riferimenti,
             '_cfg': cfg,
         }
@@ -157,8 +140,8 @@ def leggi_lab(gen, lab_path):
         'nome': os.path.basename(os.path.normpath(lab_path)),
         'dispositivi': list(dispositivi.values()),
         'lan': sorted(lan.values(), key=lambda l: l['nome']),
-        'avvisi_topologia': gen.controlla_topologia(lab_path),
-        'avvisi_config': gen.controlli_configurazione(lab_path),
+        'avvisi_topologia': gen.controlla_topologia(lab_path, stato),
+        'avvisi_config': gen.controlli_configurazione(lab_path, stato),
         'xml': os.path.exists(os.path.join(lab_path, os.path.basename(os.path.normpath(lab_path)) + '.xml')),
     }
 

@@ -119,7 +119,9 @@ def crea_router_files(base_path, rname, data, interactive=True):
                     igp_nets,
                     area=data.get('ospf_area') or '0.0.0.0',
                     stub=bool(data.get('ospf_area_stub')),
-                    redistribute=ospf_redistribute
+                    redistribute=ospf_redistribute,
+                    aree=data.get('ospf_aree'),
+                    aree_stub=data.get('ospf_aree_stub')
                 )
             )
         if has_rip:

@@ -1,0 +1,6 @@
+# Rete di una LAN con due router (as10r1 e as40r1)
+@lab candy_test
+@chiama rinumera_lan_menu as10r1
+1
+192.168.100.0/30
+s

@@ -1,0 +1,7 @@
+# Costo OSPF su un'interfaccia di un router
+@lab papillon_mio
+@chiama assegna_costo_interfaccia
+r1
+2
+50
+s

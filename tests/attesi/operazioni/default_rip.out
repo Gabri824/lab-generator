@@ -1,0 +1,25 @@
+
+--- Default route in RIP ---
+
+Router con RIP:
+
+  1) as6r1
+  2) as6r2
+  3) as6r3
+
+Router (numero o nome, Invio = annulla): 1
+  1) route <rete>: annuncia la rete (Invio = 0.0.0.0/0, la default), anche se il router non ha una rotta: come la guida 009 e up-arrow; serve anche per iniettare un'altra rete
+  2) default-information originate: annuncia la default (in FRR la annuncia sempre, come route 0.0.0.0/0; in 'show ip rip' compare come R(d) invece di R(s))
+Scelta (1/2, Invio = 1): 
+Rete da annunciare (Invio = 0.0.0.0/0, la default): 
+
+--- Default route in RIP su as6r1: anteprima (1 file) ---
+  as6r1/etc/frr/frr.conf
+    + riga  16: route 0.0.0.0/0
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/garden_umbrella_mio/AAAAMMGG-HHMMSS
+   ⚠️ nuovo: as6r1: genera la default route (RIP route 0.0.0.0/0). Tienila solo se il testo la chiede: molti testi dicono 'No router announces the default route'.
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+
+[copie di sicurezza create: 1]

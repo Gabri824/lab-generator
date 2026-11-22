@@ -401,6 +401,321 @@ da errori del generatore):
   `valida_lab` (fase 1.3) dovrebbe segnalarlo.
 - I `resolv.conf` del resolver finale vengono scritti anche sui server DNS stessi.
 
+### Fase 1.1: completata (2026-11-21)
+
+- **`src/core/stato.py`**: `leggi_stato(lab)` legge ogni file una volta e restituisce il modello
+  completo (dispositivi, LAN, sessioni BGP con policy, OSPF/RIP, costi, statiche, DNS), con la riga
+  di ogni elemento e l'elenco delle righe non riconosciute. Ci si è spostata anche la lettura di
+  `lab.conf` (`parse_lab_conf_for_nodes`).
+- **Adattatori**, ciascuno nel suo commit, con i test della fase 0 identici:
+  `analyzer.leggi_dispositivi` (e le zone DNS), `gui/dati.leggi_lab`,
+  `persistence.rebuild_lab_metadata_and_export`.
+- **Correzione delle perdite dell'XML rigenerato** (commit separato): ora contiene aree OSPF e
+  stub, network IGP, `redistribute bgp` disattivato, rotte statiche (compresa la default dei
+  router), loopback, network BGP aggiuntive, host con più interfacce e dati DNS (zone con i record
+  com'erano scritti, tipo per `.`, allow-recursion, DNSSEC, deleghe del root). I router si
+  riconoscono anche senza `[image]` in `lab.conf`, se hanno `frr.conf`.
+- **Verifiche**:
+  - nei 17 lab reali e nei 3 scenari nessuna riga non riconosciuta;
+  - il modello di `frr.conf` coincide con `_analizza_frr` su 311 file, comprese le 26 soluzioni
+    ufficiali;
+  - nuovo test di andata e ritorno: XML rigenerato dai file → lab ricreato = lab di partenza, su
+    20 lab (prima della correzione: 52 file diversi);
+  - prova reale della GUI (pagina, elenco lab, dati, file) e del terminale (rigenerazione XML da
+    riga di comando, Riepilogo del menu Opzioni);
+  - 12 test in meno di un secondo.
+
+**Limiti noti**
+
+- Il resolver finale (`resolv.conf`) non si può salvare nell'XML: se ne occuperà `genera_lab`
+  (fase 1.4).
+- Un router con sole rotte statiche (senza FRR) è indistinguibile da un host: viene riletto come
+  host con le sue interfacce e il gateway; le altre rotte statiche si perdono.
+- ~~Con più aree OSPF sullo stesso router, l'XML ne conserva una sola~~: risolto nella fase 1.8.
+- Nelle soluzioni ufficiali restano non riconosciuti solo comandi che il modello non descrive
+  (`ip link set`, `bridge vlan add`, `ip link add`, `iptables`) e un refuso (`netwotk`): vengono
+  conservati così come sono.
+- Altre funzioni leggono ancora i file direttamente: le Opzioni (`routing_ops.py`,
+  `device_editor.py`, `net_frr.py`, da convertire nella fase 1.5) e alcuni controlli di
+  `analyzer.py` (`collect_lab_ips`, `controlla_topologia`, `isole_ospf`,
+  `controlli_configurazione`, `riepilogo_configurazione`).
+
+### Fase 1.2: completata (2026-11-21)
+
+- **Prima i test, sul codice di prima**: 14 operazioni del menu Opzioni che passano da
+  `_applica_modifiche`, eseguite con risposte scritte in `tests/operazioni/` (IP di un'interfaccia,
+  anche annullata; rete di una LAN; sposta interfaccia; gateway; AS; aggiungi OSPF e BGP; togli
+  RIP e BGP; editor a righe; default-originate; default in RIP e in OSPF). Per ognuna sono salvati
+  i file cambiati (XML compreso) e il testo stampato.
+- **`src/core/modifiche.py`**: `nuovo_piano`, `anteprima`, `scrivi_piano`, `Conflitto`.
+  - Il piano gestisce file modificati, nuovi ed eliminati e ricorda l'impronta di ogni file letto.
+  - `scrivi_piano` non scrive nulla se un file è cambiato dopo il calcolo; fa la copia di
+    sicurezza fuori dal lab; scrive ogni file passando da un file temporaneo; mantiene gli
+    startup eseguibili; restituisce i controlli risolti e quelli nuovi.
+- **`_applica_modifiche`** ora è solo la parte del terminale (stampa, conferma, esito) sopra il
+  nuovo modulo: i 14 test danno gli stessi file e lo stesso testo di prima. Caso nuovo: se un
+  file cambia mentre si aspetta "Confermi?", scrive "Nel frattempo sono cambiati: …" e non tocca
+  nulla.
+- 20 test in poco più di un secondo; prova reale nel terminale (cambio del gateway di un host).
+
+**Nota**: quando una di queste operazioni aggiorna l'XML lo riscrive per intero (cambia, per
+esempio, `&quot;` in `"` dentro `lab_conf`). È il comportamento di prima, fotografato dai test;
+l'XML uscirà dal lab nella fase 1.7.
+
+### Fase 1.3: completata (2026-11-21)
+
+- **`src/core/modello.py`**:
+  - regole su un singolo valore (`errore_*`): restituiscono il messaggio, senza simboli, oppure
+    None. Ci sono finite anche le regole pure che stavano in `cli_io.py` (nome Kathará valido,
+    AS, area, lettura di un elenco di reti), che `cli_io` reimporta con lo stesso nome;
+  - `completa_lab(modello)`: i valori proposti dove mancano (nomi, `ethN`, area OSPF ereditata dal
+    primo router OSPF, network IGP, interfaccia di rotte statiche e gateway, tipo DNS);
+  - `valida_lab(modello)`: elenco di problemi con campo e gravità. Errori = le regole del wizard;
+    avvisi (non bloccano) = controlli nuovi: stub sulla backbone, IP di rete o broadcast, gateway
+    di WWW e DNS fuori subnet, interfaccia di una rotta statica inesistente, LAN con subnet
+    diverse, link /30 con un solo estremo, gateway che non è di nessun dispositivo, router che
+    mettono la stessa LAN in aree OSPF diverse.
+- **Terminale**: le domande del wizard e di `cli_io` usano le regole di `modello.py` con gli
+  stessi messaggi di prima. Il riepilogo di ogni dispositivo mostra gli avvisi come righe
+  `Avviso: ...` (testo semplice). Esempio: nello scenario OSPF, al riepilogo di `r2`, compare
+  l'avviso sulle aree diverse nella LAN A.
+- **Verifiche**: 14 test nuovi (messaggi identici a prima, domande che rifiutano e richiedono,
+  lab pieno di errori voluti, avvisi tra dispositivi, valori proposti); i 17 lab reali e i 3
+  scenari, trasformati in modello, non hanno errori e `completa_lab` non li cambia; prova reale
+  del wizard dal menu principale. In tutto 34 test.
+- **Emoji**: nel programma ci sono circa 130 stampe con emoji, già protette all'avvio
+  (`reconfigure(errors='replace')`). L'unica dentro una domanda ("Esiste già. Sovrascrivere?")
+  è stata tolta: in una domanda sposta il cursore su alcuni terminali. I messaggi nuovi non
+  usano emoji.
+
+### Fase 1.4: completata (2026-11-22)
+
+- **`src/core/generazione.py`**: `genera_lab(base, nome, modello, sovrascrivi, lab_conf_testo,
+  tollerante)`, unica strada per creare un lab (wizard, import, e poi GUI).
+  - Controlla il modello con `valida_lab`: con errori non scrive nulla, salvo `tollerante`.
+  - Costruisce il lab in una cartella temporanea accanto ai lab e lo sposta al suo posto solo
+    alla fine. Se sostituisce un lab esistente ne fa prima la copia di sicurezza; se lo spostamento
+    finale fallisce rimette il lab di prima; non lascia cartelle temporanee.
+  - Non stampa: restituisce i messaggi dei generatori, con il percorso finale.
+  - `lab.conf` nell'ordine del wizard (router, host, www, dns); resolver su host, www e DNS.
+- **Wizard**: stesse domande e riepiloghi; i file si scrivono tutti alla fine. Se si interrompe
+  non resta nulla su disco, e un lab da sostituire resta com'era fino alla fine.
+- **Import** (menu e `--from-xml/--from-json`): passa da `genera_lab`, resta tollerante
+  (mostra i problemi dei dati e crea comunque); anche `--force` ora fa la copia di sicurezza.
+- **XML**: nuovo campo `<resolver>`, scritto dal wizard, dalla rigenerazione dai file (se tutti
+  host, www e DNS hanno lo stesso nameserver ed è un DNS del lab) e conservato quando le Opzioni
+  aggiornano l'XML. L'import lo legge (`leggi_resolver`). Il test di andata e ritorno non ha più
+  eccezioni.
+- **Verifiche**: scenari e rigenerazioni con gli stessi file di prima (unica differenza: la riga
+  `<resolver>` nell'XML dello scenario DNS); 10 test nuovi (creazione, sostituzione con copia,
+  errori, guasto a metà, spostamento finale fallito, wizard interrotto, resolver, ordine di
+  `lab.conf`); prove reali dal terminale (creazione, sovrascrittura, import da menu e con
+  `--force`). In tutto 44 test.
+
+### Fase 1.5: in corso
+
+Decisioni: anteprima e conferma per tutte le Opzioni; pausa dopo ogni gruppo; operazioni nuove
+nella voce 13 del menu Opzioni ("Aggiungi o togli un dispositivo") e dentro Modifica dispositivo.
+
+**Aggiunta al gruppo D: "rinomina dispositivo"** (terminale: dentro Modifica dispositivo; GUI:
+doppio clic sul nome). Rinomina file e cartella (eliminati e ricreati nello stesso piano),
+aggiorna `lab.conf` e i riferimenti negli altri file (`description Router <nome>` sui vicini,
+`hostname` in `vtysh.conf`, record DNS), con anteprima, conferma e copia di sicurezza. La
+correzione automatica dei nomi non validi (`correggi_nomi_lab`) userà la stessa operazione.
+
+**Gruppo A completato (2026-11-22)**: costo OSPF, auto-cost, loopback, network BGP, iBGP
+full-mesh, default route (BGP, RIP, OSPF).
+- `src/core/operazioni.py`: `opzioni_X` / `calcola_X` per ognuna, elenco `OPERAZIONI`,
+  `ErroreOperazione`. Le decisioni si prendono dal lettore unico, non dall'XML.
+- `file_utils.file_virtuali`: copia dei file in memoria. Gli aiutanti di scrittura
+  (`insert_lines_into_protocol_block`, `append_frr_stanza`, `_rimuovi_righe`, ...) passano da
+  `_leggi_testo` / `_scrivi_testo` / `_esiste_file`, così `calcola_X` fa girare la logica di
+  sempre senza toccare il disco.
+- Terminale: stesse domande; ora anteprima, conferma e copia di sicurezza anche per costo OSPF,
+  auto-cost, loopback, network BGP e iBGP (prima scrivevano subito). La vecchia domanda
+  "Confermi? (S/n)" dell'auto-cost è sostituita dalla conferma dell'anteprima.
+- Verifiche: 9 operazioni nuove catturate sul codice di prima; dopo la separazione i file prodotti
+  sono identici (cambia solo il testo stampato). Test nuovo: per 12 operazioni la strada della GUI
+  (`calcola_X` + `scrivi_piano`) produce gli stessi file del terminale. 48 test.
+- Da notare (comportamento di prima, ora visibile nell'anteprima): il costo OSPF aggiunge sempre
+  un nuovo blocco `interface`, anche se l'interfaccia ha già un costo; le scritture con
+  `_scrivi_righe` tolgono le righe vuote doppie, e l'anteprima lo mostra.
+
+**Gruppo B completato (2026-11-22)**: ridistribuzione (togli e rimetti `redistribute bgp`,
+route-map eBGP), resolver, delega DNS.
+- `calcola_redistribuzione`, `calcola_redistribuzione_route_map`, `calcola_resolver`,
+  `calcola_delega_dns` (con le relative `opzioni_*`), aggiunte a `OPERAZIONI`.
+- Terminale: stesse domande, ora con anteprima, conferma e copia di sicurezza. Il resolver non
+  crea più cartelle prima della domanda (restavano vuote se si annullava); tolti due rami che non
+  si potevano raggiungere.
+- Verifiche: 8 operazioni catturate sul codice di prima, file identici dopo la separazione; la
+  strada della GUI dà gli stessi file per 6 di esse (le altre 2 non scrivono nulla). 49 test.
+- **Difetto trovato nei controlli** (esisteva già): `riferimenti_frr` riconosce
+  `match ip address prefix-list` ma non `match ip next-hop prefix-list`, quindi dopo la
+  route-map eBGP segnala per sbaglio "prefix-list myNeighbors definita ma non usata". Da
+  correggere a parte (cambia gli avvisi registrati nei test).
+- Da notare (comportamento di prima): la route-map eBGP inserisce una riga di soli spazi prima
+  di `redistribute bgp route-map eBGP`.
+
+- **Corretto** (commit a parte): `riferimenti_frr` riconosce anche `match ip next-hop prefix-list`
+  e `match ip next-hop <access-list>`; spariti i falsi avvisi su smile_test e dopo la route-map
+  eBGP. Test in `tests/test_controlli.py`.
+
+**Gruppo C completato (2026-11-22)**: policy BGP (prefix-list, local preference, MED,
+access-list) e Customer-Provider-Peer.
+- `calcola_policy(stato, router, neighbor, tipo, direzione, reti, valore, asn_nuovo)` e
+  `calcola_cpp(stato, router, vicino, ip, asn, relazione, reti_out)`, con `opzioni_policy`.
+- Le righe che la logica stampa con ⚠️ (route-map sostituita, lista diversa già collegata al
+  neighbor, neighbor creato, nessuna rete annunciata) diventano note dell'anteprima: si leggono
+  prima di confermare. Se un piano non cambia nulla, il terminale mostra il messaggio della logica.
+- Customer-Provider-Peer: il neighbor mancante non viene più scritto prima della domanda sulla
+  relazione (prima restava aggiunto anche se la scelta era sbagliata); ora si scrive tutto alla fine.
+- Verifiche: 12 operazioni catturate sul codice di prima, file identici dopo la separazione; la
+  strada della GUI dà gli stessi file per tutte e 12. 53 test.
+- **Codice morto trovato**: `aggiungi_relazioni_bgp_menu` (routing_ops) ed
+  `ensure_neighbor_exists` (net_frr) non vengono chiamate da nessuna parte.
+
+**Gruppo D completato (2026-11-22)**: Modifica dispositivo e rinomina dispositivo.
+- `calcola_ip_interfaccia`, `calcola_rinumera_lan` (con `proposta_rinumera_lan` per gli IP da
+  scegliere a mano), `calcola_sposta_interfaccia`, `calcola_gateway`, `calcola_as`,
+  `calcola_aggiungi_protocollo`, `calcola_togli_protocollo`, `calcola_righe`, `calcola_rinomina`.
+- Queste operazioni aggiornano anche l'XML dopo la scrittura, come prima: il piano porta la
+  trasformazione in `piano['xml']`; il terminale la applica in `_esegui_piano`, la GUI con
+  `operazioni.dopo_scrittura`.
+- Terminale: stesse domande, stesso ordine e stesso testo stampato di prima (passavano già
+  dall'anteprima). Nuova voce "Rinomina il dispositivo" in Modifica dispositivo; dopo la
+  rinomina il menu prosegue sul nome nuovo.
+- **Rinomina**: lab.conf, cartella e file `<nome>.*` (eliminati e ricreati), `hostname` in
+  `vtysh.conf`, `neighbor ... description` sui vicini, XML. Si ferma se la cartella contiene file
+  non di testo. L'anteprima mostra i file spostati come "nuovo (era vecchio)" con le sole righe
+  cambiate; `scrivi_piano` toglie le cartelle rimaste vuote. `correggi_nomi_lab` (nomi non validi
+  all'apertura) usa la stessa operazione, con la copia di sicurezza.
+- Verifiche: 7 operazioni in più catturate sul codice di prima; le 18 operazioni di Modifica
+  dispositivo danno gli stessi file e lo stesso testo; la strada della GUI dà gli stessi file
+  del terminale, XML compreso, per 17 casi (rinomina compresa); test su nomi non validi, nomi già
+  usati, file non di testo, correzione automatica di `as60-r1`. 57 test.
+
+**Gruppo E completato (2026-11-22)**: operazioni nuove e controlli sul lettore unico.
+- **Opzioni 13 "Aggiungi o togli un dispositivo"**. Aggiungi router, host, www o dns con le stesse
+  domande del wizard (nomi e IP del lab già noti, area OSPF ereditata, avvisi nel riepilogo).
+  Router BGP: sessioni reciproche con i router BGP sulle sue LAN e pulizia delle network interne
+  solo sul router nuovo (non si rifanno i passi automatici su tutto il lab). Host/www/dns: resolver
+  del lab proposto. Togli: righe di `lab.conf`, file e cartelle, neighbor sugli altri router; note
+  su chi lo usava come gateway o resolver.
+- **Modifica dispositivo**: "Aggiungi un'interfaccia" (prima `ethN` libera, IP controllato nella
+  rete della LAN) e "Togli un'interfaccia" (le successive scalano, `eth2 -> eth1`, in `lab.conf`,
+  startup e `frr.conf`; tolti i neighbor non più raggiungibili, da entrambi i lati; nota sulle
+  network che coprono ancora la rete). Le voci nuove stanno dopo "Sposta un'interfaccia": i
+  numeri delle voci successive del menu sono scalati.
+- **Controlli e Riepilogo**: `controlla_topologia`, `isole_ospf`, `controlli_configurazione`,
+  `controlli_host`, `collect_lab_ips`, `riepilogo_configurazione` usano il lettore unico; gli
+  avvisi dopo una scrittura e la GUI leggono il lab una volta sola. I dati del Riepilogo per la
+  GUI sono quelli di `gui/dati.leggi_lab` (già sul lettore unico).
+- Verifiche: 6 operazioni nuove dal terminale, tutte con la strada della GUI che dà gli stessi
+  file (XML compreso); errori (nome o IP già usati, IP fuori rete, unica interfaccia); IP del ping,
+  gruppi OSPF e stampa del Riepilogo catturati prima del riordino e identici dopo; prove reali dal
+  menu e del server della GUI. 58 test.
+- Leggono ancora i file direttamente, di proposito: la logica di scrittura delle Opzioni (per
+  calcolare le differenze passa dal livello `_leggi_testo`, che lavora anche in memoria),
+  l'elenco dei file di testo per le sostituzioni di IP, il ripristino delle copie di sicurezza e
+  la visualizzazione dei file nella GUI.
+
+### Fase 1.5: completata (2026-11-22)
+
+Tutte le Opzioni hanno `opzioni_X` / `calcola_X` in `core/operazioni.py`, raccolte in
+`OPERAZIONI`; terminale e GUI producono gli stessi file.
+
+### Fase 1.6: completata (2026-11-22)
+
+- `routing_ops.routers_dai_file`: i router (protocolli, AS, interfacce, aree...) dal lettore unico.
+  I menu con un ciclo (Opzioni, Policies, Default route, Ridistribuzione, Dispositivi,
+  post-creazione, Modifica dispositivo) li rileggono a ogni giro: dopo ogni operazione e anche
+  dopo le modifiche fatte dalla GUI o a mano.
+- Aprire le Opzioni (menu 5) non crea e non legge più l'XML. L'XML si crea con "Genera file XML"
+  e resta aggiornato dalle operazioni che lo aggiornavano già (fino alla fase 1.7).
+- Tolti gli aggiornamenti a mano dei dati in memoria dopo network BGP, loopback e
+  ridistribuzione: al giro dopo i dati vengono dai file.
+- Verifiche: le 71 operazioni registrate, fatte partire dai router ricavati dai file, danno gli
+  stessi file e lo stesso testo; test nuovi: BGP aggiunto solo nei file viene visto dal menu
+  delle policy (con i dati dell'XML il test fallisce), aprire le Opzioni su un lab senza XML non
+  crea l'XML e non cambia nessun file; prova reale wizard -> post-creazione -> Opzioni ->
+  Riepilogo. 60 test.
+
+### Fase 1.7: completata (2026-11-22)
+
+Decisioni: XML rigenerato dai file dopo ogni scrittura (tolte le trasformazioni delle singole
+operazioni); per i lab vecchi si chiede di spostare l'XML all'apertura delle Opzioni; archivio
+anche dal terminale (decisione D).
+- **`src/core/supporto.py`**: `cartella_supporto`, `percorso_xml`, `percorso_disegno`,
+  `xml_nel_lab`, `sposta_xml_fuori`. L'XML sta in `<cartella dei lab>/.labgenerator/<lab>/`;
+  `disegno.json` avrà lo stesso posto (lo scriverà la GUI nella fase 4).
+- **XML sempre allineato ai file**: rigenerato (in silenzio) dopo la creazione, dopo ogni Opzione
+  dal terminale (`_esegui_piano`) e dalla GUI (`operazioni.dopo_scrittura`), dopo un ripristino.
+  `--regen-xml` e "Genera file XML" lo scrivono nello stesso posto. Tolte `_aggiorna_xml`,
+  `_xml_sostituisci` e le trasformazioni `piano['xml']`.
+- **Lab vecchi**: aprendo le Opzioni, se l'XML è dentro il lab si propone di spostarlo (copia di
+  sicurezza; se fuori ce n'è già uno rigenerato, si tiene quello). La GUI lo segnala.
+- **Archivio** in `src/core/archivio.py`, usato dalla GUI e dal terminale (voce 7 del menu
+  principale, voce 4 del post-creazione). Esclusi: XML dentro il lab, `shared/` vuota, file e
+  cartelle nascosti, `*~`, `*.swp`, `__pycache__`. Per un lab normale l'archivio è identico a
+  quello di prima (verificato su tennis, `.tar.gz` e `.zip`).
+- La voce 4 (comando ping) legge gli IP dai file, non più dall'XML.
+- Verifiche: file attesi aggiornati con un controllo automatico che le sole differenze siano l'XML
+  che non sta più nel lab e il messaggio "Esportato XML" non più stampato dalle operazioni; test
+  nuovi su percorsi, XML rigenerato dopo una scrittura, spostamento dell'XML (diretto e dalle
+  Opzioni, anche rifiutato), archivio (residui esclusi, entrambi i formati, dal terminale); prove
+  reali (`--regen-xml`, Opzioni su un lab vecchio, voce 7, wizard + archivio, archivio dalla GUI).
+  69 test.
+- Da aggiornare nella fase 7: README, FUNZIONI.txt e LEGGIMI.txt dicono ancora che l'XML sta nel
+  lab e va cancellato prima della consegna.
+
+## Fase 1: completata (2026-11-22)
+
+Il motore è unico per terminale e GUI: lettore unico dei file (`stato.py`), modifiche come piani
+(`modifiche.py`), regole del lab (`modello.py`), generazione (`generazione.py`), tutte le Opzioni
+come `opzioni_X` / `calcola_X` (`operazioni.py`), file di supporto fuori dal lab (`supporto.py`),
+archivio (`archivio.py`).
+
+### Fase 1.8: completata (2026-11-22) — OSPF con più aree per router
+
+Aggiunta dopo la fase 1.7: nelle soluzioni d'esame puzzle, the-thing e clouds ci sono router di
+confine (ABR) con 2 o 3 aree, e il generatore ne gestiva una sola per router (era tra i limiti
+della fase 1.1). Serve anche all'editor grafico, dove le aree OSPF sono zone che contengono i link.
+- Modello: `ospf_aree` = {rete: area} e `ospf_aree_stub` = aree stub; senza, tutte le reti stanno
+  in `ospf_area` come prima.
+- Generazione: `mk_ospf_stanza` scrive l'area di ogni rete e le aree stub; lettura dai file
+  (`dati_da_stato`) con tutte le aree; XML con `<ospf_aree>` e `<ospf_aree_stub>`.
+- Controlli: aree valide per ogni rete; la stessa LAN nella stessa area per tutti i router (ora
+  con l'area di ogni rete); con più aree, ogni area diversa dalla 0 deve toccare la backbone
+  tramite un router di confine; niente stub sulla backbone. Messaggio esplicito per
+  un'interfaccia senza IP (trovato un refuso `ip addres add` nella soluzione di puzzle).
+- Terminale: "Tutte le network OSPF nell'area X? (S/n)" e, se no, l'area di ogni rete e quali
+  aree sono stub; nel wizard e nell'aggiunta di OSPF (Modifica dispositivo). Il riepilogo del
+  router mostra "router di confine: ...".
+- Verifiche: i router OSPF delle tre soluzioni d'esame, rigenerati dal modello, hanno le stesse
+  network con le stesse aree e le stesse aree stub (8 router di confine); scenario del wizard con
+  un router di confine (anche nell'andata e ritorno XML); aggiunta di OSPF su due aree dal
+  terminale e con la strada della GUI; test dei controlli nuovi. 76 test.
+
 ### Prossimo passo
 
-Fase 1.1: il lettore unico `core/stato.py`.
+Fase 2: interfaccia del server della GUI (stato del lab, proposte, anteprima, applica, crea lab).
+Da decidere prima: collegamento tra anteprima e applica senza memoria nel server (impronte dei
+file, proposto) o con il piano tenuto in memoria.
+
+---
+
+## 8. Da riprendere in futuro
+
+Cose trovate durante il lavoro e messe da parte di proposito. Non bloccano le fasi in corso.
+
+| Cosa | Dove | Note |
+|---|---|---|
+| Codice morto: `aggiungi_relazioni_bgp_menu` | `src/core/routing_ops.py` | Non è chiamata da nessun menu. Lasciata dov'è (decisione del 2026-11-22). |
+| Codice morto: `ensure_neighbor_exists` | `src/core/net_frr.py` | Non è chiamata da nessuna parte. Lasciata dov'è. |
+| La proposta delle network IGP aggrega per primo ottetto | `net_frr.default_igp_networks` | Può mettere in un'area OSPF un link dichiarato in un'altra; ora `valida_lab` lo segnala come avviso. |
+| Il resolver finale viene scritto anche sui server DNS | `generazione._scrivi_lab` | Lasciato così (decisione della fase 1.4). |
+| Il costo OSPF aggiunge sempre un nuovo blocco `interface` | `operazioni.calcola_costo_ospf` | Anche se l'interfaccia ha già un costo: si potrebbe sostituire quello esistente. |
+| Riga di soli spazi prima di `redistribute bgp route-map eBGP` | `operazioni.calcola_redistribuzione_route_map` | Viene da `insert_lines_into_protocol_block` con una riga vuota. |
+| Quando le Opzioni aggiornano l'XML lo riscrivono per intero | `persistence._aggiorna_xml` | Cambia, per esempio, `&quot;` in `"` dentro `lab_conf`. Da decidere nella fase 1.7 (XML fuori dal lab, forse rigenerato dai file). |
+| Circa 130 stampe con emoji | tutto il terminale | Protette all'avvio (`reconfigure(errors='replace')`); nessuna è più dentro una domanda. |

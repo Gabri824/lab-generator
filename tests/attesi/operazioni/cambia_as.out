@@ -1,0 +1,17 @@
+Nuovo AS di as10r1 (ora 10; Invio = annulla): 11
+
+--- AS di as10r1: 10 -> 11: anteprima (2 file) ---
+  as10r1/etc/frr/frr.conf
+    - riga  10: router bgp 10
+    + riga  10: router bgp 11
+  as40r1/etc/frr/frr.conf
+    - riga  20: neighbor 192.168.0.1 remote-as 10
+    + riga  20: neighbor 192.168.0.1 remote-as 11
+  ⚠️ Il nome as10r1 contiene ancora AS10: il dispositivo non viene rinominato.
+
+Confermi le modifiche? (s/N): s
+✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/candy_test/AAAAMMGG-HHMMSS
+   (i controlli dell'opzione 8 danno lo stesso esito di prima)
+   Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
+
+[copie di sicurezza create: 1]

@@ -1,0 +1,7 @@
+# resolv.conf con un nameserver scritto a mano
+@lab tennis_test
+@chiama assegna_resolv_conf
+pc
+M
+9.9.9.9
+s

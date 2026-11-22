@@ -8,7 +8,7 @@ che i nuovi file prodotti sono giusti. Dopo l'esecuzione, `git diff tests/attesi
 cambiato.
 
 Uso:
-    python tests/strumenti/aggiorna_attesi.py [lettura] [rigenerazione] [opzioni] [scenari] [soluzioni]
+    python tests/strumenti/aggiorna_attesi.py [lettura] [stato] [rigenerazione] [opzioni] [scenari] [operazioni] [soluzioni]
 
 Senza argomenti aggiorna tutto. "soluzioni" richiede la variabile LABGEN_ESERCIZI con il percorso
 di esercizi/lab-bgp; senza, viene saltato.
@@ -20,7 +20,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import _comune as c  # noqa: E402
 
-PARTI = ('lettura', 'rigenerazione', 'opzioni', 'scenari', 'soluzioni')
+PARTI = ('lettura', 'stato', 'rigenerazione', 'opzioni', 'scenari', 'operazioni', 'soluzioni')
 
 
 def _scrivi(path, testo):
@@ -41,13 +41,15 @@ def main(argv):
         path = os.path.join(c.FIXTURE_LABS, lab)
         if 'lettura' in parti:
             _scrivi(os.path.join(c.ATTESI, 'lettura', lab + '.json'), c.produci_lettura(path))
+        if 'stato' in parti:
+            _scrivi(os.path.join(c.ATTESI, 'stato', lab + '.json'), c.produci_stato(path))
         if 'rigenerazione' in parti or 'opzioni' in parti:
             rig = c.produci_rigenerazione(path)
             if 'rigenerazione' in parti:
                 c.scrivi_albero(os.path.join(c.ATTESI, 'rigenerazione', lab), rig)
             if 'opzioni' in parti:
                 _scrivi(os.path.join(c.ATTESI, 'opzioni', lab + '.diff'), c.produci_diff_opzioni(path, rig))
-    if any(p in parti for p in ('lettura', 'rigenerazione', 'opzioni')):
+    if any(p in parti for p in ('lettura', 'stato', 'rigenerazione', 'opzioni')):
         print(f"lab reali: {len(labs)}")
 
     if 'scenari' in parti:
@@ -55,6 +57,14 @@ def main(argv):
         for s in scenari:
             c.scrivi_albero(os.path.join(c.ATTESI, 'scenari', s), c.produci_scenario(s))
         print(f"scenari: {len(scenari)}")
+
+    if 'operazioni' in parti:
+        operazioni = c.elenco_operazioni()
+        for n in operazioni:
+            diff, stampato = c.produci_operazione(n)
+            _scrivi(os.path.join(c.ATTESI, 'operazioni', n + '.diff'), diff)
+            _scrivi(os.path.join(c.ATTESI, 'operazioni', n + '.out'), stampato)
+        print(f"operazioni: {len(operazioni)}")
 
     if 'soluzioni' in parti:
         esercizi = c.cartella_esercizi()

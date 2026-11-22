@@ -1,0 +1,6 @@
+# Loopback su un router BGP+OSPF (annunciata in OSPF)
+@lab galaxy_mio
+@chiama aggiungi_loopback_menu
+as2r1
+2.255.0.1
+s

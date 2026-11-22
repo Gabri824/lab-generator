@@ -1,0 +1,4 @@
+# Delega chiesta a un server che non è il root: rifiutata
+@lab tennis_test
+@chiama aggiungi_delega_dns
+ns_com
