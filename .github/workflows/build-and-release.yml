@@ -38,7 +38,7 @@ jobs:
 
       - name: Compilazione con PyInstaller (Onefile)
         run: |
-          pyinstaller --onefile --paths src --collect-submodules core --collect-submodules gui --hidden-import readline --name ${{ matrix.output_name }} src/labGenerator.py
+          pyinstaller --onefile --paths src --collect-submodules core --collect-submodules gui --add-data "src/gui/static:gui/static" --hidden-import readline --name ${{ matrix.output_name }} src/labGenerator.py
 
       - name: Comprimi con permessi (Linux)
         if: runner.os == 'Linux'

@@ -524,8 +524,9 @@ esclusivamente la libreria standard di Python.
         ├── __init__.py
         ├── dati.py              # Lettura e rappresentazione dello stato del lab
         ├── kathara.py           # Comandi Docker/Kathará e test di rete
-        ├── pagina.py            # Interfaccia HTML, CSS e JavaScript
-        └── server.py            # Server HTTP locale e controlli di sicurezza
+        ├── api.py               # Stato del lab, Opzioni con anteprima e applica, creazione lab
+        ├── server.py            # Server HTTP locale e controlli di sicurezza
+        └── static/              # La pagina: index.html, css/, js/ (moduli) e js/componenti/
 ```
 
 ## Crediti

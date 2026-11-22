@@ -1,0 +1,92 @@
+/* Componenti comuni: anteprima delle modifiche, elenco errori, pannello proprietà, livelli,
+   annulla/ripeti. Li usano l'editor grafico e le Opzioni (fasi 4 e 5); la pagina di prova è
+   static/prova.html. */
+
+/* ---------- anteprima delle modifiche (modello: diff-review) ----------
+   due tinte fisse, rosso e verde, mescolate al fondo: si leggono in chiaro e in scuro */
+.anteprima { --d-piu: oklch(.66 .15 150); --d-meno: oklch(.62 .19 25);
+  --d-piu-bg: color-mix(in oklab, var(--d-piu) 12%, var(--pan)); --d-piu-gut: color-mix(in oklab, var(--d-piu) 20%, var(--pan));
+  --d-piu-txt: color-mix(in oklab, var(--d-piu) 62%, var(--txt));
+  --d-meno-bg: color-mix(in oklab, var(--d-meno) 10%, var(--pan)); --d-meno-gut: color-mix(in oklab, var(--d-meno) 17%, var(--pan));
+  --d-meno-txt: color-mix(in oklab, var(--d-meno) 62%, var(--txt));
+  display: flex; flex-direction: column; gap: var(--s-3); }
+.anteprima__testa { display: flex; align-items: baseline; gap: var(--s-3); flex-wrap: wrap; }
+.anteprima__testa h3 { margin: 0; font-size: var(--t-h3); }
+.anteprima__note { margin: 0; padding: var(--s-2) var(--s-3) var(--s-2) 30px; border-radius: var(--r-md); background: var(--warnbg);
+  border: 1px solid color-mix(in oklab, var(--warn) 45%, transparent); }
+.anteprima__note li { margin: 2px 0; }
+.anteprima__vuota { padding: var(--s-3); border: 1px dashed var(--bor-forte); border-radius: var(--r-md); color: var(--mut); }
+.diff { border: 1px solid var(--bor); border-radius: var(--r-md); overflow: hidden; background: var(--pan); }
+.diff__testa { display: flex; align-items: center; gap: var(--s-2); min-height: 38px; padding: 0 var(--s-3); background: var(--pan-2);
+  border-bottom: 1px solid var(--bor); flex-wrap: wrap; }
+.diff__file { font: var(--t-small)/1.3 var(--mono); color: var(--mut); min-width: 0; overflow-wrap: anywhere; }
+.diff__file b { color: var(--txt); font-weight: 600; }
+.diff__stato--nuovo { background: var(--okbg); color: var(--ok); }
+.diff__stato--eliminato { background: var(--kobg); color: var(--ko); }
+.diff__stato--spostato { background: var(--acc-tinta); color: var(--acc); }
+.diff__conta { display: inline-flex; align-items: center; gap: 6px; font: 600 var(--t-small)/1 var(--mono); }
+.diff__conta .piu { color: var(--d-piu-txt); }
+.diff__conta .meno { color: var(--d-meno-txt); }
+.diff__barra { display: inline-flex; gap: 2px; margin-left: 2px; }
+.diff__barra i { width: 8px; height: 8px; border-radius: 2px; }
+.diff__barra .piu { background: color-mix(in oklab, var(--d-piu) 80%, var(--pan)); }
+.diff__barra .meno { background: color-mix(in oklab, var(--d-meno) 80%, var(--pan)); }
+.diff__righe { font: var(--t-small)/1.55 var(--mono); overflow-x: auto; }
+.diff__riga { display: grid; grid-template-columns: 44px 22px minmax(0, 1fr); min-width: max-content; }
+.diff__riga code { white-space: pre; padding-right: var(--s-3); font-size: inherit; }
+.diff__n, .diff__s { text-align: right; padding: 0 var(--s-2) 0 0; color: var(--mut); user-select: none; }
+.diff__s { text-align: center; padding: 0; font-weight: 700; }
+.diff__riga.piu { background: var(--d-piu-bg); }
+.diff__riga.piu .diff__n, .diff__riga.piu .diff__s { background: var(--d-piu-gut); color: var(--d-piu-txt); }
+.diff__riga.meno { background: var(--d-meno-bg); }
+.diff__riga.meno .diff__n, .diff__riga.meno .diff__s { background: var(--d-meno-gut); color: var(--d-meno-txt); }
+.diff__salto { padding: 0 var(--s-3); color: var(--mut); background: var(--pan-2); line-height: 1.4; }
+.diff__vuoto { padding: var(--s-2) var(--s-3); }
+.conflitto { display: flex; flex-direction: column; gap: var(--s-1); padding: var(--s-3); border-radius: var(--r-md);
+  background: var(--kobg); color: var(--txt); border: 1px solid color-mix(in oklab, var(--ko) 50%, transparent); }
+.conflitto b { color: var(--ko); }
+
+/* ---------- elenco errori ---------- */
+.errori ul { list-style: none; margin: var(--s-1) 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.errori__voce { display: flex; align-items: flex-start; gap: var(--s-2); width: 100%; min-height: 0; padding: 6px var(--s-2); text-align: left;
+  font-weight: 400; line-height: 1.4; white-space: normal; color: var(--txt); background: transparent; border: 1px solid transparent; border-radius: var(--r-sm); }
+.errori__segno { flex: none; width: 1em; font-weight: 700; }
+.errori__voce--errore .errori__segno { color: var(--ko); }
+.errori__voce--avviso .errori__segno { color: var(--warn); }
+.errori__campo { font: 600 var(--t-small)/1.4 var(--mono); color: var(--mut); margin-right: var(--s-1); }
+@media (hover: hover) and (pointer: fine) {
+  .errori__voce:not(:disabled):hover { background: var(--pan-2); border-color: var(--bor); transform: none; }
+}
+
+/* ---------- pannello proprietà ---------- */
+.prop { display: flex; flex-direction: column; gap: var(--s-3); }
+.prop__titolo { margin: 0; font-size: var(--t-h3); }
+.prop__campo { display: flex; flex-direction: column; gap: var(--s-1); }
+.prop__campo > label:not(.scelta) { font-size: var(--t-small); font-weight: 500; color: var(--mut); }
+.prop__campo input:not([type=checkbox]), .prop__campo select { width: 100%; }
+.prop__fac { font-weight: 400; }
+.prop__aiuto { font-size: var(--t-small); color: var(--mut); }
+
+/* ---------- interruttori dei livelli ---------- */
+.livelli { display: flex; flex-wrap: wrap; gap: 6px; }
+.livello { gap: var(--s-2); min-height: var(--h-ctl-sm); padding: 0 10px 0 6px; font-size: var(--t-small); color: var(--txt);
+  background: var(--pan); border-color: var(--bor-forte); border-radius: 20px; }
+.livello__inter { position: relative; width: 26px; height: 16px; border-radius: 10px; background: var(--bor-forte); flex: none;
+  transition: background-color var(--m-in) var(--ease); }
+.livello__inter::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / .25); transition: transform 180ms var(--ease); }
+.livello[aria-checked=true] { border-color: var(--acc-bordo); background: var(--acc-tinta); }
+.livello[aria-checked=true] .livello__inter { background: var(--acc); }
+.livello[aria-checked=true] .livello__inter::after { transform: translateX(10px); }
+@media (hover: hover) and (pointer: fine) {
+  .livello:not(:disabled):hover { background: var(--pan-2); border-color: var(--acc-bordo); }
+  .livello[aria-checked=true]:not(:disabled):hover { background: color-mix(in oklab, var(--acc) 14%, var(--pan)); }
+}
+
+/* ---------- annulla / ripeti ---------- */
+.storia { display: inline-flex; gap: 6px; }
+
+/* ---------- pagina di prova ---------- */
+.prova__main { max-width: 1200px; margin: 0 auto; padding: var(--s-5); }
+.prova__main h1 { font-size: var(--t-h1); margin: 0 0 var(--s-1); }
+.prova__griglia { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: var(--s-4); margin-top: var(--s-4); align-items: start; }

@@ -923,6 +923,60 @@ def file_modificati(base, lab):
 # -------------------------
 # Terminale e archivio
 # -------------------------
+# come ogni terminale vuole il comando da eseguire (nome del programma -> opzioni prima del comando)
+OPZIONI_TERMINALE = {
+    'foot': [], 'xdg-terminal-exec': [], 'kitty': [], 'alacritty': ['-e'], 'ghostty': ['-e'],
+    'wezterm': ['start', '--'], 'gnome-terminal': ['--'], 'kgx': ['--'], 'ptyxis': ['--'],
+    'konsole': ['-e'], 'xfce4-terminal': ['-x'], 'mate-terminal': ['-x'], 'terminator': ['-x'],
+    'tilix': ['-e'], 'lxterminal': ['-e'], 'qterminal': ['-e'], 'urxvt': ['-e'], 'st': ['-e'],
+    'x-terminal-emulator': ['-e'], 'xterm': ['-e'],
+}
+ALTRI_TERMINALI = ['xdg-terminal-exec', 'foot', 'alacritty', 'kitty', 'ghostty', 'wezterm', 'gnome-terminal',
+                   'kgx', 'ptyxis', 'konsole', 'xfce4-terminal', 'mate-terminal', 'terminator', 'tilix',
+                   'lxterminal', 'qterminal', 'x-terminal-emulator', 'urxvt', 'xterm']
+
+
+def _terminale_di_kathara():
+    """Il terminale impostato in Kathará (~/.config/kathara.conf, chiave "terminal"), se c'è."""
+    try:
+        with open(os.path.join(os.path.expanduser('~'), '.config', 'kathara.conf'), encoding='utf-8') as f:
+            t = json.load(f).get('terminal')
+        return t if isinstance(t, str) and t.strip() else None
+    except (OSError, ValueError, AttributeError):
+        return None
+
+
+def _terminali_candidati():
+    """[(eseguibile, opzioni)] in ordine: quello di Kathará, $TERMINAL, poi quelli noti; senza doppioni."""
+    nomi = [_terminale_di_kathara()]
+    try:
+        nomi += shlex.split(os.environ.get('TERMINAL', ''))[:1]
+    except ValueError:
+        pass
+    nomi += ALTRI_TERMINALI
+    out, visti = [], set()
+    for n in nomi:
+        exe = shutil.which(n) if n else None
+        if not exe or os.path.realpath(exe) in visti:
+            continue
+        visti.add(os.path.realpath(exe))
+        out.append((exe, OPZIONI_TERMINALE.get(os.path.basename(exe), ['-e'])))
+    return out
+
+
+def _env_finestra():
+    """Ambiente per un programma con finestra: nell'eseguibile PyInstaller si toglie il
+    LD_LIBRARY_PATH delle sue librerie (come per il browser), altrimenti il terminale non parte."""
+    env = dict(os.environ)
+    if getattr(sys, 'frozen', False):
+        orig = env.get('LD_LIBRARY_PATH_ORIG')
+        if orig is not None:
+            env['LD_LIBRARY_PATH'] = orig
+        else:
+            env.pop('LD_LIBRARY_PATH', None)
+    return env
+
+
 def apri_terminale(kathara, lab_path, dev):
     """Apre `kathara connect` in una nuova finestra. Ritorna (ok, messaggio, comando)."""
     args = [kathara or 'kathara', 'connect', '-d', lab_path, dev]
@@ -930,18 +984,19 @@ def apri_terminale(kathara, lab_path, dev):
     if sys.platform.startswith('win'):
         subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
         return True, 'Terminale aperto in una nuova finestra.', comando
-    candidati = [('gnome-terminal', ['--']), ('konsole', ['-e']), ('xfce4-terminal', ['-x']),
-                 ('mate-terminal', ['-x']), ('x-terminal-emulator', ['-e']), ('xterm', ['-e'])]
-    for prog, opz in candidati:
-        exe = shutil.which(prog)
-        if exe:
-            try:
-                subprocess.Popen([exe] + opz + args, stdin=subprocess.DEVNULL,
-                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                                 start_new_session=True)
-                return True, f"Terminale aperto con {prog}.", comando
-            except OSError:
+    for exe, opz in _terminali_candidati():
+        try:
+            p = subprocess.Popen([exe] + opz + args, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                 stderr=subprocess.DEVNULL, start_new_session=True, env=_env_finestra())
+        except OSError:
+            continue
+        try:
+            # un terminale che non riesce ad aprirsi (niente schermo, opzioni sbagliate) esce subito
+            if p.wait(timeout=0.8) != 0:
                 continue
+        except subprocess.TimeoutExpired:
+            pass
+        return True, f"Terminale aperto con {os.path.basename(exe)}.", comando
     return False, 'Nessun terminale grafico trovato: copia il comando in un terminale.', comando
 
 

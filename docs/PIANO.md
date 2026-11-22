@@ -69,7 +69,7 @@ creati o modificati dalla GUI.
 | Non si possono aggiungere o togliere dispositivi o interfacce a un lab esistente | nessuna funzione |
 | L'XML sta dentro il lab e va cancellato prima della consegna | `export_lab_to_xml` |
 | L'archivio di consegna esiste solo nella GUI | `crea_archivio` ([kathara.py](../src/gui/kathara.py)) |
-| HTML, CSS e JS della GUI stanno tutti in una stringa (circa 1300 righe) | [pagina.py](../src/gui/pagina.py) |
+| HTML, CSS e JS della GUI stanno tutti in una stringa (circa 1300 righe) | `pagina.py` (fase 3: ora [src/gui/static/](../src/gui/static/)) |
 | Nessun test | — |
 
 ---
@@ -123,6 +123,16 @@ creati o modificati dalla GUI.
 ---
 
 ## 5. Le fasi
+
+**Come si chiude ogni fase** (deciso il 2026-11-22):
+
+1. spiegazione della fase e via dell'autore ("procedi");
+2. lavoro e verifiche automatiche (test, pilota in Chromium, confronto con Kathará);
+3. commit e resoconto in questo piano;
+4. **prova guidata dell'autore**: una lista breve sui lab veri (comando da lanciare, cosa fare,
+   cosa si deve vedere), comprese le cose che non si provano in automatico (finestre sul
+   desktop, uso a occhio). L'autore riporta cosa va e cosa no;
+5. correzioni, se servono; la fase è chiusa solo dopo il via dell'autore.
 
 ### Fase 0: rete di test
 
@@ -248,8 +258,8 @@ sulle soluzioni).
 ### Fase 3: base della GUI
 
 - HTML, CSS e JS da `pagina.py` a `src/gui/static/`. Nella build PyInstaller si aggiunge
-  `--add-data`, che usa `:` come separatore su Linux e `;` su Windows (workflow
-  `build-and-release.yml`).
+  `--add-data "src/gui/static:gui/static"` (con PyInstaller 6 il separatore è `:` su tutti i
+  sistemi; `--collect-data gui` non funziona, vedi il resoconto della fase 3).
 - Dalla skill `design-taste-frontend` si prende solo:
   - componenti di base: colori, spaziature, raggi, pulsanti;
   - form: etichette visibili sopra i campi, errori sotto il campo giusto, una riga di stato;
@@ -276,7 +286,7 @@ sulle soluzioni).
 Primo traguardo usabile: **disegnare un lab e generarlo**.
 
 1. La Topologia ha due modalità, "visualizza" e "modifica", e parte dal codice SVG attuale
-   (`svgContenuto` e gestione di trascinamento e zoom in `pagina.py`).
+   (`svgContenuto` e gestione di trascinamento e zoom in `static/js/topologia.js`).
    - Elementi del disegno: dispositivi (router, host, WWW, DNS), nodi LAN con lettera e subnet,
      collegamenti. Un collegamento diretto tra due router crea da solo una LAN /30.
    - I riquadri AS assegnano l'AS (e BGP) ai router che ci stanno dentro.
@@ -349,8 +359,12 @@ per entrambe le interfacce.
   `kathara/base`.
 - Dopo ogni operazione la GUI suggerisce il test adatto.
 
-### Fase 7: rifinitura e rilascio
+### Fase 7: collaudo, rifinitura e rilascio
 
+- **Collaudo finale, fatto dall'autore prima del merge.** Un esercizio d'esame vero costruito da
+  zero due volte, prima dalla GUI e poi dal terminale; ognuno modificato poi dall'altra parte;
+  avvio con Kathará, test, confronto con la soluzione ufficiale (`confronta_lab.py`); archivio
+  di consegna. I problemi trovati si annotano e si correggono prima di andare avanti.
 - Controlli di larghezza e ingombro con `check.mjs` e `shoot.mjs`.
 - Prova completa su Windows, anche con l'eseguibile.
 - Aggiornamento di `README.md`, `FUNZIONI.txt` e `LEGGIMI.txt`.
@@ -732,10 +746,58 @@ Nuovo modulo `src/gui/api.py`; `server.py` gli passa le azioni e tiene i comandi
   l'anteprima mostra, lab esistente, nomi non validi, errori del modello). Ogni protezione è
   stata tolta una alla volta per controllare che un test se ne accorga. 99 test.
 
+## Fase 3: completata (2026-11-22) — base della GUI
+
+- **Pagina in file veri** (`src/gui/static/`): `index.html`, `css/` (base, layout delle schede,
+  componenti), `js/` in moduli ES senza compilazione (comune, main, topologia, dispositivo,
+  riepilogo, interfacce, test, archivio, registro). Il codice delle schede è quello di prima,
+  diviso con uno script: le funzioni sono identiche, sono cambiati solo `import`/`export`, gli
+  errori del server con il codice HTTP (`ErroreServer`, serve per il 409) e `aria-selected`.
+  `pagina.py` è tolto.
+- **Server**: consegna solo i file di `static/` con estensione prevista (niente `..`, file
+  nascosti, collegamenti che escono), con `Content-Security-Policy` (la pagina esegue solo i
+  propri script), `nosniff` e `no-referrer`.
+- **Aspetto** (dalla skill solo le parti decise): variabili per colori, misure, raggi e
+  movimento; pulsante principale pieno solo per "Avvia", gli altri tonali o a contorno;
+  etichette sopra i campi; anello di focus subito visibile; "riduci movimento" rispettato;
+  chiaro e scuro; Output come terminale con lo stato a pallino; contrasti corretti (verde,
+  arancio e rosso più scuri nel chiaro, testo scuro sul rosso nello scuro).
+- **Accessibilità**: "Vai al contenuto", schede con i ruoli `tab`/`tabpanel`, un nome per ogni
+  campo, icona della scheda (prima: errore 404 su `favicon.ico`). Trovato e corretto un limite di
+  prima: l'elenco dei lab non si raggiungeva da tastiera (ora sono pulsanti).
+- **Componenti comuni** (`js/componenti/`, prova in `/static/prova.html`): anteprima delle
+  modifiche (sulla risposta di `anteprima`, con conflitto e "nessuna modifica"), elenco errori
+  (sulla risposta di `valida_lab`, porta al campo e mette l'errore sotto il campo), pannello
+  proprietà da uno schema, interruttori dei livelli, annulla/ripeti con Ctrl+Z e Ctrl+Y.
+- **PyInstaller**: provato davvero. `--collect-data gui` non includeva nulla (PyInstaller lo
+  calcola prima di aggiungere `src` ai percorsi: "gui is not a package") e l'eseguibile
+  rispondeva 404; con `--add-data "src/gui/static:gui/static"` l'eseguibile consegna la pagina
+  (provato anche il comando esatto del workflow). Windows da provare nella fase 7.
+- **Verifiche**:
+  - `tests/test_pagina.py`: consegna e intestazioni, ogni file citato e ogni modulo importato
+    esiste, ogni nome importato è esportato, niente script in linea, id cercati dal codice
+    presenti, niente risorse esterne, percorsi rifiutati (anche i due controlli presi uno per
+    volta), workflow che include la pagina; con Node: sintassi e test dei componenti
+    (`tests/js/componenti.test.mjs`). Ogni controllo tolto apposta fa fallire un test.
+  - `tests/strumenti/prova_gui.mjs` (Chromium senza finestra) e `confronta_gui.py`: con Docker e
+    Kathará, 21 passi (lstart, convergenza, raggiungibilità, sessioni, rotta, tabelle, ping,
+    percorso con ritorno, guasto di un link, sintassi, interfacce reali, comandi del
+    dispositivo, file modificati, lclean, archivio, registro) sulla pagina vecchia e su quella
+    nuova, su `papillon_mio` e `tennis_test`: stessi risultati (cambiano solo la forma delle
+    etichette e i contatori dal vivo di FRR). Foto a 1440, 1024 e 768 in chiaro e scuro senza
+    nulla che esce dallo schermo; tastiera: ordine del Tab e anello visibile.
+  - Lista di controllo a mano: [CONTROLLI_GUI.md](CONTROLLI_GUI.md) ("Apri terminale" solo a
+    mano). 110 test.
+
+- **Prova guidata dell'autore (2026-11-22): superata**, sui lab veri (`~/labs/papillon_mio`). Emersi:
+  - "Apri terminale" non trovava `foot` (problema di prima): ora prova il terminale di
+    `~/.config/kathara.conf`, `$TERMINAL`, `xdg-terminal-exec` e una lista più ampia, ognuno con le
+    sue opzioni, e passa al successivo se uno esce con errore (`tests/test_terminale.py`).
+  - `--output` al posto di `--out` viene ignorato in silenzio: rimandato (sezione 8).
+
 ### Prossimo passo
 
-Fase 3: base della GUI (file statici fuori da `pagina.py`, componenti comuni con la skill
-`design-taste-frontend` presa solo nelle parti elencate).
+Fase 4: editor grafico per i lab nuovi (disegnare un lab e generarlo).
 
 ---
 
@@ -752,4 +814,5 @@ Cose trovate durante il lavoro e messe da parte di proposito. Non bloccano le fa
 | Il costo OSPF aggiunge sempre un nuovo blocco `interface` | `operazioni.calcola_costo_ospf` | Anche se l'interfaccia ha già un costo: si potrebbe sostituire quello esistente. |
 | Riga di soli spazi prima di `redistribute bgp route-map eBGP` | `operazioni.calcola_redistribuzione_route_map` | Viene da `insert_lines_into_protocol_block` con una riga vuota. |
 | Quando le Opzioni aggiornano l'XML lo riscrivono per intero | `persistence._aggiorna_xml` | Cambia, per esempio, `&quot;` in `"` dentro `lab_conf`. Da decidere nella fase 1.7 (XML fuori dal lab, forse rigenerato dai file). |
+| `--output` (o un'opzione scritta male) viene ignorato in silenzio | `main` in [labGenerator.py](../src/labGenerator.py) (`parse_known_args`) | Visto nella prova guidata della fase 3: la GUI partiva sulla cartella corrente senza lab. Proposta: `--output` come sinonimo di `--out` e un avviso per le opzioni non riconosciute. |
 | Circa 130 stampe con emoji | tutto il terminale | Protette all'avvio (`reconfigure(errors='replace')`); nessuna è più dentro una domanda. |

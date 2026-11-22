@@ -20,7 +20,6 @@ from urllib.parse import parse_qs, quote, urlparse
 from core.operazioni import ErroreOperazione
 
 from . import api, dati, kathara
-from .pagina import PAGINA
 
 
 def open_browser(url):
@@ -45,6 +44,32 @@ def open_browser(url):
 
 
 MAX_CORPO = 4 * 1024 * 1024         # byte di una richiesta POST
+
+# La pagina (HTML, CSS, JS) sta in gui/static/; nell'eseguibile PyInstaller la cartella viene
+# inclusa con --collect-data gui e si trova accanto ai moduli del pacchetto.
+STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
+if not os.path.isdir(STATIC) and getattr(sys, '_MEIPASS', None):
+    STATIC = os.path.join(sys._MEIPASS, 'gui', 'static')
+TIPI = {'.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
+        '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.json': 'application/json; charset=utf-8'}
+# la pagina esegue solo i propri file; gli stili in linea servono all'SVG della topologia
+CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
+       "connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+
+
+def file_statico(percorso_url):
+    """(contenuto, tipo) di un file di gui/static/, oppure None. Solo file dentro la cartella e
+    con un'estensione prevista: niente '..', percorsi assoluti o file nascosti."""
+    rel = percorso_url[len('/static/'):] if percorso_url.startswith('/static/') else None
+    if not rel or '\\' in rel or any(p in ('', '.', '..') or p.startswith('.') for p in rel.split('/')):
+        return None
+    tipo = TIPI.get(os.path.splitext(rel)[1].lower())
+    radice = os.path.realpath(STATIC)
+    path = os.path.realpath(os.path.join(radice, *rel.split('/')))
+    if not tipo or not path.startswith(radice + os.sep) or not os.path.isfile(path):
+        return None
+    with open(path, 'rb') as f:
+        return f.read(), tipo
 
 
 class Errore(Exception):
@@ -300,6 +325,10 @@ class Gestore(BaseHTTPRequestHandler):
         self.send_header('Content-Type', tipo)
         self.send_header('Content-Length', str(len(corpo)))
         self.send_header('Cache-Control', 'no-store')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('Referrer-Policy', 'no-referrer')
+        if tipo.startswith('text/html'):
+            self.send_header('Content-Security-Policy', CSP)
         for k, v in (extra or {}).items():
             self.send_header(k, v)
         self.end_headers()
@@ -315,8 +344,11 @@ class Gestore(BaseHTTPRequestHandler):
         q = {k: v[0] for k, v in parse_qs(u.query).items()}
         st = self.st
         try:
-            if u.path == '/':
-                return self._manda(200, PAGINA.encode('utf-8'), 'text/html; charset=utf-8')
+            if u.path in ('/', '/index.html'):
+                u = u._replace(path='/static/index.html')
+            if u.path.startswith('/static/'):
+                f = file_statico(u.path)
+                return self._manda(*((200,) + f if f else (404, {'errore': 'file non trovato'})))
             if u.path == '/api/info':
                 return self._manda(200, {'base': st.base, 'kathara': st.kathara, 'versione': st.versione,
                                          'sistema': sys.platform})

@@ -1,0 +1,127 @@
+/* Base della GUI: colori, misure, testo, pulsanti, campi, focus e movimento.
+   Un solo sistema per tutta la pagina: le altre regole usano solo queste variabili.
+   Chiaro e scuro seguono il sistema; l'Output e la topologia restano sempre come sono
+   (terminale scuro, disegno su fondo bianco, anche per l'SVG scaricato). */
+
+:root {
+  /* colori */
+  --bg: #f3f5f8;          /* fondo della pagina */
+  --pan: #ffffff;         /* pannelli e schede */
+  --pan-2: #f7f9fb;       /* barre e intestazioni dentro i pannelli */
+  --txt: #0f172a;
+  --mut: #526074;         /* etichette e note: almeno 4.5:1 sul fondo */
+  --bor: #dfe5ec;
+  --bor-forte: #c3cddb;   /* bordi dei campi */
+  --acc: #2563eb;         /* l'unico colore d'azione: pulsante principale, link, focus */
+  --acc-txt: #ffffff;
+  --acc-tinta: color-mix(in oklab, var(--acc) 9%, var(--pan));
+  --acc-bordo: color-mix(in oklab, var(--acc) 38%, var(--pan));
+  --ok: #15803d; --ko: #b91c1c; --warn: #b45309;
+  --ko-txt: #ffffff;      /* testo sul pulsante rosso */
+  --okbg: #dcfce7; --kobg: #fee2e2; --warnbg: #fef3c7;
+  --code: #0b1220; --codetxt: #e2e8f0;
+  --ombra: 0 1px 2px rgb(15 23 42 / .05);
+
+  /* misure: scala 4, 8, 12, 16, 24, 32, 48 */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px;
+  --r-sm: 6px; --r-md: 8px; --r-lg: 12px;     /* campi e pulsanti, pannelli, schede */
+  --h-ctl: 32px; --h-ctl-sm: 28px;            /* altezza dei controlli (strumento di lavoro: compatto) */
+
+  /* testo */
+  --font: system-ui, -apple-system, "Segoe UI", Ubuntu, Cantarell, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace;
+  --t-body: 14px; --t-small: 13px; --t-h1: 20px; --t-h2: 15px; --t-h3: 14px;
+
+  /* movimento */
+  --m-in: 150ms; --m-out: 120ms; --m-press: 90ms; --m-campo: 140ms;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b1220; --pan: #111a2e; --pan-2: #0f1729; --txt: #e2e8f0; --mut: #9aa8bc;
+    --bor: #22304a; --bor-forte: #34445f;
+    --acc: #60a5fa; --acc-txt: #0b1220;
+    --ok: #4ade80; --ko: #f87171; --warn: #fbbf24; --ko-txt: #0b1220;
+    --okbg: #14321f; --kobg: #3b1515; --warnbg: #3a2a0b;
+    --code: #050912; --codetxt: #cbd5e1;
+    --ombra: none;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font: var(--t-body)/1.45 var(--font); background: var(--bg); color: var(--txt); -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { line-height: 1.25; letter-spacing: -.005em; }
+p { margin: 0; }
+a { color: var(--acc); text-underline-offset: 2px; }
+code, pre { font-family: var(--mono); font-size: var(--t-small); }
+.muted { color: var(--mut); }
+.small { font-size: var(--t-small); }
+.sp { flex: 1; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+[hidden] { display: none !important; }
+
+/* link per saltare al contenuto: compare al primo Tab */
+.salta { position: absolute; left: var(--s-2); top: var(--s-2); z-index: 10; padding: var(--s-2) var(--s-3);
+  background: var(--pan); color: var(--acc); border-radius: var(--r-sm); box-shadow: 0 0 0 1px var(--bor); transform: translateY(-160%); }
+.salta:focus { transform: none; }
+
+/* ---------- pulsanti ----------
+   predefinito: tonale (tinta del colore d'azione); .primario: pieno, uno per vista;
+   .ghost: contorno; .danger: azione che spegne o cancella; .small: compatto */
+button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: var(--h-ctl); padding: 0 var(--s-3);
+  font: 500 var(--t-body)/1 var(--font); color: var(--acc);
+  background: var(--acc-tinta); border: 1px solid var(--acc-bordo); border-radius: var(--r-sm);
+  cursor: pointer; white-space: nowrap;
+  transition: transform var(--m-out) var(--ease), background-color var(--m-out) var(--ease),
+              border-color var(--m-out) var(--ease), color var(--m-out) var(--ease);
+}
+button.primario { background: var(--acc); border-color: var(--acc); color: var(--acc-txt); }
+button.ghost { background: transparent; border-color: var(--bor-forte); color: var(--acc); }
+button.danger { background: var(--ko); border-color: var(--ko); color: var(--ko-txt); }
+button.small { min-height: var(--h-ctl-sm); padding: 0 10px; font-size: var(--t-small); }
+button:disabled { opacity: .5; cursor: default; }
+button .ico { width: 14px; height: 14px; fill: currentColor; flex: none; }
+
+@media (hover: hover) and (pointer: fine) {
+  button:not(:disabled):hover { transform: translateY(-1px); transition-duration: var(--m-in);
+    background: color-mix(in oklab, var(--acc) 16%, var(--pan)); border-color: color-mix(in oklab, var(--acc) 55%, var(--pan)); }
+  button.primario:not(:disabled):hover { background: color-mix(in oklab, var(--acc) 86%, var(--txt)); border-color: color-mix(in oklab, var(--acc) 86%, var(--txt)); }
+  button.ghost:not(:disabled):hover { background: var(--acc-tinta); border-color: var(--acc-bordo); }
+  button.danger:not(:disabled):hover { background: color-mix(in oklab, var(--ko) 86%, var(--txt)); border-color: color-mix(in oklab, var(--ko) 86%, var(--txt)); }
+}
+button:not(:disabled):active { transform: translateY(1px) scale(.985); transition-duration: var(--m-press); }
+
+/* ---------- campi ----------
+   .campo: etichetta sopra il controllo; .scelta: casella o opzione con il testo accanto;
+   .campo__errore sotto il campo che ha il problema (aria-invalid sul controllo) */
+input, select, textarea {
+  font: var(--t-body)/1.3 var(--font); color: var(--txt); background: var(--pan);
+  min-height: var(--h-ctl); padding: 0 10px;
+  border: 1px solid var(--bor-forte); border-radius: var(--r-sm);
+  transition: border-color var(--m-campo) var(--ease), box-shadow var(--m-campo) var(--ease);
+}
+textarea { padding: var(--s-2) 10px; min-height: 80px; }
+input[type=checkbox], input[type=radio] { min-height: 0; width: 15px; height: 15px; margin: 0; accent-color: var(--acc); }
+input::placeholder { color: color-mix(in oklab, var(--mut) 80%, transparent); }
+.campo { display: inline-flex; flex-direction: column; gap: var(--s-1); font-size: var(--t-small); font-weight: 500; color: var(--mut); }
+.campo > span { padding-left: 1px; }
+.scelta { display: inline-flex; align-items: center; gap: 6px; color: var(--txt); cursor: pointer; min-height: var(--h-ctl-sm); }
+.gruppo { display: inline-flex; flex-wrap: wrap; gap: var(--s-1) var(--s-4); align-items: center; border: 0; margin: 0; padding: 0; min-width: 0; }
+[aria-invalid=true] { border-color: var(--ko); }
+.campo__errore { color: var(--ko); font-size: var(--t-small); font-weight: 400; }
+
+/* ---------- focus: anello pieno, subito, senza transizione ---------- */
+:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: none; border-color: var(--acc); box-shadow: 0 0 0 3px color-mix(in oklab, var(--acc) 24%, transparent);
+}
+
+/* ---------- riduci movimento: tutto fermo, niente nascosto ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+  button:not(:disabled):hover, button:not(:disabled):active { transform: none; }
+}

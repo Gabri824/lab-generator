@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lab Generator GUI</title>
+<meta name="description" content="Topologia, controlli, comandi e test Kathará dei lab creati con il generatore.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="/static/icona.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/css/base.css">
+<link rel="stylesheet" href="/static/css/app.css">
+<link rel="stylesheet" href="/static/css/componenti.css">
+<script type="module" src="/static/js/main.js"></script>
+</head>
+<body>
+<a class="salta" href="#scorri">Vai al contenuto</a>
+<header class="top">
+  <div class="brand"><svg class="brand__segno" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M6.5 10h10M13.5 7l3 3-3 3M17.5 14h-10M10.5 11l-3 3 3 3"/></svg>Lab Generator <span>GUI</span></div>
+  <div id="info" class="muted small"></div>
+  <div class="sp"></div>
+  <button id="bEsci" class="ghost small" type="button">Chiudi GUI</button>
+</header>
+<div class="wrap">
+  <aside aria-label="Lab disponibili">
+    <div class="aside-h"><h2 class="aside-t">Lab</h2><button id="bAggiorna" class="ghost small" type="button">Aggiorna</button></div>
+    <ul id="labs"></ul>
+    <div class="muted small" id="base"></div>
+  </aside>
+  <main>
+    <div id="scorri" tabindex="-1">
+      <div id="vuoto" class="vuoto">Scegli un lab dall'elenco a sinistra.</div>
+      <div id="vista" hidden>
+        <div class="labhead">
+          <h1 id="labNome"></h1><span id="labStato" class="badge"></span>
+          <div class="sp"></div>
+          <button id="bStart" class="primario" type="button"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.5v9l7-4.5z"/></svg>Avvia (lstart)</button>
+          <button id="bClean" class="danger" type="button"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="4" width="8" height="8" rx="1"/></svg>Ferma (lclean)</button>
+          <button id="bRileggi" class="ghost" type="button">Rileggi i file</button>
+        </div>
+        <div id="xmlNota" class="nota" hidden></div>
+        <div id="modNota" class="nota" hidden></div>
+        <div id="linkNota" class="nota" hidden></div>
+        <nav class="tabs" id="tabs" role="tablist" aria-label="Schede del lab">
+          <button data-tab="topo" class="on" type="button" role="tab" id="tab-topo" aria-controls="t-topo" aria-selected="true">Topologia</button>
+          <button data-tab="riep" type="button" role="tab" id="tab-riep" aria-controls="t-riep" aria-selected="false">Riepilogo e controlli</button>
+          <button data-tab="intf" type="button" role="tab" id="tab-intf" aria-controls="t-intf" aria-selected="false">Interfacce</button>
+          <button data-tab="test" type="button" role="tab" id="tab-test" aria-controls="t-test" aria-selected="false">Test</button>
+          <button data-tab="arch" type="button" role="tab" id="tab-arch" aria-controls="t-arch" aria-selected="false">Archivio</button>
+          <button data-tab="reg" type="button" role="tab" id="tab-reg" aria-controls="t-reg" aria-selected="false">Registro</button>
+        </nav>
+        <section id="t-topo" role="tabpanel" aria-labelledby="tab-topo">
+          <div class="topo">
+            <div class="canvas">
+              <div class="toolbar">
+                <button id="bRiordina" class="ghost small" type="button">Riordina</button>
+                <button id="bAdatta" class="ghost small" type="button">Adatta</button>
+                <label class="scelta small"><input type="checkbox" id="cIface" checked> interfacce</label>
+                <button id="bSvg" class="ghost small" type="button">Scarica immagine (SVG)</button>
+                <button id="bTogli" class="ghost small" type="button" hidden>Togli evidenziazione</button>
+                <span class="toolbar__aiuto small">Trascina i nodi o lo sfondo · rotellina per lo zoom · clic su un dispositivo per i comandi</span>
+              </div>
+              <svg id="svg" class="mappa" role="img" aria-label="Topologia del lab"></svg>
+            </div>
+            <div id="side" class="side" aria-live="polite"></div>
+          </div>
+        </section>
+        <section id="t-riep" role="tabpanel" aria-labelledby="tab-riep" hidden></section>
+        <section id="t-intf" role="tabpanel" aria-labelledby="tab-intf" hidden>
+          <div class="card">
+            <h2>Interfacce</h2>
+            <p class="muted small">Una riga per interfaccia, da confrontare con la figura: chi c'è dall'altra parte, IGP e costo, sessioni BGP e policy. In giallo le righe sospette.</p>
+            <div class="riga">
+              <label class="campo"><span>Filtra</span><input id="iFiltro" placeholder="dispositivo, LAN, IP..." size="28"></label>
+              <label class="scelta small"><input type="checkbox" id="iSolo"> solo righe con avvisi</label>
+              <button id="bReali" class="ghost small" type="button">Confronta con il lab acceso</button>
+            </div>
+            <div id="rIntf" class="scroll"></div>
+          </div>
+        </section>
+        <section id="t-test" role="tabpanel" aria-labelledby="tab-test" hidden>
+          <div class="card">
+            <h2>Raggiungibilità</h2>
+            <p class="muted small">Da ogni dispositivo, ping verso tutti gli IP degli altri (2 tentativi). Il lab deve essere avviato da almeno 1-2 minuti, il tempo che BGP converga.</p>
+            <div class="riga"><button id="bPing" type="button">Esegui il test</button></div>
+            <div id="rPing"></div>
+          </div>
+          <div class="card">
+            <h2>Sessioni BGP e OSPF</h2>
+            <p class="muted small">Per ogni router: neighbor BGP configurati (devono essere <b>Established</b>) e vicini OSPF (devono essere <b>Full</b>).</p>
+            <div class="riga"><button id="bSessioni" type="button">Leggi le sessioni</button>
+              <button id="bConv" class="ghost" type="button">Attendi convergenza (fino a 5 min)</button></div>
+            <div id="rSessioni"></div>
+          </div>
+          <div class="card">
+            <h2>Rotta verso una rete</h2>
+            <p class="muted small">Come un router raggiunge una rete: next-hop scelto e tutti i percorsi BGP ricevuti con local-preference, MED e AS-path. Serve per "prefers…", "local preference", "MED", "filters out…".</p>
+            <div class="riga">
+              <label class="campo"><span>Router</span><select id="rDev"></select></label>
+              <label class="campo"><span>Rete o IP</span><input id="rRete" list="retiList" placeholder="es. 100.0.0.0/8" size="18"></label>
+              <button id="bRotta" type="button">Mostra</button>
+            </div>
+            <div id="rRotta"></div>
+          </div>
+          <div class="card">
+            <h2>Tabelle di routing</h2>
+            <p class="muted small">Per ogni router, quali reti del lab sono nella tabella e verso chi. È il controllo "kernel_routes" della correzione automatica.</p>
+            <div class="riga"><button id="bTabelle" type="button">Leggi le tabelle</button></div>
+            <div id="rTabelle"></div>
+          </div>
+          <div class="card">
+            <h2>Ping</h2>
+            <p class="muted small">Ping da un dispositivo verso un IP del lab (dall'elenco) o uno qualsiasi. L'output compare in diretta nel riquadro Output.
+              "Origine" sceglie l'IP da cui parte il ping (<code>ping -I</code>): da un router, in automatico parte dall'interfaccia di uscita.</p>
+            <div class="riga">
+              <label class="campo"><span>Da</span><select id="pnSrc"></select></label>
+              <label class="campo"><span>Verso</span><input id="pnDst" list="ipList" placeholder="IP di destinazione" size="18"></label>
+              <label class="campo"><span>Origine</span><select id="pnOrig"></select></label>
+              <button id="bPn" type="button">Ping</button>
+            </div>
+            <div id="rPn"></div>
+          </div>
+          <div class="card">
+            <h2>Verifica percorso</h2>
+            <p class="muted small">Traceroute da un dispositivo verso un IP: gli hop diventano router e LAN, evidenziati sulla topologia. Serve per le richieste del tipo "i pacchetti devono attraversare ...".</p>
+            <div class="riga">
+              <label class="campo"><span>Da</span><select id="pSrc"></select></label>
+              <label class="campo"><span>Verso</span><input id="pDst" list="ipList" placeholder="IP di destinazione" size="18"></label>
+              <button id="bPercorso" type="button">Traccia il percorso</button>
+            </div>
+            <div class="riga">
+              <label class="campo"><span>Atteso</span><input id="pAtt" placeholder="es. G F  oppure  as20r1 as20r4" size="26"></label>
+              <fieldset class="gruppo"><legend class="sr">Confronto con l'atteso</legend>
+                <label class="scelta"><input type="radio" name="pModo" value="per" checked> deve passare per</label>
+                <label class="scelta"><input type="radio" name="pModo" value="esatta"> sequenza esatta</label>
+              </fieldset>
+            </div>
+            <div class="riga">
+              <label class="scelta"><input type="checkbox" id="pRit"> anche il ritorno</label>
+              <label class="campo"><span>Atteso al ritorno</span><input id="pAttR" placeholder="es. H F" size="26"></label>
+            </div>
+            <p class="muted small">"Atteso" è facoltativo: nomi delle LAN (le lettere della figura) oppure dei dispositivi, separati da spazi.
+              "Deve passare per" = quei link in quell'ordine, anche con altri in mezzo; "sequenza esatta" = tutto il percorso.</p>
+            <div id="rPercorso"></div>
+          </div>
+          <div class="card">
+            <h2>Guasto di un link</h2>
+            <p class="muted small">Spegne un link (<code>ip link set ethX down</code> su tutti i dispositivi della LAN) per vedere il percorso di riserva:
+              "se il link X si guasta, il traffico deve passare per…". Vale solo a lab acceso, i file non cambiano; "Riaccendi" (o un riavvio del lab) rimette tutto com'era.</p>
+            <div class="riga">
+              <label class="campo"><span>LAN</span><select id="gLan"></select></label>
+              <button id="gGiu" class="danger" type="button">Spegni</button>
+              <button id="gSu" class="ghost" type="button">Riaccendi</button>
+            </div>
+            <div id="rGuasto"></div>
+          </div>
+        </section>
+        <section id="t-arch" role="tabpanel" aria-labelledby="tab-arch" hidden>
+          <div class="card">
+            <h2>Archivio per la consegna</h2>
+            <p class="muted small">Crea l'archivio nella cartella dei lab, <b>senza l'XML del generatore</b>. Il formato richiesto per la consegna è <code>.tar.gz</code>.</p>
+            <div class="riga">
+              <label class="campo"><span>Nome</span><input id="aNome" size="22"></label>
+              <fieldset class="gruppo"><legend class="sr">Formato</legend>
+                <label class="scelta"><input type="radio" name="aFmt" value="tar.gz" checked> .tar.gz</label>
+                <label class="scelta"><input type="radio" name="aFmt" value="zip"> .zip</label>
+              </fieldset>
+              <button id="bArchivio" type="button">Crea archivio</button>
+            </div>
+            <div id="aAvviso" class="nota" hidden></div>
+            <div id="rArchivio"></div>
+          </div>
+        </section>
+        <section id="t-reg" role="tabpanel" aria-labelledby="tab-reg" hidden>
+          <div class="card">
+            <h2>Registro operazioni</h2>
+            <div id="rRegistro"></div>
+          </div>
+        </section>
+      </div>
+    </div>
+    <section class="output" aria-label="Output dei comandi">
+      <div class="out-h"><b id="outTitolo">Output</b><span id="outStato" class="small" role="status"></span><div class="sp"></div><button id="bPulisci" class="ghost small" type="button">Pulisci</button></div>
+      <pre id="outTesto" role="log" tabindex="0" aria-label="Righe dell'ultimo comando"></pre>
+    </section>
+  </main>
+</div>
+<datalist id="ipList"></datalist>
+<datalist id="retiList"></datalist>
+</body>
+</html>

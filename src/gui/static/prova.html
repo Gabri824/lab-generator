@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Componenti della GUI</title>
+<meta name="description" content="Pagina di prova dei componenti comuni della GUI del Lab Generator.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="/static/icona.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/css/base.css">
+<link rel="stylesheet" href="/static/css/app.css">
+<link rel="stylesheet" href="/static/css/componenti.css">
+<script type="module" src="/static/js/prova.js"></script>
+</head>
+<body class="prova">
+<a class="salta" href="#contenuto">Vai al contenuto</a>
+<header class="top"><div class="brand">Lab Generator <span>componenti</span></div><div class="sp"></div><a href="/" class="small">Torna alla GUI</a></header>
+<main id="contenuto" class="prova__main" tabindex="-1">
+  <h1>Componenti comuni</h1>
+  <p class="muted">Pagina di prova: non legge e non scrive i lab (tranne il controllo di un modello di esempio, che non scrive nulla).</p>
+  <div class="prova__griglia">
+    <section class="card" aria-labelledby="h-ant">
+      <h2 id="h-ant">Anteprima delle modifiche</h2>
+      <div class="riga"><button type="button" id="pAnt" class="primario">Mostra anteprima</button><button type="button" id="pVuota" class="ghost">Nessuna modifica</button><button type="button" id="pConf" class="ghost">Conflitto</button></div>
+      <div id="rAnt"></div>
+    </section>
+    <section class="card" aria-labelledby="h-err">
+      <h2 id="h-err">Elenco errori e pannello proprietà</h2>
+      <div id="rProp"></div>
+      <div class="riga"><button type="button" id="pControlla">Controlla</button></div>
+      <div id="rErr" aria-live="polite"></div>
+    </section>
+    <section class="card" aria-labelledby="h-liv">
+      <h2 id="h-liv">Livelli del disegno</h2>
+      <div id="rLiv"></div>
+      <p class="small muted" id="rLivStato" aria-live="polite"></p>
+    </section>
+    <section class="card" aria-labelledby="h-sto">
+      <h2 id="h-sto">Annulla e ripeti</h2>
+      <div class="riga"><button type="button" id="pAggiungi">Aggiungi un router</button><div id="rSto"></div></div>
+      <pre class="file" id="rStoStato"></pre>
+    </section>
+  </div>
+</main>
+</body>
+</html>
