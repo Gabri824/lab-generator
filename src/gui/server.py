@@ -3,6 +3,9 @@
 Ascolta solo su 127.0.0.1. Le richieste che eseguono comandi devono avere
 l'intestazione X-Lab-Gen (una pagina di un altro sito non può aggiungerla) e un
 Host locale (contro il DNS rebinding).
+
+Le azioni che costruiscono e modificano i lab (Opzioni, anteprima, applica, crea lab) stanno in
+api.py; qui restano i comandi Kathará e i test.
 """
 import ipaddress
 import json
@@ -14,7 +17,9 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, quote, urlparse
 
-from . import dati, kathara
+from core.operazioni import ErroreOperazione
+
+from . import api, dati, kathara
 from .pagina import PAGINA
 
 
@@ -38,6 +43,8 @@ def open_browser(url):
         else:
             os.environ.pop(lp_key, None)
 
+
+MAX_CORPO = 4 * 1024 * 1024         # byte di una richiesta POST
 
 
 class Errore(Exception):
@@ -102,6 +109,8 @@ def _rete(valore):
 def azione(st, dati_rich):
     """POST /api/azione: ritorna un dizionario JSON (con 'lavoro' se parte un comando)."""
     tipo = dati_rich.get('azione')
+    if isinstance(tipo, str) and tipo in api.AZIONI:
+        return api.esegui(st, tipo, dati_rich)
     nome_lab = dati_rich.get('lab', '')
     lab_path = st.lab_path(nome_lab)
     k = st.kathara
@@ -318,6 +327,10 @@ class Gestore(BaseHTTPRequestHandler):
                 return self._manda(200, kathara.stato_lab(st.kathara, st.base, labs))
             if u.path == '/api/lab':
                 return self._manda(200, st.leggi_lab(q.get('nome', '')))
+            if u.path == '/api/stato_lab':
+                return self._manda(200, api.stato_lab(st.lab_path(q.get('nome', ''))))
+            if u.path == '/api/operazioni':
+                return self._manda(200, api.elenco_operazioni())
             if u.path == '/api/file':
                 lab = st.leggi_lab(q.get('lab', ''))
                 dev = _dispositivo(lab, q.get('dev'))['nome']
@@ -342,17 +355,37 @@ class Gestore(BaseHTTPRequestHandler):
                 return self._manda(200, corpo, 'application/octet-stream',
                                    {'Content-Disposition': f'attachment; filename="{nome}"'})
             return self._manda(404, {'errore': 'pagina non trovata'})
-        except Errore as e:
-            return self._manda(400, {'errore': str(e)})
         except Exception as e:
-            return self._manda(500, {'errore': f"{type(e).__name__}: {e}"})
+            return self._errore(e)
+
+    def _errore(self, e):
+        """Risposta per un errore: 400 richiesta sbagliata, 409 conflitto, 413 troppo grande,
+        422 operazione non possibile con questi valori, 500 errore del programma."""
+        if isinstance(e, api.ErroreApi):
+            return self._manda(e.codice, dict(e.extra, errore=str(e)))
+        if isinstance(e, ErroreOperazione):
+            return self._manda(422, {'errore': str(e).replace('⚠️', '').strip()})
+        if isinstance(e, Errore):
+            return self._manda(400, {'errore': str(e)})
+        return self._manda(500, {'errore': f"{type(e).__name__}: {e}"})
 
     def do_POST(self):
         if not self._host_valido() or self.headers.get('X-Lab-Gen') != '1':
             return self._manda(403, {'errore': 'richiesta non consentita'})
         try:
-            n = int(self.headers.get('Content-Length', '0') or 0)
-            corpo = json.loads(self.rfile.read(n).decode('utf-8') or '{}')
+            try:
+                n = int(self.headers.get('Content-Length', '0') or 0)
+            except ValueError:
+                raise Errore('Content-Length non valido')
+            if n < 0 or n > MAX_CORPO:
+                self.close_connection = True        # il corpo non viene letto
+                raise api.ErroreApi(f"Richiesta troppo grande (massimo {MAX_CORPO // (1024 * 1024)} MB).", 413)
+            try:
+                corpo = json.loads(self.rfile.read(n).decode('utf-8') or '{}')
+            except (UnicodeDecodeError, ValueError):
+                raise Errore('Il corpo della richiesta non è JSON valido')
+            if not isinstance(corpo, dict):
+                raise Errore('Il corpo della richiesta deve essere un oggetto JSON')
             if urlparse(self.path).path == '/api/esci':
                 self._manda(200, {'ok': True})
                 threading.Thread(target=self.st.server.shutdown, daemon=True).start()
@@ -360,10 +393,8 @@ class Gestore(BaseHTTPRequestHandler):
             if urlparse(self.path).path != '/api/azione':
                 return self._manda(404, {'errore': 'pagina non trovata'})
             return self._manda(200, azione(self.st, corpo))
-        except Errore as e:
-            return self._manda(400, {'errore': str(e)})
         except Exception as e:
-            return self._manda(500, {'errore': f"{type(e).__name__}: {e}"})
+            return self._errore(e)
 
 
 def avvia(base, gen, porta=8765, apri_browser=True):

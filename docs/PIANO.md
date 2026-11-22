@@ -235,7 +235,7 @@ sulle soluzioni).
 
 - `GET /api/stato_lab`: modello completo, disposizione del disegno e avvisi.
 - `POST /api/azione`, con tre azioni generiche:
-  - `proposte`: valori proposti per un'operazione;
+  - `opzioni`: cosa si può scegliere in un'operazione;
   - `anteprima`: il piano di modifica, mostrato come differenze;
   - `applica`: scrive, con l'impronta dei file letti per accorgersi dei conflitti.
 
@@ -697,11 +697,45 @@ della fase 1.1). Serve anche all'editor grafico, dove le aree OSPF sono zone che
   un router di confine (anche nell'andata e ritorno XML); aggiunta di OSPF su due aree dal
   terminale e con la strada della GUI; test dei controlli nuovi. 76 test.
 
+## Fase 2: completata (2026-11-22) — interfaccia del server della GUI
+
+Nuovo modulo `src/gui/api.py`; `server.py` gli passa le azioni e tiene i comandi Kathará.
+- `GET /api/stato_lab?nome=`: modello dei file (senza i testi), modello nel formato del wizard,
+  disegno salvato, avvisi, XML ancora dentro il lab sì/no.
+- `GET /api/operazioni`: le operazioni di `OPERAZIONI` con i parametri di `opzioni_X` e
+  `calcola_X` (obbligatori e valori predefiniti), per costruire i moduli della GUI.
+- `POST /api/azione`:
+  - `opzioni`: cosa si può scegliere (`opzioni_X`);
+  - `anteprima`: differenze file per file, note, impronte dei file e firma del piano;
+  - `applica`: ricalcola il piano sui file di adesso e scrive solo se impronte e firma sono
+    quelle dell'anteprima, altrimenti 409 con i file cambiati. Dopo la scrittura rigenera l'XML
+    fuori dal lab e annota l'operazione nel Registro;
+  - `valida_lab`: errori e avvisi del modello, più il modello completato con i valori proposti;
+  - `anteprima_lab`: genera il lab in una cartella temporanea e restituisce i file;
+  - `crea_lab`: se il lab esiste risponde `esiste` e serve `sovrascrivi` (copia di sicurezza
+    prima); può salvare subito anche il disegno;
+  - `sposta_xml` e `salva_disegno` (in `.labgenerator/<lab>/disegno.json`).
+- Parametri in JSON: `assegnati` e `fissi` come liste `[dispositivo, interfaccia, ip]`, `rel`
+  con `/` anche su Windows; le risposte hanno insiemi come liste e indirizzi come testo.
+- Sicurezza: solo operazioni dell'elenco e solo i parametri della loro firma; dispositivi che
+  devono esistere nel lab; LAN esistenti o con nome valido; nessun a capo o carattere di
+  controllo nei testi; nomi di lab e dispositivi nuovi controllati prima di scrivere; ogni piano
+  controllato perché tocchi solo file dentro il lab; corpo al massimo 4 MB; un'operazione del
+  motore alla volta (le stampe sono raccolte per tutto il processo). Restano `127.0.0.1`, il
+  controllo dell'Host e l'header `X-Lab-Gen`.
+- Codici: 400 richiesta sbagliata, 409 conflitto, 413 troppo grande, 422 operazione non
+  possibile con questi valori (messaggio per l'utente), 500 errore del programma.
+- Verifiche (`tests/test_api.py`, server HTTP vero): 23 operazioni fatte con anteprima + applica
+  danno esattamente i file della strada del terminale; conflitti (file cambiato, parametri
+  diversi, impronte mancanti) senza scrivere nulla; richieste rifiutate; stato, disegno,
+  spostamento dell'XML; lab nuovi (l'anteprima non scrive, si crea esattamente quello che
+  l'anteprima mostra, lab esistente, nomi non validi, errori del modello). Ogni protezione è
+  stata tolta una alla volta per controllare che un test se ne accorga. 99 test.
+
 ### Prossimo passo
 
-Fase 2: interfaccia del server della GUI (stato del lab, proposte, anteprima, applica, crea lab).
-Da decidere prima: collegamento tra anteprima e applica senza memoria nel server (impronte dei
-file, proposto) o con il piano tenuto in memoria.
+Fase 3: base della GUI (file statici fuori da `pagina.py`, componenti comuni con la skill
+`design-taste-frontend` presa solo nelle parti elencate).
 
 ---
 
