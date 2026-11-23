@@ -97,6 +97,7 @@
   "dispositivi": [
    {
     "asn": "100",
+    "deleghe": [],
     "demoni": [
      "ripd",
      "bgpd"
@@ -130,6 +131,7 @@
         "chi": "rxa4",
         "ip": "50.7.1.7",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -175,6 +177,7 @@
       "2.2.2.2/32"
      ],
      "costi": [],
+     "default": [],
      "igp": [
       {
        "auto_cost": null,
@@ -195,6 +198,7 @@
        "chi": "rxa4",
        "ip": "50.7.1.7",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -202,10 +206,14 @@
        "chi": "rcdf3",
        "ip": "3.3.3.3",
        "policy": [],
+       "relazione": null,
        "tipo": "iBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": [
+      "RIP"
+     ]
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -213,6 +221,7 @@
    },
    {
     "asn": "100",
+    "deleghe": [],
     "demoni": [
      "ripd"
     ],
@@ -261,6 +270,7 @@
     "riepilogo": {
      "bgp_networks": [],
      "costi": [],
+     "default": [],
      "igp": [
       {
        "auto_cost": null,
@@ -274,7 +284,8 @@
       }
      ],
      "neighbor": [],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -282,6 +293,7 @@
    },
    {
     "asn": "100",
+    "deleghe": [],
     "demoni": [
      "ripd",
      "bgpd"
@@ -332,6 +344,7 @@
         "chi": "rdy8",
         "ip": "50.3.8.8",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -360,6 +373,7 @@
       "3.3.3.3/32"
      ],
      "costi": [],
+     "default": [],
      "igp": [
       {
        "auto_cost": null,
@@ -380,6 +394,7 @@
        "chi": "rdy8",
        "ip": "50.3.8.8",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -387,10 +402,14 @@
        "chi": "rabe1",
        "ip": "2.2.2.2",
        "policy": [],
+       "relazione": null,
        "tipo": "iBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": [
+      "RIP"
+     ]
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -398,6 +417,7 @@
    },
    {
     "asn": "8",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -423,6 +443,7 @@
         "chi": "rcdf3",
         "ip": "50.3.8.3",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -449,6 +470,7 @@
       "8.8.8.0/24"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -456,10 +478,12 @@
        "chi": "rcdf3",
        "ip": "50.3.8.3",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -467,6 +491,7 @@
    },
    {
     "asn": "100",
+    "deleghe": [],
     "demoni": [
      "ripd"
     ],
@@ -515,6 +540,7 @@
     "riepilogo": {
      "bgp_networks": [],
      "costi": [],
+     "default": [],
      "igp": [
       {
        "auto_cost": null,
@@ -528,7 +554,8 @@
       }
      ],
      "neighbor": [],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -536,6 +563,7 @@
    },
    {
     "asn": "100",
+    "deleghe": [],
     "demoni": [
      "ripd"
     ],
@@ -584,6 +612,7 @@
     "riepilogo": {
      "bgp_networks": [],
      "costi": [],
+     "default": [],
      "igp": [
       {
        "auto_cost": null,
@@ -597,7 +626,8 @@
       }
      ],
      "neighbor": [],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -605,6 +635,7 @@
    },
    {
     "asn": "7",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -630,6 +661,7 @@
         "chi": "rabe1",
         "ip": "50.7.1.1",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -656,6 +688,7 @@
       "7.7.7.0/24"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -663,10 +696,12 @@
        "chi": "rabe1",
        "ip": "50.7.1.1",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",

@@ -126,8 +126,25 @@ def assegna_costo_interfaccia(base_path, routers):
     if not iface:
         print('Interfaccia non selezionata. Annullato.')
         return
-    costo = input_int(f'Inserisci il costo OSPF desiderato per {iface} (intero ≥ 1): ', 1)
-    _esegui_piano(base_path, operazioni.calcola_costo_ospf(leggi_stato(base_path), target, iface, costo))
+    stato = leggi_stato(base_path)
+    attuale = next((it['costo'] for it in _costi_interfacce(stato, target) if it['dev'] == iface), None)
+    print(f"Costo attuale di {iface}: {attuale if attuale else 'quello predefinito (nessun costo scritto)'}")
+    while True:
+        costo = input_int(f'Costo OSPF per {iface} (da 1 a 65535; 0 = togli il costo scritto): ', 0)
+        if costo <= 65535:
+            break
+        print('Il costo massimo è 65535.')
+    if costo == 0:
+        _esegui_piano(base_path, operazioni.calcola_togli_costo_ospf(stato, target, iface))
+    else:
+        _esegui_piano(base_path, operazioni.calcola_costo_ospf(stato, target, iface, costo))
+
+
+def _costi_interfacce(stato, router):
+    """[{'dev', 'costo'}] del router: il costo scritto nel frr.conf (None se non c'è)."""
+    d = stato['dispositivi'].get(router) or {}
+    interfacce = ((d.get('frr') or {}).get('interfacce') or {})
+    return [{'dev': it['dev'], 'costo': (interfacce.get(it['dev']) or {}).get('costo_ospf')} for it in d.get('interfacce', [])]
 
 
 def aggiungi_network_bgp(base_path, routers):
@@ -888,7 +905,8 @@ def menu_opzioni_laboratorio(base_path, routers):
             'Costi OSPF predefiniti a 10 (auto-cost reference-bandwidth 100 su un AS)',
             'Modifica un dispositivo (IP, LAN, gateway, protocolli, AS, righe dei file)',
             'Default route (BGP verso un neighbor, RIP, OSPF)',
-            'Aggiungi o togli un dispositivo'
+            'Aggiungi o togli un dispositivo',
+            "Annulla l'ultima modifica o ripristina una copia di sicurezza"
         ]
         print_menu(
             f'=== Opzioni Laboratorio ({os.path.basename(os.path.normpath(base_path))}) ===',
@@ -923,8 +941,39 @@ def menu_opzioni_laboratorio(base_path, routers):
             default_route_menu(base_path, routers)
         elif choice == '13':
             menu_dispositivi(base_path, routers)
+        elif choice == '14':
+            menu_annulla(base_path)
         else:
             print('Scelta non valida, riprova.')
+
+
+def menu_annulla(base_path):
+    """Annulla l'ultima modifica della storia (stessa operazione della GUI) o ripristina una copia."""
+    from .file_utils import ripristina_copia
+    from .operazioni import ErroreOperazione, calcola_annulla
+    from .stato import leggi_stato
+    from .storia import riassunto
+    ultime = riassunto(base_path)
+    if ultime:
+        print("\nUltime modifiche (la più recente in alto):")
+        for v in ultime[:5]:
+            print(f"  {v['ora']}  {v['titolo']}")
+    else:
+        print("\nNessuna modifica registrata per questo lab (la storia parte dalle modifiche fatte con le "
+              "Opzioni o con la GUI).")
+    print_menu('Cosa vuoi fare?', ["Annulla l'ultima modifica", 'Ripristina il lab da una copia di sicurezza'],
+               extra_options=[('0', 'Torna indietro')])
+    scelta = input('Seleziona (numero): ').strip()
+    if scelta == '1':
+        try:
+            piano = calcola_annulla(leggi_stato(base_path))
+        except ErroreOperazione as e:
+            print(f"❌ {e}")
+            return False
+        return _esegui_piano(base_path, piano)
+    if scelta == '2':
+        return ripristina_copia(base_path)
+    return False
 
 
 def archivio_menu(lab_path):

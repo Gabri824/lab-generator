@@ -28,6 +28,9 @@ export function htmlRouter(d, conv, completato) {
   let h = `<div class="prop__campo"><label for="edc-bgp-${d.id}">BGP</label><select id="edc-bgp-${d.id}" data-chiave="bgp:${d.id}">
     <option value="auto"${!opz.bgp || opz.bgp === 'auto' ? ' selected' : ''}>automatico (dal riquadro AS)</option>
     <option value="si"${opz.bgp === 'si' ? ' selected' : ''}>sì</option><option value="no"${opz.bgp === 'no' ? ' selected' : ''}>no</option></select></div>`;
+  const inArea = r.protocols.includes('ospf') || opz.ospf === 'no';
+  if (inArea) h += `<div class="prop__campo"><label for="edc-ospf-${d.id}">OSPF</label><select id="edc-ospf-${d.id}" data-chiave="ospf:${d.id}">
+    <option value="auto"${opz.ospf !== 'no' ? ' selected' : ''}>automatico (dalle aree)</option><option value="no"${opz.ospf === 'no' ? ' selected' : ''}>no (es. router RIP sul confine)</option></select></div>`;
   if (r.protocols.includes('bgp') && igp)
     h += casella(`redistribuisci:${d.id}`, opz.redistribuisci_bgp !== false, "ridistribuisci BGP nell'IGP (redistribute bgp)");
   if (igp && !r.ospf_aree) {
@@ -51,7 +54,9 @@ export function htmlRouter(d, conv, completato) {
 export function htmlGateway(d, conv) {
   const scritto = (d[d.tipo] || {}).gateway || '', proposto = voceModello(conv, d).gateway || '';
   return campo('Gateway', `gateway:${d.id}`, scritto, scritto ? '' : (proposto ? `proposto: ${proposto}` : 'nessun router sulla LAN'), '',
-    'Vuoto = l\'IP del router sulla sua LAN.');
+    'Vuoto = l\'IP del router sulla sua LAN.')
+    + campo('Resolver solo di questo dispositivo', `nameserver:${d.id}`, (d[d.tipo] || {}).nameserver || '', 'vuoto = quello del lab', '',
+      'IP di un server DNS (anche fuori dal lab), come "Resolver" delle Opzioni. Più IP separati da virgola.');
 }
 
 const TIPI_RECORD = [['A', 'A'], ['NS', 'NS'], ['CNAME', 'CNAME'], ['DELEGATION', 'DELEGATION']];

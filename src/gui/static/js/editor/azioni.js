@@ -179,7 +179,8 @@ const sezione = (d, chiave) => (d[chiave] = d[chiave] || {});
 
 // Proprietà di un dispositivo scritte nel pannello. chiave = la parte prima dei ':' nel campo del
 // pannello, percorso = gli indici che seguono (per righe di elenchi):
-//   redistribuisci (router, bool), igp (router, testo), gateway (host, www, dns),
+//   redistribuisci (router, bool), igp (router, testo), gateway (host, www, dns), ospf (router: 'no' = senza OSPF
+//   anche con una LAN in un'area), nameserver (host, www, dns: resolver solo suo),
 //   statica [k, rete|via|dev], root_type, ricorsione (bool), ricorsione_reti, dnssec (bool),
 //   zona [k] (nome), record [k, r, nome|tipo|valore|extra], delega [k, zone|ns|ip]
 export function impostaProprieta(bozza, id, chiave, valore, percorso = []) {
@@ -194,6 +195,8 @@ export function impostaProprieta(bozza, id, chiave, valore, percorso = []) {
   else if (chiave === 'bgp') sezione(d, 'router').bgp = ['si', 'no'].includes(v) ? v : 'auto';
   else if (chiave === 'igp') sezione(d, 'router').igp_networks = v;
   else if (chiave === 'gateway') sezione(d, d.tipo).gateway = v;
+  else if (chiave === 'ospf') { const r = sezione(d, 'router'); if (v === 'no') r.ospf = 'no'; else delete r.ospf; }
+  else if (chiave === 'nameserver') sezione(d, d.tipo).nameserver = v;
   else if (chiave === 'statica') { const s = (sezione(d, 'router').statiche || [])[k]; if (s) s[campo] = v; }
   else if (chiave === 'root_type') sezione(d, 'dns').root_type = v || null;
   else if (chiave === 'ricorsione') { const c = sezione(d, 'dns'); c.allow_recursion = valore ? (c.allow_recursion || 'any') : null; }

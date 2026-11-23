@@ -97,6 +97,7 @@
   "dispositivi": [
    {
     "asn": "1",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -122,6 +123,7 @@
         "chi": "r2",
         "ip": "101.202.0.1",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -145,6 +147,7 @@
         "chi": "r10",
         "ip": "50.10.1.4",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -171,6 +174,7 @@
       "50.10.1.0/24"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -178,6 +182,7 @@
        "chi": "r2",
        "ip": "101.202.0.1",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -185,10 +190,12 @@
        "chi": "r10",
        "ip": "50.10.1.4",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -196,6 +203,7 @@
    },
    {
     "asn": "10",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -222,16 +230,19 @@
         "ip": "50.10.1.2",
         "policy": [
          {
+          "breve": "",
           "direzione": "in",
           "nome": "provider_r1_in",
           "testo": "prefix-list permit any"
          },
          {
+          "breve": "solo",
           "direzione": "out",
           "nome": "provider_r1_out",
           "testo": "prefix-list permit 100.10.0.0/16, 50.100.10.0/24, 100.100.0.0/16, 110.220.0.0/24"
          }
         ],
+        "relazione": "provider",
         "tipo": "eBGP"
        }
       ],
@@ -256,16 +267,19 @@
         "ip": "110.220.0.1",
         "policy": [
          {
+          "breve": "",
           "direzione": "in",
           "nome": "peer_r20_in",
           "testo": "prefix-list permit any"
          },
          {
+          "breve": "solo",
           "direzione": "out",
           "nome": "peer_r20_out",
           "testo": "prefix-list permit 100.10.0.0/16, 50.100.10.0/24, 100.100.0.0/16"
          }
         ],
+        "relazione": "peer",
         "tipo": "eBGP"
        }
       ],
@@ -290,16 +304,19 @@
         "ip": "50.100.10.4",
         "policy": [
          {
+          "breve": "",
           "direzione": "in",
           "nome": "customer_r100_in",
           "testo": "prefix-list permit any"
          },
          {
+          "breve": "",
           "direzione": "out",
           "nome": "customer_r100_out",
           "testo": "prefix-list permit any"
          }
         ],
+        "relazione": "customer",
         "tipo": "eBGP"
        }
       ],
@@ -327,6 +344,7 @@
       "50.100.10.0/24"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -335,16 +353,19 @@
        "ip": "50.10.1.2",
        "policy": [
         {
+         "breve": "",
          "direzione": "in",
          "nome": "provider_r1_in",
          "testo": "prefix-list permit any"
         },
         {
+         "breve": "solo",
          "direzione": "out",
          "nome": "provider_r1_out",
          "testo": "prefix-list permit 100.10.0.0/16, 50.100.10.0/24, 100.100.0.0/16, 110.220.0.0/24"
         }
        ],
+       "relazione": "provider",
        "tipo": "eBGP"
       },
       {
@@ -353,16 +374,19 @@
        "ip": "110.220.0.1",
        "policy": [
         {
+         "breve": "",
          "direzione": "in",
          "nome": "peer_r20_in",
          "testo": "prefix-list permit any"
         },
         {
+         "breve": "solo",
          "direzione": "out",
          "nome": "peer_r20_out",
          "testo": "prefix-list permit 100.10.0.0/16, 50.100.10.0/24, 100.100.0.0/16"
         }
        ],
+       "relazione": "peer",
        "tipo": "eBGP"
       },
       {
@@ -371,20 +395,24 @@
        "ip": "50.100.10.4",
        "policy": [
         {
+         "breve": "",
          "direzione": "in",
          "nome": "customer_r100_in",
          "testo": "prefix-list permit any"
         },
         {
+         "breve": "",
          "direzione": "out",
          "nome": "customer_r100_out",
          "testo": "prefix-list permit any"
         }
        ],
+       "relazione": "customer",
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -392,6 +420,7 @@
    },
    {
     "asn": "100",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -417,6 +446,7 @@
         "chi": "r10",
         "ip": "50.100.10.2",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -442,6 +472,7 @@
       "50.100.10.0/24"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -449,10 +480,12 @@
        "chi": "r10",
        "ip": "50.100.10.2",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -460,6 +493,7 @@
    },
    {
     "asn": "2",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -475,6 +509,7 @@
         "chi": "r1",
         "ip": "101.202.0.3",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -508,6 +543,7 @@
         "chi": "r20",
         "ip": "50.20.2.4",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -534,6 +570,7 @@
       "50.20.2.0/24"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -541,6 +578,7 @@
        "chi": "r1",
        "ip": "101.202.0.3",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -548,10 +586,12 @@
        "chi": "r20",
        "ip": "50.20.2.4",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -559,6 +599,7 @@
    },
    {
     "asn": "20",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -575,16 +616,19 @@
         "ip": "110.220.0.3",
         "policy": [
          {
+          "breve": "",
           "direzione": "in",
           "nome": "peer_r10_in",
           "testo": "prefix-list permit any"
          },
          {
+          "breve": "solo",
           "direzione": "out",
           "nome": "peer_r10_out",
           "testo": "prefix-list permit 200.20.0.0/16, 50.200.20.0/24, 200.200.0.0/16"
          }
         ],
+        "relazione": "peer",
         "tipo": "eBGP"
        }
       ],
@@ -609,16 +653,19 @@
         "ip": "50.20.2.2",
         "policy": [
          {
+          "breve": "",
           "direzione": "in",
           "nome": "provider_r2_in",
           "testo": "prefix-list permit any"
          },
          {
+          "breve": "solo",
           "direzione": "out",
           "nome": "provider_r2_out",
           "testo": "prefix-list permit 200.20.0.0/16, 50.200.20.0/24, 200.200.0.0/16, 110.220.0.0/24"
          }
         ],
+        "relazione": "provider",
         "tipo": "eBGP"
        }
       ],
@@ -653,16 +700,19 @@
         "ip": "50.200.20.4",
         "policy": [
          {
+          "breve": "",
           "direzione": "in",
           "nome": "customer_r200_in",
           "testo": "prefix-list permit any"
          },
          {
+          "breve": "",
           "direzione": "out",
           "nome": "customer_r200_out",
           "testo": "prefix-list permit any"
          }
         ],
+        "relazione": "customer",
         "tipo": "eBGP"
        }
       ],
@@ -690,6 +740,7 @@
       "50.200.20.0/24"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -698,16 +749,19 @@
        "ip": "50.20.2.2",
        "policy": [
         {
+         "breve": "",
          "direzione": "in",
          "nome": "provider_r2_in",
          "testo": "prefix-list permit any"
         },
         {
+         "breve": "solo",
          "direzione": "out",
          "nome": "provider_r2_out",
          "testo": "prefix-list permit 200.20.0.0/16, 50.200.20.0/24, 200.200.0.0/16, 110.220.0.0/24"
         }
        ],
+       "relazione": "provider",
        "tipo": "eBGP"
       },
       {
@@ -716,16 +770,19 @@
        "ip": "110.220.0.3",
        "policy": [
         {
+         "breve": "",
          "direzione": "in",
          "nome": "peer_r10_in",
          "testo": "prefix-list permit any"
         },
         {
+         "breve": "solo",
          "direzione": "out",
          "nome": "peer_r10_out",
          "testo": "prefix-list permit 200.20.0.0/16, 50.200.20.0/24, 200.200.0.0/16"
         }
        ],
+       "relazione": "peer",
        "tipo": "eBGP"
       },
       {
@@ -734,20 +791,24 @@
        "ip": "50.200.20.4",
        "policy": [
         {
+         "breve": "",
          "direzione": "in",
          "nome": "customer_r200_in",
          "testo": "prefix-list permit any"
         },
         {
+         "breve": "",
          "direzione": "out",
          "nome": "customer_r200_out",
          "testo": "prefix-list permit any"
         }
        ],
+       "relazione": "customer",
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -755,6 +816,7 @@
    },
    {
     "asn": "200",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -770,6 +832,7 @@
         "chi": "r20",
         "ip": "50.200.20.2",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -805,6 +868,7 @@
       "200.200.0.0/16"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -812,10 +876,12 @@
        "chi": "r20",
        "ip": "50.200.20.2",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",

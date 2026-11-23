@@ -107,6 +107,7 @@
   "dispositivi": [
    {
     "asn": "10",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -123,11 +124,13 @@
         "ip": "192.168.0.2",
         "policy": [
          {
+          "breve": "filtro",
           "direzione": "in",
           "nome": "PL_as10r1_192_168_0_2_in",
           "testo": "prefix-list deny 160.0.0.0/24; permit any"
          }
         ],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -163,6 +166,7 @@
       "110.0.0.0/24"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -171,15 +175,18 @@
        "ip": "192.168.0.2",
        "policy": [
         {
+         "breve": "filtro",
          "direzione": "in",
          "nome": "PL_as10r1_192_168_0_2_in",
          "testo": "prefix-list deny 160.0.0.0/24; permit any"
         }
        ],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -187,6 +194,7 @@
    },
    {
     "asn": "20",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -202,6 +210,7 @@
         "chi": "as50r1",
         "ip": "192.168.0.10",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -225,6 +234,7 @@
         "chi": "as40r1",
         "ip": "192.168.0.6",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -250,6 +260,7 @@
       "192.168.0.4/30"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -257,6 +268,7 @@
        "chi": "as50r1",
        "ip": "192.168.0.10",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -264,10 +276,12 @@
        "chi": "as40r1",
        "ip": "192.168.0.6",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -275,6 +289,7 @@
    },
    {
     "asn": "30",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -291,11 +306,13 @@
         "ip": "192.168.0.14",
         "policy": [
          {
+          "breve": "filtro",
           "direzione": "in",
           "nome": "PL_as30r1_192_168_0_14_in",
           "testo": "prefix-list deny 180.0.0.0/24; permit any"
          }
         ],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -331,6 +348,7 @@
       "130.0.0.0/24"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -339,15 +357,18 @@
        "ip": "192.168.0.14",
        "policy": [
         {
+         "breve": "filtro",
          "direzione": "in",
          "nome": "PL_as30r1_192_168_0_14_in",
          "testo": "prefix-list deny 180.0.0.0/24; permit any"
         }
        ],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -355,6 +376,7 @@
    },
    {
     "asn": "40",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -370,6 +392,7 @@
         "chi": "as10r1",
         "ip": "192.168.0.1",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -393,6 +416,7 @@
         "chi": "as20r1",
         "ip": "192.168.0.5",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -416,6 +440,7 @@
         "chi": "as70r1",
         "ip": "192.168.0.25",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -439,6 +464,7 @@
         "chi": "as80r1",
         "ip": "192.168.0.29",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -466,6 +492,7 @@
       "192.168.0.28/30"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -473,6 +500,7 @@
        "chi": "as10r1",
        "ip": "192.168.0.1",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -480,6 +508,7 @@
        "chi": "as20r1",
        "ip": "192.168.0.5",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -487,6 +516,7 @@
        "chi": "as70r1",
        "ip": "192.168.0.25",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -494,10 +524,12 @@
        "chi": "as80r1",
        "ip": "192.168.0.29",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -505,6 +537,7 @@
    },
    {
     "asn": "50",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -520,6 +553,7 @@
         "chi": "as60r1",
         "ip": "192.168.0.17",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -544,11 +578,13 @@
         "ip": "192.168.0.21",
         "policy": [
          {
+          "breve": "LP 110",
           "direzione": "in",
           "nome": "PREF_IN_192_168_0_21",
           "testo": "route-map local-preference 110 su tutte"
          }
         ],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -572,6 +608,7 @@
         "chi": "as20r1",
         "ip": "192.168.0.9",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -595,6 +632,7 @@
         "chi": "as30r1",
         "ip": "192.168.0.13",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -622,6 +660,7 @@
       "192.168.0.12/30"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -629,6 +668,7 @@
        "chi": "as20r1",
        "ip": "192.168.0.9",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -636,6 +676,7 @@
        "chi": "as30r1",
        "ip": "192.168.0.13",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -643,6 +684,7 @@
        "chi": "as60r1",
        "ip": "192.168.0.17",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -651,15 +693,18 @@
        "ip": "192.168.0.21",
        "policy": [
         {
+         "breve": "LP 110",
          "direzione": "in",
          "nome": "PREF_IN_192_168_0_21",
          "testo": "route-map local-preference 110 su tutte"
         }
        ],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -667,6 +712,7 @@
    },
    {
     "asn": "60",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -683,11 +729,13 @@
         "ip": "192.168.0.18",
         "policy": [
          {
+          "breve": "filtro",
           "direzione": "in",
           "nome": "PL_as60r1_192_168_0_18_in",
           "testo": "prefix-list deny 110.0.0.0/24; permit any"
          }
         ],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -723,6 +771,7 @@
       "160.0.0.0/24"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -731,15 +780,18 @@
        "ip": "192.168.0.18",
        "policy": [
         {
+         "breve": "filtro",
          "direzione": "in",
          "nome": "PL_as60r1_192_168_0_18_in",
          "testo": "prefix-list deny 110.0.0.0/24; permit any"
         }
        ],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -747,6 +799,7 @@
    },
    {
     "asn": "70",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -762,6 +815,7 @@
         "chi": "as40r1",
         "ip": "192.168.0.26",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -785,6 +839,7 @@
         "chi": "as50r1",
         "ip": "192.168.0.22",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -810,6 +865,7 @@
       "192.168.0.20/30"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -817,6 +873,7 @@
        "chi": "as40r1",
        "ip": "192.168.0.26",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -824,10 +881,12 @@
        "chi": "as50r1",
        "ip": "192.168.0.22",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -835,6 +894,7 @@
    },
    {
     "asn": "80",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -851,11 +911,13 @@
         "ip": "192.168.0.30",
         "policy": [
          {
+          "breve": "filtro",
           "direzione": "in",
           "nome": "PL_as80r1_192_168_0_30_in",
           "testo": "prefix-list deny 130.0.0.0/24; permit any"
          }
         ],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -891,6 +953,7 @@
       "180.0.0.0/24"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -899,15 +962,18 @@
        "ip": "192.168.0.30",
        "policy": [
         {
+         "breve": "filtro",
          "direzione": "in",
          "nome": "PL_as80r1_192_168_0_30_in",
          "testo": "prefix-list deny 130.0.0.0/24; permit any"
         }
        ],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",

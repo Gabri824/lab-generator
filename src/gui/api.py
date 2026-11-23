@@ -26,11 +26,13 @@ import threading
 
 from core import operazioni as op
 from core import supporto
-from core.file_utils import _avvisi_lab
+from core.file_utils import _avvisi_lab, elenco_copie, ripristina
 from core.generazione import genera_lab
 from core.modello import completa_lab, errore_lan, errore_nome_lab, nome_kathara_valido, valida_lab
 from core.modifiche import Conflitto, anteprima, scrivi_piano
 from core.stato import leggi_stato, senza_testi
+from core.persistence import modello_da_stato, rigenera_xml
+from core.unione import leggi_albero, porta_nel_lab
 
 # Il motore stampa i messaggi (raccolti con redirect_stdout, che vale per tutto il processo) e
 # legge e scrive i file del lab: un'operazione alla volta.
@@ -379,20 +381,120 @@ def _albero(cartella):
     return out
 
 
-def anteprima_lab(dati):
-    """Genera il lab in una cartella temporanea e restituisce i file che verrebbero scritti."""
+def anteprima_lab(dati, st=None):
+    """Genera il lab in una cartella temporanea e restituisce i file che verrebbero scritti
+    (con 'origine': i file del lab di partenza con le modifiche della bozza, fase 5.7)."""
     nome = _nome_nuovo_lab(dati)
     modello = _completo(_modello(dati))
     _nomi_sicuri(modello)
+    origine = _origine(st, dati.get('origine'))
     tmp = tempfile.mkdtemp(prefix='labgen-anteprima-')
+    unione = None
     try:
         with _silenzio():
             esito = genera_lab(tmp, nome, modello)
-        file = _albero(os.path.join(tmp, nome)) if esito['creato'] else []
+        if esito['creato'] and origine:
+            nuovi, unione = _unisci_origine(origine, leggi_albero(os.path.join(tmp, nome)))
+            file = [{'file': k, 'testo': nuovi[k]} for k in sorted(nuovi)]
+        else:
+            file = _albero(os.path.join(tmp, nome)) if esito['creato'] else []
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     return {'nome': nome, 'creabile': esito['creato'], 'problemi': esito['problemi'],
-            'errori': esito['errori'], 'file': file}
+            'errori': esito['errori'], 'file': file, 'unione': unione}
+
+
+# ----------------------------------------------------------------------------- fase 5.7: da un lab esistente
+
+def _cartella_lab(st, x):
+    """Percorso di un lab di partenza: {'lab': nome} nella cartella dei lab o {'cartella': percorso}."""
+    if not isinstance(x, dict):
+        raise ErroreApi("Lab di partenza non valido.")
+    if x.get('lab'):
+        if st is None:
+            raise ErroreApi("Lab di partenza non disponibile.")
+        return st.lab_path(str(x['lab']))
+    p = x.get('cartella')
+    if not isinstance(p, str) or not p.strip():
+        raise ErroreApi("Scrivi la cartella del lab di partenza.")
+    p = os.path.abspath(os.path.expanduser(p.strip()))
+    if not os.path.isfile(os.path.join(p, 'lab.conf')):
+        raise ErroreApi(f"In {p} non c'è un lab.conf: non è un lab di Kathará.")
+    return p
+
+
+def lab_come_modello(st, dati):
+    """Modello (formato del wizard) di un lab esistente, per partire da lì nell'editor; i file non
+    vengono toccati. Con le posizioni del disegno salvato (se c'è) e, per ogni router, se le sue
+    network IGP sono quelle che il generatore proporrebbe (nell'editor restano automatiche)."""
+    p = _cartella_lab(st, dati)
+    with _silenzio():
+        stato = leggi_stato(p)
+        modello = modello_da_stato(stato)
+    senza_ip = [f"{d['nome']} {it['dev']}" for d in stato['dispositivi'].values() for it in d['interfacce'] if not it['ip']]
+    proposte = {}
+    try:
+        vuoto = {**modello, 'routers': {n: {k: v for k, v in r.items() if k != 'igp_networks'} for n, r in modello['routers'].items()}}
+        completo = completa_lab(vuoto)
+        proposte = {n: list(completo['routers'][n].get('igp_networks') or []) == list(r.get('igp_networks') or [])
+                    for n, r in modello['routers'].items()}
+    except (TypeError, ValueError, KeyError, AttributeError):
+        pass
+    disegno = leggi_disegno(p)
+    import core
+    from . import dati as dati_pagina
+    with _silenzio():
+        lab = dati_pagina.leggi_lab(core, p, stato)      # per la disposizione della Topologia
+    return {'nome': os.path.basename(os.path.normpath(p)), 'percorso': p, 'modello': in_json(modello), 'lab': in_json(lab),
+            'posizioni': (disegno or {}).get('posizioni'), 'zone_disegno': (disegno or {}).get('zone'),
+            'reti_proposte': proposte, 'senza_ip': senza_ip}
+
+
+def _origine(st, x):
+    """{'percorso', 'file' (originali), 'base' (dal modello iniziale della bozza), 'nomi'} o None."""
+    if x is None:
+        return None
+    if not isinstance(x, dict) or not isinstance(x.get('modello'), dict):
+        raise ErroreApi("'origine' deve avere il modello iniziale della bozza.")
+    p = _cartella_lab(st, x)
+    nomi = x.get('nomi') or {}
+    if not isinstance(nomi, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in nomi.items()):
+        raise ErroreApi("'origine.nomi' deve essere {nome nuovo: nome di partenza}.")
+    m0 = _completo(_modello({'modello': x['modello']}))
+    tmp = tempfile.mkdtemp(prefix='labgen-base-')
+    try:
+        with _silenzio():
+            e = genera_lab(tmp, 'base', m0)
+        if not e['creato']:
+            raise ErroreApi("Il modello iniziale della bozza non genera un lab: " + '; '.join(x.get('messaggio', '') for x in e['errori'][:3]))
+        base = leggi_albero(os.path.join(tmp, 'base'))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return {'percorso': p, 'file': leggi_albero(p), 'base': base, 'nomi': {k: v for k, v in nomi.items() if k != v}}
+
+
+def _unisci_origine(origine, nuovi):
+    file, rapporto = porta_nel_lab(origine['file'], origine['base'], nuovi, origine['nomi'])
+    rapporto['percorso'] = origine['percorso']
+    return file, rapporto
+
+
+def _scrivi_unione(lab_path, file, rapporto):
+    """Riscrive il lab appena generato con i file dell'unione; toglie quelli che il lab di partenza
+    non aveva e la bozza non cambia."""
+    for rel in rapporto['non_creati']:
+        q = os.path.join(lab_path, *rel.split('/'))
+        if os.path.isfile(q):
+            os.remove(q)
+            d = os.path.dirname(q)
+            while d != lab_path and os.path.isdir(d) and not os.listdir(d):
+                os.rmdir(d)
+                d = os.path.dirname(d)
+    for rel, testo in file.items():
+        q = os.path.join(lab_path, *rel.split('/'))
+        os.makedirs(os.path.dirname(q), exist_ok=True)
+        with open(q, 'w', encoding='utf-8', newline='') as f:
+            f.write(testo)
 
 
 def salva_disegno(lab_path, disegno):
@@ -423,14 +525,21 @@ def crea_lab(st, dati):
     if os.path.exists(lab_path) and not sovrascrivi:
         return {'nome': nome, 'creato': False, 'esiste': True,
                 'messaggio': f"Il lab {nome} esiste già: confermi di sostituirlo? (prima viene fatta una copia di sicurezza)"}
+    origine = _origine(st, dati.get('origine'))       # letto prima: può essere lo stesso lab
     esito = genera_lab(st.base, nome, modello, sovrascrivi=sovrascrivi)
+    unione = None
+    if esito['creato'] and origine:
+        file, unione = _unisci_origine(origine, leggi_albero(lab_path))
+        _scrivi_unione(lab_path, file, unione)
+        with _silenzio():
+            rigenera_xml(lab_path)
     if esito['creato']:
         if disegno is not None:
             salva_disegno(lab_path, disegno)
         st.lavori.annota(f"crea lab {nome}", f"{len(_albero(lab_path))} file in {lab_path}", 'OK')
     return {'nome': nome, 'creato': esito['creato'], 'esiste': False, 'percorso': esito['percorso'],
             'problemi': esito['problemi'], 'errori': esito['errori'], 'copia': esito['copia'],
-            'motivo': esito['motivo'], 'messaggi': esito['messaggi']}
+            'motivo': esito['motivo'], 'messaggi': esito['messaggi'], 'unione': unione}
 
 
 def sposta_xml(st, lab_path):
@@ -443,15 +552,43 @@ def sposta_xml(st, lab_path):
 # ----------------------------------------------------------------------------- smistamento
 
 # azioni di questo modulo; quelle con True lavorano su un lab esistente (campo 'lab')
+# ----------------------------------------------------------------------------- copie di sicurezza
+
+def _data_copia(nome):
+    """'20261122-170750_prima_del_ripristino' -> '2026-11-22 17:07:50 (prima del ripristino)'."""
+    m = re.match(r'(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})(?:_(\d+))?(?:_(.*))?$', nome)
+    if not m:
+        return nome
+    g = m.groups()
+    testo = f"{g[0]}-{g[1]}-{g[2]} {g[3]}:{g[4]}:{g[5]}"
+    return testo + (f" ({g[7].replace('_', ' ')})" if g[7] else '')
+
+
+def copie(lab_path):
+    return {'copie': [{'nome': n, 'quando': _data_copia(n)} for n in elenco_copie(lab_path)]}
+
+
+def ripristina_copia(st, lab_path, nome):
+    if not isinstance(nome, str) or nome not in elenco_copie(lab_path):
+        raise ErroreApi(f"Copia di sicurezza non trovata: {nome}")
+    prima = ripristina(lab_path, nome)
+    st.lavori.annota(f"Ripristino di {supporto.nome_lab(lab_path)} dalla copia {_data_copia(nome)}",
+                     f"copia dello stato di prima: {prima}", 'OK')
+    return {'ripristinato': nome, 'quando': _data_copia(nome), 'copia_di_prima': prima}
+
+
 AZIONI = {
     'opzioni': True,
     'anteprima': True,
     'applica': True,
     'sposta_xml': True,
+    'copie': True,
+    'ripristina': True,
     'salva_disegno': True,
     'valida_lab': False,
     'anteprima_lab': False,
     'crea_lab': False,
+    'lab_come_modello': False,
 }
 
 
@@ -467,6 +604,10 @@ def esegui(st, tipo, dati):
         if tipo == 'applica':
             return applica(st, lab_path, dati.get('operazione'), dati.get('parametri'),
                            dati.get('impronte'), dati.get('firma'))
+        if tipo == 'copie':
+            return copie(lab_path)
+        if tipo == 'ripristina':
+            return ripristina_copia(st, lab_path, dati.get('copia'))
         if tipo == 'sposta_xml':
             return sposta_xml(st, lab_path)
         if tipo == 'salva_disegno':
@@ -474,7 +615,9 @@ def esegui(st, tipo, dati):
         if tipo == 'valida_lab':
             return controlla_modello(dati)
         if tipo == 'anteprima_lab':
-            return anteprima_lab(dati)
+            return anteprima_lab(dati, st)
+        if tipo == 'lab_come_modello':
+            return lab_come_modello(st, dati)
         if tipo == 'crea_lab':
             return crea_lab(st, dati)
     raise ErroreApi('Azione non prevista')

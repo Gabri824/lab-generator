@@ -101,13 +101,16 @@ def _scrivi_lab(lab_path, nome, modello, lab_conf_testo):
             print(f"⚠️ Errore creando il webserver {w.get('name')}: {e}")
 
     # resolver: come il wizard, resolv.conf su tutti gli host, i server DNS e i www
+    # un dispositivo può averne uno suo ('nameserver': elenco di IP, come l'Opzione 5 del terminale)
     ip_res = ip_del_resolver(modello)
-    if ip_res:
-        for dev in {h.get('name') for h in hosts if h.get('name')} | {w.get('name') for w in wwws if w.get('name')}:
-            etc = os.path.join(lab_path, dev, 'etc')
-            os.makedirs(etc, exist_ok=True)
-            with open(os.path.join(etc, 'resolv.conf'), 'w', encoding='utf-8', newline='\n') as f:
-                f.write(f"nameserver {ip_res}\n")
+    for x in [h for h in hosts if isinstance(h, dict)] + [w for w in wwws if isinstance(w, dict)]:
+        dev, ns = x.get('name'), x.get('nameserver') or ([ip_res] if ip_res else [])
+        if not dev or not ns:
+            continue
+        etc = os.path.join(lab_path, dev, 'etc')
+        os.makedirs(etc, exist_ok=True)
+        with open(os.path.join(etc, 'resolv.conf'), 'w', encoding='utf-8', newline='\n') as f:
+            f.write(''.join(f"nameserver {ip}\n" for ip in ns))
 
     with open(os.path.join(lab_path, 'lab.conf'), 'w', encoding='utf-8', newline='\n') as f:
         f.write(lab_conf_testo if lab_conf_testo else lab_conf_da_modello(modello))
@@ -159,6 +162,8 @@ def genera_lab(base, nome, modello, sovrascrivi=False, lab_conf_testo=None, toll
                 os.replace(vecchio, lab_path)
             raise
         esito['creato'] = True
+        from .storia import svuota
+        svuota(lab_path)                   # lab nuovo: le modifiche di prima non si annullano più
         # XML dei metadati, fuori dal lab, rigenerato dai file appena scritti
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):

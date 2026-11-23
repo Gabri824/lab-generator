@@ -1,0 +1,11 @@
+--- prima/r2/etc/frr/frr.conf
++++ dopo/r2/etc/frr/frr.conf
+@@ -9,8 +9,3 @@
+ 
+     redistribute connected
+     auto-cost reference-bandwidth 100
+-
+-
+-interface eth0
+-    ospf cost 100
+-

@@ -117,6 +117,7 @@
   "dispositivi": [
    {
     "asn": "1",
+    "deleghe": [],
     "demoni": [
      "ospfd",
      "bgpd"
@@ -133,6 +134,7 @@
         "chi": "as2",
         "ip": "10.0.0.2",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -156,6 +158,7 @@
         "chi": "as1r2",
         "ip": "1.3.0.2",
         "policy": [],
+        "relazione": null,
         "tipo": "iBGP"
        }
       ],
@@ -183,6 +186,7 @@
       "1.0.0.0/8"
      ],
      "costi": [],
+     "default": [],
      "igp": [
       {
        "auto_cost": null,
@@ -202,6 +206,7 @@
        "chi": "as2",
        "ip": "10.0.0.2",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -209,10 +214,14 @@
        "chi": "as1r2",
        "ip": "1.3.0.2",
        "policy": [],
+       "relazione": null,
        "tipo": "iBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": [
+      "OSPF"
+     ]
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -220,6 +229,7 @@
    },
    {
     "asn": "1",
+    "deleghe": [],
     "demoni": [
      "ospfd",
      "bgpd"
@@ -253,6 +263,7 @@
         "chi": "as1r1",
         "ip": "1.3.0.1",
         "policy": [],
+        "relazione": null,
         "tipo": "iBGP"
        }
       ],
@@ -278,6 +289,7 @@
         "chi": "as3",
         "ip": "10.0.0.6",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -303,6 +315,7 @@
       "1.0.0.0/8"
      ],
      "costi": [],
+     "default": [],
      "igp": [
       {
        "auto_cost": null,
@@ -322,6 +335,7 @@
        "chi": "as1r1",
        "ip": "1.3.0.1",
        "policy": [],
+       "relazione": null,
        "tipo": "iBGP"
       },
       {
@@ -329,10 +343,14 @@
        "chi": "as3",
        "ip": "10.0.0.6",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": [
+      "OSPF"
+     ]
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -340,6 +358,7 @@
    },
    {
     "asn": "1",
+    "deleghe": [],
     "demoni": [
      "ospfd"
     ],
@@ -388,6 +407,7 @@
     "riepilogo": {
      "bgp_networks": [],
      "costi": [],
+     "default": [],
      "igp": [
       {
        "auto_cost": null,
@@ -401,7 +421,8 @@
       }
      ],
      "neighbor": [],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -409,6 +430,7 @@
    },
    {
     "asn": "2",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -424,6 +446,7 @@
         "chi": "as1r1",
         "ip": "10.0.0.1",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -447,6 +470,7 @@
         "chi": "as5",
         "ip": "10.0.0.10",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -470,6 +494,7 @@
         "chi": "as3",
         "ip": "10.0.0.14",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -496,6 +521,7 @@
       "10.0.0.12/30"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -503,6 +529,7 @@
        "chi": "as1r1",
        "ip": "10.0.0.1",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -510,6 +537,7 @@
        "chi": "as5",
        "ip": "10.0.0.10",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -517,10 +545,12 @@
        "chi": "as3",
        "ip": "10.0.0.14",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -528,6 +558,7 @@
    },
    {
     "asn": "3",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -543,6 +574,7 @@
         "chi": "as1r2",
         "ip": "10.0.0.5",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -566,6 +598,7 @@
         "chi": "as2",
         "ip": "10.0.0.13",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -589,6 +622,7 @@
         "chi": "as4",
         "ip": "10.0.0.18",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -615,6 +649,7 @@
       "10.0.0.16/30"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -622,6 +657,7 @@
        "chi": "as1r2",
        "ip": "10.0.0.5",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -629,6 +665,7 @@
        "chi": "as2",
        "ip": "10.0.0.13",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -636,10 +673,12 @@
        "chi": "as4",
        "ip": "10.0.0.18",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -647,6 +686,7 @@
    },
    {
     "asn": "4",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -662,6 +702,7 @@
         "chi": "as5",
         "ip": "10.0.0.21",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -685,6 +726,7 @@
         "chi": "as6",
         "ip": "10.0.0.26",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -708,6 +750,7 @@
         "chi": "as3",
         "ip": "10.0.0.17",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -734,6 +777,7 @@
       "10.0.0.16/30"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -741,6 +785,7 @@
        "chi": "as3",
        "ip": "10.0.0.17",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -748,6 +793,7 @@
        "chi": "as5",
        "ip": "10.0.0.21",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -755,10 +801,12 @@
        "chi": "as6",
        "ip": "10.0.0.26",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -766,6 +814,7 @@
    },
    {
     "asn": "5",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -781,6 +830,7 @@
         "chi": "as2",
         "ip": "10.0.0.9",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -804,6 +854,7 @@
         "chi": "as4",
         "ip": "10.0.0.22",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -829,6 +880,7 @@
       "10.0.0.20/30"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -836,6 +888,7 @@
        "chi": "as2",
        "ip": "10.0.0.9",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -843,10 +896,12 @@
        "chi": "as4",
        "ip": "10.0.0.22",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -854,6 +909,7 @@
    },
    {
     "asn": "6",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -869,6 +925,7 @@
         "chi": "as4",
         "ip": "10.0.0.25",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -909,6 +966,7 @@
       "6.0.0.0/24"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -916,10 +974,12 @@
        "chi": "as4",
        "ip": "10.0.0.25",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -927,6 +987,7 @@
    },
    {
     "asn": null,
+    "deleghe": [],
     "demoni": [],
     "gateway": "1.1.0.3",
     "gruppo": "1",
@@ -958,6 +1019,7 @@
    },
    {
     "asn": null,
+    "deleghe": [],
     "demoni": [],
     "gateway": "6.0.0.6",
     "gruppo": "6",

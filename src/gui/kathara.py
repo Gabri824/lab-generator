@@ -642,6 +642,39 @@ def ping(kathara, lab_path, lab, src, ip, origine, lav):
     return 0 if m else rc
 
 
+def _percorsi_bgp(bgp, owner):
+    """Percorsi di 'show ip bgp <rete> json': da chi, AS path, local-pref, MED, scelto o no."""
+    percorsi = []
+    for p in bgp.get('paths', []):
+        peer = p.get('peer') or {}
+        nh = (p.get('nexthops') or [{}])[0].get('ip')
+        da = peer.get('peerId') or nh
+        percorsi.append({'da': da, 'chi': owner.get(da or '') or peer.get('hostname') or '?',
+                         'tipo': {'external': 'eBGP', 'internal': 'iBGP'}.get(peer.get('type'), peer.get('type') or ''),
+                         'aspath': (p.get('aspath') or {}).get('string', ''), 'locpref': p.get('locPrf'),
+                         'med': p.get('metric'), 'weight': p.get('weight'), 'origine': p.get('origin'),
+                         'nexthop': nh, 'valido': p.get('valid', False),
+                         'best': bool((p.get('bestpath') or {}).get('overall')),
+                         'motivo': (p.get('bestpath') or {}).get('selectionReason', '')})
+    return percorsi
+
+
+def tabelle_bgp(kathara, lab_path, lab, routers, rete, lav):
+    """{router: percorsi BGP per `rete`} letti dal lab acceso (fase 5.5b, percorso voluto)."""
+    owner = dati.indirizzi({d['nome']: d for d in lab['dispositivi']})
+
+    def leggi(r):
+        _, out = esegui(kexec(kathara, lab_path, r, ['vtysh', '-c', f'show ip bgp {rete} json']), timeout=60)
+        return r, _percorsi_bgp(_json_o_none(out) or {}, owner)
+    out = {}
+    for r, percorsi in _parallelo(leggi, routers).values():
+        best = next((p for p in percorsi if p['best']), None)
+        lav.scrivi(f"{r}: " + (f"AS path {best['aspath'] or '-'} via {best['nexthop'] or best['da']} "
+                               f"(local-pref {best['locpref']}, MED {best['med']})" if best else f"nessuna rotta BGP per {rete}"))
+        out[r] = percorsi
+    return out
+
+
 def rotta(kathara, lab_path, lab, dev, rete, lav):
     """Come un router raggiunge una rete (o un IP): rotta scelta con il next-hop e tutti
     i percorsi BGP ricevuti con local-pref, MED, AS-path e il motivo della scelta."""
@@ -672,18 +705,7 @@ def rotta(kathara, lab_path, lab, dev, rete, lav):
             instradamento = {'prefisso': prefisso, 'protocollo': v.get('protocol'),
                              'distanza': v.get('distance'), 'metrica': v.get('metric'), 'hop': hops}
     bgp = _json_o_none(parte_bgp) or {}
-    percorsi = []
-    for p in bgp.get('paths', []):
-        peer = p.get('peer') or {}
-        nh = (p.get('nexthops') or [{}])[0].get('ip')
-        da = peer.get('peerId') or nh
-        percorsi.append({'da': da, 'chi': owner.get(da or '') or peer.get('hostname') or '?',
-                         'tipo': {'external': 'eBGP', 'internal': 'iBGP'}.get(peer.get('type'), peer.get('type') or ''),
-                         'aspath': (p.get('aspath') or {}).get('string', ''), 'locpref': p.get('locPrf'),
-                         'med': p.get('metric'), 'weight': p.get('weight'), 'origine': p.get('origin'),
-                         'nexthop': nh, 'valido': p.get('valid', False),
-                         'best': bool((p.get('bestpath') or {}).get('overall')),
-                         'motivo': (p.get('bestpath') or {}).get('selectionReason', '')})
+    percorsi = _percorsi_bgp(bgp, owner)
     lav.risultato = {'dev': dev, 'rete': rete, 'prefisso_bgp': bgp.get('prefix'),
                      'instradamento': instradamento, 'bgp': percorsi,
                      'neighbor': [n['ip'] for n in (disp[dev]['riepilogo'] or {}).get('neighbor', [])]}

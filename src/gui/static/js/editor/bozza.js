@@ -8,8 +8,10 @@
 //   {versione, nome, resolver: id di un DNS | null, blocco_subnet: '10.255.0.0/16' | '',
 //    dispositivi: [{id, tipo: 'router'|'host'|'www'|'dns', nome: '' (= automatico), x, y,
 //                   router: {redistribuisci_bgp: bool, statiche: [{rete, via, dev?}], igp_networks: '' (= proposte),
-//                            bgp: 'auto' | 'si' | 'no'},
-//                   host: {gateway: ''}, www: {gateway: ''},
+//                            bgp: 'auto' | 'si' | 'no', ospf?: 'no' (senza OSPF anche se una sua LAN è in un'area,
+//                            es. un router RIP sul confine con OSPF)},
+//                   host: {gateway: '', nameserver: ''}, www: {gateway: '', nameserver: ''},
+//                   (nameserver: IP del resolver solo di questo dispositivo, separati da virgola; vuoto = quello del lab)
 //                   dns: {gateway, root_type: 'master'|'hint'|null, delegations: [{zone, ns, ip}],
 //                         allow_recursion: null|'any'|'reti', dnssec_validation: bool (true = validazione disattivata),
 //                         zone: [{nome, record: [{nome, tipo: 'A'|'NS'|'CNAME'|'DELEGATION', valore, extra}]}]}}],
@@ -261,6 +263,14 @@ export function converti(bozza) {
     const r = perLan.get(c0.lan).find(c => disp.get(c.dispositivo).tipo === 'router' && ip[c.id]);
     return r ? ip[r.id].split('/')[0] : '';
   };
+  // resolver solo di questo dispositivo (come l'Opzione 5 del terminale): 'nameserver' del modello
+  const conNameserver = (x, conf, idD) => {
+    const ns = String((conf || {}).nameserver || '').split(/[\s,;]+/).filter(Boolean);
+    const sbagliato = ns.find(v => ipInt(v) === null);
+    if (sbagliato) segnala(idD, 'nameserver', 'errore', `Resolver non valido: '${sbagliato}' (un IP, es. 10.0.0.53).`);
+    else if (ns.length) x.nameserver = ns;
+    return x;
+  };
   for (const d of b.dispositivi) {
     interfacce[d.id] = perDisp.get(d.id).map(c => c.id);
     const nome = nomi[d.id], its = ifaces(d);
@@ -279,12 +289,12 @@ export function converti(bozza) {
       if (bgp && !z.as) segnala(d.id, 'bgp', 'errore', `${nome}: per BGP mettilo in un riquadro AS (serve il numero AS).`);
       if (bgp && z.as) p.add('bgp');
       bgpConfine[d.id] = confine;
-      if (ospf.length) p.add('ospf');
+      if (ospf.length && opz.ospf !== 'no') p.add('ospf');
       if (z.rip) p.add('rip');
       if (statiche.length) p.add('statico');
       const r = {protocols: ORDINE_PROTOCOLLI.filter(x => p.has(x)), asn: p.has('bgp') ? z.as : '', interfaces: its};
       if (statiche.length) r.static_routes = statiche.map(s => Object.assign({network: s.rete.trim(), via: s.via.trim()}, s.dev ? {dev: s.dev} : {}));
-      if (ospf.length) {
+      if (ospf.length && opz.ospf !== 'no') {
         const aree = [];
         for (const x of ospf) if (!aree.some(a => chiaveArea(a.valore) === chiaveArea(x.area.valore))) aree.push(x.area);
         const principale = aree.find(a => backbone(a.valore)) || aree[0];
@@ -312,11 +322,11 @@ export function converti(bozza) {
       if (p.has('bgp') && (p.has('ospf') || p.has('rip')) && opz.redistribuisci_bgp === false) r.igp_redistribute_bgp = false;
       routers[nome] = r;
     } else if (d.tipo === 'host') {
-      hosts.push({name: nome, interfaces: its, gateway: String((d.host || {}).gateway || '').trim() || gatewayProposto(d)});
+      hosts.push(conNameserver({name: nome, interfaces: its, gateway: String((d.host || {}).gateway || '').trim() || gatewayProposto(d)}, d.host, d.id));
     } else {
       if (its.length > 1) segnala(d.id, 'collegamenti', 'errore', `${nome}: un server ${d.tipo === 'www' ? 'WWW' : 'DNS'} ha una sola interfaccia.`);
       const conf = d[d.tipo] || {};
-      const base = {name: nome, ip: its[0] ? its[0].ip : '', gateway: String(conf.gateway || '').trim() || gatewayProposto(d), lan: its[0] ? its[0].lan : ''};
+      const base = conNameserver({name: nome, ip: its[0] ? its[0].ip : '', gateway: String(conf.gateway || '').trim() || gatewayProposto(d), lan: its[0] ? its[0].lan : ''}, conf, d.id);
       if (d.tipo === 'www') wwws.push(base);
       else {
         const x = Object.assign(base, {dns: true});

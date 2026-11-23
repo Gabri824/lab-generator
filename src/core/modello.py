@@ -60,13 +60,23 @@ def area_valida(s):
         return False
 
 
+def _completa_ottetti(tok):
+    """Forma abbreviata di bind ('0/0', '10/8', '192.168/16') -> con tutti e quattro gli ottetti."""
+    ip, _, pref = tok.partition('/')
+    parti = ip.split('.')
+    if 1 <= len(parti) < 4 and all(x.isdigit() for x in parti):
+        ip = '.'.join(parti + ['0'] * (4 - len(parti)))
+    return f"{ip}/{pref}"
+
+
 def parse_reti(s):
-    """'10.0.0.0/8, 20.1.0.0/16' -> ['10.0.0.0/8', '20.1.0.0/16']."""
+    """'10.0.0.0/8, 20.1.0.0/16' -> ['10.0.0.0/8', '20.1.0.0/16']. Accetta anche la forma abbreviata
+    di bind usata nelle soluzioni del corso ('allow-recursion { 0/0; }' = 0.0.0.0/0)."""
     out = []
     for tok in s.replace(',', ' ').split():
         if '/' not in tok:
             raise ValueError(f"manca la maschera in '{tok}' (es. 10.0.0.0/8)")
-        n = str(ipaddress.ip_network(tok, strict=False))
+        n = str(ipaddress.ip_network(_completa_ottetti(tok), strict=False))
         if n not in out:
             out.append(n)
     return out
@@ -456,6 +466,18 @@ def valida_lab(modello, parziale=False):
                     e = errore_ipv4(dl['ip'])
                     if e:
                         out.append(_problema(f"{campo}.ip", 'errore', e))
+
+    for n, t, d in tutti:
+        if t == 'router' or not isinstance(d, dict) or not d.get('nameserver'):
+            continue
+        ns = d['nameserver']
+        if not isinstance(ns, list):
+            out.append(_problema(f"{n}.nameserver", 'errore', 'Il resolver del dispositivo è un elenco di IP.'))
+            continue
+        for ip in ns:
+            e = errore_ipv4(str(ip))
+            if e:
+                out.append(_problema(f"{n}.nameserver", 'errore', f"Resolver di {n}: {e}"))
 
     res = modello.get('resolver')
     if res and res not in {n for n, t, _ in tutti if t == 'dns'}:

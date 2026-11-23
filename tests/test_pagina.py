@@ -165,7 +165,7 @@ class TestJavaScript(unittest.TestCase):
                 self.assertEqual(0, r.returncode, r.stderr)
 
     def test_componenti(self):
-        for nome in ('componenti.test.mjs', 'etichette.test.mjs'):
+        for nome in ('componenti.test.mjs', 'etichette.test.mjs', 'proposte.test.mjs'):
             with self.subTest(file=nome):
                 r = subprocess.run(['node', '--test', os.path.join(TESTS, 'js', nome)],
                                    capture_output=True, text=True, timeout=120)

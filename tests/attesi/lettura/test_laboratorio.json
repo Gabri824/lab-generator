@@ -45,6 +45,7 @@
   "dispositivi": [
    {
     "asn": "1",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -61,16 +62,19 @@
         "ip": "10.0.0.2",
         "policy": [
          {
+          "breve": "",
           "direzione": "in",
           "nome": "peer_r2_in",
           "testo": "prefix-list permit any"
          },
          {
+          "breve": "solo",
           "direzione": "out",
           "nome": "peer_r2_out",
           "testo": "prefix-list permit 20.0.0.1, 20.0.0.2"
          }
         ],
+        "relazione": "peer",
         "tipo": "eBGP"
        }
       ],
@@ -94,6 +98,7 @@
         "chi": "r3",
         "ip": "20.0.0.2",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -119,6 +124,7 @@
       "20.0.0.0/24"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -127,16 +133,19 @@
        "ip": "10.0.0.2",
        "policy": [
         {
+         "breve": "",
          "direzione": "in",
          "nome": "peer_r2_in",
          "testo": "prefix-list permit any"
         },
         {
+         "breve": "solo",
          "direzione": "out",
          "nome": "peer_r2_out",
          "testo": "prefix-list permit 20.0.0.1, 20.0.0.2"
         }
        ],
+       "relazione": "peer",
        "tipo": "eBGP"
       },
       {
@@ -144,10 +153,12 @@
        "chi": "r3",
        "ip": "20.0.0.2",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [
      {
@@ -174,6 +185,7 @@
    },
    {
     "asn": "2",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -189,6 +201,7 @@
         "chi": "r1",
         "ip": "10.0.0.1",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -212,6 +225,7 @@
         "chi": "r4",
         "ip": "30.0.0.2",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -237,6 +251,7 @@
       "30.0.0.0/24"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -244,6 +259,7 @@
        "chi": "r1",
        "ip": "10.0.0.1",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -251,10 +267,12 @@
        "chi": "r4",
        "ip": "30.0.0.2",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -262,6 +280,7 @@
    },
    {
     "asn": "3",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -278,16 +297,19 @@
         "ip": "20.0.0.1",
         "policy": [
          {
+          "breve": "",
           "direzione": "in",
           "nome": "provider_r1_in",
           "testo": "prefix-list permit any"
          },
          {
+          "breve": "solo",
           "direzione": "out",
           "nome": "provider_r1_out",
           "testo": "prefix-list permit 20.0.0.2"
          }
         ],
+        "relazione": "provider",
         "tipo": "eBGP"
        }
       ],
@@ -312,6 +334,7 @@
       "20.0.0.0/24"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -320,20 +343,24 @@
        "ip": "20.0.0.1",
        "policy": [
         {
+         "breve": "",
          "direzione": "in",
          "nome": "provider_r1_in",
          "testo": "prefix-list permit any"
         },
         {
+         "breve": "solo",
          "direzione": "out",
          "nome": "provider_r1_out",
          "testo": "prefix-list permit 20.0.0.2"
         }
        ],
+       "relazione": "provider",
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [
      {
@@ -354,6 +381,7 @@
    },
    {
     "asn": "4",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -370,16 +398,19 @@
         "ip": "30.0.0.1",
         "policy": [
          {
+          "breve": "",
           "direzione": "in",
           "nome": "provider_r2_in",
           "testo": "prefix-list permit any"
          },
          {
+          "breve": "solo",
           "direzione": "out",
           "nome": "provider_r2_out",
           "testo": "prefix-list permit 30.0.0.2"
          }
         ],
+        "relazione": "provider",
         "tipo": "eBGP"
        }
       ],
@@ -404,6 +435,7 @@
       "30.0.0.0/24"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -412,20 +444,24 @@
        "ip": "30.0.0.1",
        "policy": [
         {
+         "breve": "",
          "direzione": "in",
          "nome": "provider_r2_in",
          "testo": "prefix-list permit any"
         },
         {
+         "breve": "solo",
          "direzione": "out",
          "nome": "provider_r2_out",
          "testo": "prefix-list permit 30.0.0.2"
         }
        ],
+       "relazione": "provider",
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [
      {

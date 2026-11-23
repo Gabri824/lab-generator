@@ -87,6 +87,7 @@
   "dispositivi": [
    {
     "asn": "1",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -102,6 +103,7 @@
         "chi": "as8r1",
         "ip": "10.0.0.29",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -126,11 +128,13 @@
         "ip": "10.0.0.2",
         "policy": [
          {
+          "breve": "LP 110",
           "direzione": "in",
           "nome": "PREF_IN_10_0_0_2",
           "testo": "route-map local-preference 110 su tutte"
          }
         ],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -156,6 +160,7 @@
       "10.0.0.0/30"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -163,6 +168,7 @@
        "chi": "as8r1",
        "ip": "10.0.0.29",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -171,15 +177,18 @@
        "ip": "10.0.0.2",
        "policy": [
         {
+         "breve": "LP 110",
          "direzione": "in",
          "nome": "PREF_IN_10_0_0_2",
          "testo": "route-map local-preference 110 su tutte"
         }
        ],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -187,6 +196,7 @@
    },
    {
     "asn": "2",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -202,6 +212,7 @@
         "chi": "as1r1",
         "ip": "10.0.0.1",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -226,11 +237,13 @@
         "ip": "10.0.0.6",
         "policy": [
          {
+          "breve": "LP 110",
           "direzione": "in",
           "nome": "PREF_IN_10_0_0_6",
           "testo": "route-map local-preference 110 su tutte"
          }
         ],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -256,6 +269,7 @@
       "10.0.0.4/30"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -263,6 +277,7 @@
        "chi": "as1r1",
        "ip": "10.0.0.1",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -271,15 +286,18 @@
        "ip": "10.0.0.6",
        "policy": [
         {
+         "breve": "LP 110",
          "direzione": "in",
          "nome": "PREF_IN_10_0_0_6",
          "testo": "route-map local-preference 110 su tutte"
         }
        ],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -287,6 +305,7 @@
    },
    {
     "asn": "3",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -302,6 +321,7 @@
         "chi": "as2r1",
         "ip": "10.0.0.5",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -326,11 +346,13 @@
         "ip": "10.0.0.10",
         "policy": [
          {
+          "breve": "LP 110",
           "direzione": "in",
           "nome": "PREF_IN_10_0_0_10",
           "testo": "route-map local-preference 110 su tutte"
          }
         ],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -356,6 +378,7 @@
       "10.0.0.8/30"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -363,6 +386,7 @@
        "chi": "as2r1",
        "ip": "10.0.0.5",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -371,15 +395,18 @@
        "ip": "10.0.0.10",
        "policy": [
         {
+         "breve": "LP 110",
          "direzione": "in",
          "nome": "PREF_IN_10_0_0_10",
          "testo": "route-map local-preference 110 su tutte"
         }
        ],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -387,6 +414,7 @@
    },
    {
     "asn": "4",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -402,6 +430,7 @@
         "chi": "as3r1",
         "ip": "10.0.0.9",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -426,11 +455,13 @@
         "ip": "10.0.0.14",
         "policy": [
          {
+          "breve": "LP 110",
           "direzione": "in",
           "nome": "PREF_IN_10_0_0_14",
           "testo": "route-map local-preference 110 su tutte"
          }
         ],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -456,6 +487,7 @@
       "10.0.0.12/30"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -463,6 +495,7 @@
        "chi": "as3r1",
        "ip": "10.0.0.9",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -471,15 +504,18 @@
        "ip": "10.0.0.14",
        "policy": [
         {
+         "breve": "LP 110",
          "direzione": "in",
          "nome": "PREF_IN_10_0_0_14",
          "testo": "route-map local-preference 110 su tutte"
         }
        ],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -487,6 +523,7 @@
    },
    {
     "asn": "5",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -502,6 +539,7 @@
         "chi": "as4r1",
         "ip": "10.0.0.13",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -526,11 +564,13 @@
         "ip": "10.0.0.18",
         "policy": [
          {
+          "breve": "LP 110",
           "direzione": "in",
           "nome": "PREF_IN_10_0_0_18",
           "testo": "route-map local-preference 110 su tutte"
          }
         ],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -556,6 +596,7 @@
       "10.0.0.16/30"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -563,6 +604,7 @@
        "chi": "as4r1",
        "ip": "10.0.0.13",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -571,15 +613,18 @@
        "ip": "10.0.0.18",
        "policy": [
         {
+         "breve": "LP 110",
          "direzione": "in",
          "nome": "PREF_IN_10_0_0_18",
          "testo": "route-map local-preference 110 su tutte"
         }
        ],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -587,6 +632,7 @@
    },
    {
     "asn": "6",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -602,6 +648,7 @@
         "chi": "as5r1",
         "ip": "10.0.0.17",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -626,11 +673,13 @@
         "ip": "10.0.0.22",
         "policy": [
          {
+          "breve": "LP 110",
           "direzione": "in",
           "nome": "PREF_IN_10_0_0_22",
           "testo": "route-map local-preference 110 su tutte"
          }
         ],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -656,6 +705,7 @@
       "10.0.0.20/30"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -663,6 +713,7 @@
        "chi": "as5r1",
        "ip": "10.0.0.17",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -671,15 +722,18 @@
        "ip": "10.0.0.22",
        "policy": [
         {
+         "breve": "LP 110",
          "direzione": "in",
          "nome": "PREF_IN_10_0_0_22",
          "testo": "route-map local-preference 110 su tutte"
         }
        ],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -687,6 +741,7 @@
    },
    {
     "asn": "7",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -702,6 +757,7 @@
         "chi": "as6r1",
         "ip": "10.0.0.21",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -726,11 +782,13 @@
         "ip": "10.0.0.26",
         "policy": [
          {
+          "breve": "LP 110",
           "direzione": "in",
           "nome": "PREF_IN_10_0_0_26",
           "testo": "route-map local-preference 110 su tutte"
          }
         ],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -756,6 +814,7 @@
       "10.0.0.24/30"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -763,6 +822,7 @@
        "chi": "as6r1",
        "ip": "10.0.0.21",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -771,15 +831,18 @@
        "ip": "10.0.0.26",
        "policy": [
         {
+         "breve": "LP 110",
          "direzione": "in",
          "nome": "PREF_IN_10_0_0_26",
          "testo": "route-map local-preference 110 su tutte"
         }
        ],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -787,6 +850,7 @@
    },
    {
     "asn": "8",
+    "deleghe": [],
     "demoni": [
      "bgpd"
     ],
@@ -802,6 +866,7 @@
         "chi": "as7r1",
         "ip": "10.0.0.25",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -826,11 +891,13 @@
         "ip": "10.0.0.30",
         "policy": [
          {
+          "breve": "LP 110",
           "direzione": "in",
           "nome": "PREF_IN_10_0_0_30",
           "testo": "route-map local-preference 110 su tutte"
          }
         ],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -856,6 +923,7 @@
       "10.0.0.28/30"
      ],
      "costi": [],
+     "default": [],
      "igp": [],
      "neighbor": [
       {
@@ -864,11 +932,13 @@
        "ip": "10.0.0.30",
        "policy": [
         {
+         "breve": "LP 110",
          "direzione": "in",
          "nome": "PREF_IN_10_0_0_30",
          "testo": "route-map local-preference 110 su tutte"
         }
        ],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -876,10 +946,12 @@
        "chi": "as7r1",
        "ip": "10.0.0.25",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",

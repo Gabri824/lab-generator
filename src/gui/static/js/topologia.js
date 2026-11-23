@@ -1,125 +1,12 @@
 // Topologia: grafo del lab, disposizione automatica, disegno SVG, trascinamento e zoom.
-import { $, COL, esc, mem, S } from './comune.js';
+import { $, esc, mem, S } from './comune.js';
 import { lato } from './dispositivo.js';
-import { etichettaIface, largh, largIface, largLan } from './etichette.js';
+import { creaLivelli } from './componenti/livelli.js';
+import { inviluppo, varianti } from './disposizione.js';
+import { etichettaCosto, etichettaIface, largCosto, largh, largIface, largLan, testoCosto } from './etichette.js';
+import { alberoDns, avvisiSulDisegno, LIVELLI, relazioniCpp, resolver, segniRouter, sessioniBgp, siglePolicy } from './livelli.js';
 
 // ---------- topologia ----------
-export function colori(lab) {
-  const gs = [...new Set(lab.dispositivi.map(d => d.gruppo).filter(Boolean))].sort((a, b) => a - b);
-  const m = {}; gs.forEach((g, i) => m[g] = COL[i % COL.length]); return m;
-}
-export function grafo(lab) {
-  const nodes = [], links = [];
-  for (const d of lab.dispositivi) nodes.push({id: 'd:' + d.nome, nome: d.nome, tipo: d.tipo, gruppo: d.gruppo || '_', dev: d});
-  for (const l of lab.lan) {
-    const ms = [];
-    for (const d of lab.dispositivi) for (const it of d.interfacce) if (it.lan === l.nome) ms.push({d, it});
-    if (ms.length === 2 && ms[0].d.nome !== ms[1].d.nome) {
-      links.push({a: 'd:' + ms[0].d.nome, b: 'd:' + ms[1].d.nome, lan: l.nome, subnet: l.subnet, ia: ms[0].it, ib: ms[1].it});
-    } else {
-      nodes.push({id: 'l:' + l.nome, nome: l.nome, tipo: 'lan', subnet: l.subnet, gruppo: null});
-      for (const m of ms) links.push({a: 'd:' + m.d.nome, b: 'l:' + l.nome, lan: l.nome, subnet: l.subnet, ia: m.it, ib: null});
-    }
-  }
-  // una LAN tutta dentro un AS appartiene a quell'AS (per il riquadro dell'AS)
-  for (const n of nodes) if (n.tipo === 'lan') {
-    const gs = new Set(links.filter(l => l.b === n.id).map(l => nodes.find(x => x.id === l.a).gruppo));
-    n.gruppo = gs.size === 1 ? [...gs][0] : null;
-  }
-  return {nodes, links};
-}
-// generatore pseudo-casuale con seme: stessa variante = stessa disposizione
-export function casuale(seme) {
-  let t = (seme * 2654435761) >>> 0;
-  return () => { t = (t + 0x6D2B79F5) >>> 0; let r = Math.imul(t ^ (t >>> 15), 1 | t); r ^= r + Math.imul(r ^ (r >>> 7), 61 | r); return ((r ^ (r >>> 14)) >>> 0) / 4294967296; };
-}
-export function mescola(v, rnd) { v = v.slice(); for (let i = v.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [v[i], v[j]] = [v[j], v[i]]; } return v; }
-export function disponi(G, seme) {
-  const pos = {}, membri = {}, rnd = casuale(seme || 0);
-  for (const n of G.nodes) if (n.tipo !== 'lan') (membri[n.gruppo] = membri[n.gruppo] || []).push(n);
-  let gruppi = Object.keys(membri).sort((a, b) => (+a || 1e9) - (+b || 1e9));
-  if (seme) gruppi = mescola(gruppi, rnd);
-  const R = gruppi.length > 1 ? 150 + 75 * gruppi.length : 0, centro = {};
-  gruppi.forEach((g, i) => { const a = 2 * Math.PI * i / gruppi.length - Math.PI / 2; centro[g] = {x: R * Math.cos(a), y: R * Math.sin(a)}; });
-  for (const g of gruppi) { const ms = seme ? mescola(membri[g], rnd) : membri[g], r = ms.length > 1 ? 45 + 14 * ms.length : 0;
-    ms.forEach((n, i) => { const a = 2 * Math.PI * i / ms.length; pos[n.id] = {x: centro[g].x + r * Math.cos(a), y: centro[g].y + r * Math.sin(a)}; }); }
-  for (const n of G.nodes) if (n.tipo === 'lan') {
-    const ls = G.links.filter(l => l.b === n.id); let x = 0, y = 0;
-    ls.forEach(l => { x += pos[l.a].x; y += pos[l.a].y; });
-    const k = Math.max(ls.length, 1); pos[n.id] = {x: x / k + 9, y: y / k + 9};
-  }
-  // lunghezza a riposo dei link: abbastanza per le etichette che ci stanno sopra
-  const riposo = l => l.b.startsWith('l:') ? Math.max(115, 60 + largIface(l.ia))
-    : Math.max(210, 56 + largIface(l.ia) + largIface(l.ib) + largLan(l));
-  const N = G.nodes.length, IT = 700;
-  for (let it = 0; it < IT; it++) {
-    const f = {}; G.nodes.forEach(n => f[n.id] = {x: 0, y: 0});
-    for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {
-      const a = G.nodes[i], b = G.nodes[j], pa = pos[a.id], pb = pos[b.id];
-      let dx = pa.x - pb.x, dy = pa.y - pb.y, d2 = dx * dx + dy * dy;
-      if (d2 < 1) { dx = (i - j) * 0.1; dy = 0.5; d2 = dx * dx + dy * dy; }
-      const altro = a.gruppo && b.gruppo && a.gruppo !== b.gruppo;
-      const d = Math.sqrt(d2), k = (altro ? 34000 : 16000) / d2;
-      f[a.id].x += k * dx / d; f[a.id].y += k * dy / d; f[b.id].x -= k * dx / d; f[b.id].y -= k * dy / d;
-    }
-    for (const l of G.links) {
-      const pa = pos[l.a], pb = pos[l.b], dx = pb.x - pa.x, dy = pb.y - pa.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
-      const k = (d - riposo(l)) * 0.06;
-      f[l.a].x += k * dx / d; f[l.a].y += k * dy / d; f[l.b].x -= k * dx / d; f[l.b].y -= k * dy / d;
-    }
-    // coesione dell'AS solo tra i router: gli host restano all'esterno, vicino al loro router
-    for (const g of gruppi) { const ms = membri[g].filter(n => n.tipo === 'router'); if (g === '_' || ms.length < 2) continue;
-      let cx = 0, cy = 0; ms.forEach(n => { cx += pos[n.id].x; cy += pos[n.id].y; }); cx /= ms.length; cy /= ms.length;
-      ms.forEach(n => { f[n.id].x += (cx - pos[n.id].x) * 0.012; f[n.id].y += (cy - pos[n.id].y) * 0.012; }); }
-    const T = 40 * (1 - it / IT) + 0.5;
-    for (const n of G.nodes) { const v = f[n.id], m = Math.sqrt(v.x * v.x + v.y * v.y) || 1, s = Math.min(m, T) / m; pos[n.id].x += v.x * s; pos[n.id].y += v.y * s; }
-  }
-  return pos;
-}
-// qualità di una disposizione: incroci tra link + nodi appoggiati su link non loro (meno = meglio)
-export function difetti(G, pos) {
-  const seg = G.links.map(l => [pos[l.a], pos[l.b], l.a, l.b]);
-  const cr = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
-  let n = 0;
-  for (let i = 0; i < seg.length; i++) for (let j = i + 1; j < seg.length; j++) {
-    const [p1, p2, a1, b1] = seg[i], [q1, q2, a2, b2] = seg[j];
-    if (a1 === a2 || a1 === b2 || b1 === a2 || b1 === b2) continue;
-    if (cr(p1, p2, q1) * cr(p1, p2, q2) < 0 && cr(q1, q2, p1) * cr(q1, q2, p2) < 0) n += 1;
-  }
-  for (const nd of G.nodes) { const p = pos[nd.id];
-    for (const [a, b, ia, ib] of seg) {
-      if (ia === nd.id || ib === nd.id) continue;
-      const dx = b.x - a.x, dy = b.y - a.y, L = dx * dx + dy * dy || 1;
-      const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / L));
-      if (Math.hypot(a.x + t * dx - p.x, a.y + t * dy - p.y) < 34) n += 0.7;
-    }
-  }
-  return n;
-}
-// varie disposizioni (semi diversi), dalla migliore alla peggiore; "Riordina" le scorre
-// ruota la disposizione in modo che il lato lungo sia orizzontale (il riquadro è largo)
-export function orizzontale(pos) {
-  const ps = Object.values(pos), n = ps.length || 1;
-  const mx = ps.reduce((s, p) => s + p.x, 0) / n, my = ps.reduce((s, p) => s + p.y, 0) / n;
-  let sxx = 0, syy = 0, sxy = 0;
-  ps.forEach(p => { const dx = p.x - mx, dy = p.y - my; sxx += dx * dx; syy += dy * dy; sxy += dx * dy; });
-  const a = -0.5 * Math.atan2(2 * sxy, sxx - syy), c = Math.cos(a), s = Math.sin(a);
-  for (const k in pos) { const dx = pos[k].x - mx, dy = pos[k].y - my; pos[k] = {x: dx * c - dy * s, y: dx * s + dy * c}; }
-  return pos;
-}
-export function varianti(G) {
-  const v = [];
-  for (let s = 0; s < 10; s++) { const pos = orizzontale(disponi(G, s)); v.push({pos, d: difetti(G, pos)}); }
-  return v.sort((a, b) => a.d - b.d).map(x => x.pos);
-}
-export function inviluppo(p) {
-  if (p.length < 3) return p;
-  p = p.slice().sort((a, b) => a.x - b.x || a.y - b.y);
-  const cr = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x), lo = [], up = [];
-  for (const q of p) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
-  for (const q of p.slice().reverse()) { while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
-  return lo.slice(0, -1).concat(up.slice(0, -1));
-}
 export function evidLink(l) {
   const e = S.evid; if (!e || !e.lan.has(l.lan)) return false;
   return e.dev.has(l.a.slice(2)) && (l.b.startsWith('l:') || e.dev.has(l.b.slice(2)));
@@ -135,6 +22,12 @@ export const STILE_SVG = `<style>
 .sel{stroke:#0f172a;stroke-width:2.5;fill:none;stroke-dasharray:4 3}
 .ring{stroke:#f59e0b;stroke-width:5;fill:none}.ord{font:700 11px system-ui,sans-serif;fill:#fff}
 .cs{fill:#fef3c7;stroke:#d97706;stroke-width:1}.ct{font:700 11px system-ui,sans-serif;fill:#92400e}
+.lk.bgp{stroke:#334155;stroke-width:3.5}.ses{fill:none;stroke-width:2.2;stroke-dasharray:7 5;opacity:.85}.ses.ko{stroke:#dc2626;stroke-width:3.2;stroke-dasharray:1.5 5;stroke-linecap:round;opacity:1}
+.polr{fill:#ecfeff;stroke:#0891b2;stroke-width:1}.polt{font:600 10.5px system-ui,sans-serif;fill:#155e75}.cpp{fill:#0f172a}
+.bdg{stroke-width:1}.bt{font:700 9.5px system-ui,sans-serif;text-anchor:middle}.b00{fill:#fde68a;stroke:#b45309}.b00t{fill:#78350f}
+.bR{fill:#ede9fe;stroke:#7c3aed}.bRt{fill:#5b21b6}.bA{fill:#dc2626;stroke:#fff}.bAt{fill:#fff}
+.dnsl{fill:none;stroke:#7c3aed;stroke-width:1.8;stroke-dasharray:3 4}.dnst{font:600 10.5px system-ui,sans-serif;fill:#6d28d9;paint-order:stroke;stroke:#fff;stroke-width:3px;stroke-linejoin:round}
+.mod [data-mod]{cursor:pointer}.mod [data-mod="pol"]:hover .polr{stroke:#2563eb;stroke-width:2}.mod [data-mod]:hover .pill,.mod [data-mod]:hover .pill-lan{stroke:#2563eb;stroke-width:2}.mod .nodo[data-id^="l:"]:hover rect{stroke:#2563eb}.mod text[data-mod]:hover{text-decoration:underline}
 </style>`;
 // protocolli interni di un AS (dai demoni FRR dei suoi router)
 export function igpGruppo(G, g) {
@@ -164,7 +57,9 @@ export const RAGGIO = {router: 22, host: 19, www: 19, dns: 19};
 // Posizione delle etichette senza sovrapposizioni. Ogni etichetta scivola lungo il
 // proprio link (s = distanza dal primo nodo) e, se non basta, si scosta di poco di lato
 // (o); nodi, nomi dei dispositivi e subnet delle LAN sono ostacoli fissi.
-export function posizionaEtichette(G, pos, iface, extra) {
+// opz (Topologia, fase 5.6): costi = etichette di solo costo se iface è spento; segni = sigle e
+// frecce sui link [{da, verso, w, h, ...}]; sotto = {id del nodo: righe sotto il nome}
+export function posizionaEtichette(G, pos, iface, extra, opz = {}) {
   const et = [], ost = extra.slice(), byId = {};
   G.nodes.forEach(n => byId[n.id] = n);
   const nomi = {};
@@ -177,11 +72,13 @@ export function posizionaEtichette(G, pos, iface, extra) {
     }
     const r = RAGGIO[n.tipo] || 20;
     ost.push({x: p.x, y: p.y, w: 2 * r, h: 2 * r});
-    const a = latoNome(G, pos, n), cx = Math.cos(a), cy = Math.sin(a), w = largh(n.nome, 12.5) + 4;
+    const a = latoNome(G, pos, n), cx = Math.cos(a), cy = Math.sin(a);
+    const sotto = (opz.sotto && opz.sotto[n.id]) || [];
+    const w = Math.max(largh(n.nome, 12.5), ...sotto.map(t => largh(t, 10.5))) + 4;
     const anc = cx > 0.5 ? 'start' : (cx < -0.5 ? 'end' : 'middle');
-    const tx = p.x + cx * 30, ty = p.y + cy * 32;
+    const tx = p.x + cx * 30, ty = p.y + cy * 32 - (cy < -0.5 ? 13 * sotto.length : 0);
     nomi[n.id] = {anc, x: tx, y: ty + 4.5};
-    ost.push({x: tx + (anc === 'start' ? w / 2 : anc === 'end' ? -w / 2 : 0), y: ty, w, h: 17});
+    ost.push({x: tx + (anc === 'start' ? w / 2 : anc === 'end' ? -w / 2 : 0), y: ty + 6.5 * sotto.length, w, h: 17 + 13 * sotto.length});
   }
   const raggio = id => byId[id].tipo === 'lan' ? Math.max(17, (9 * byId[id].nome.length + 16) / 2) : (RAGGIO[byId[id].tipo] || 20);
   for (const l of G.links) {
@@ -193,15 +90,24 @@ export function posizionaEtichette(G, pos, iface, extra) {
       const w = largLan(l);
       et.push(Object.assign({}, base, {tipo: 'lan', l, w, s: len / 2, sMin: len * 0.3, sMax: len * 0.7}));
     }
-    if (!iface) continue;
-    if (l.ia) {
-      const w = largIface(l.ia), sMin = raggio(l.a) + est(w, 18) + 3;
+    if (!iface && !opz.costi) continue;
+    const vede = it => it && (iface || testoCosto(it)), larg = it => (iface ? largIface(it) : largCosto(it));
+    if (vede(l.ia)) {
+      const w = larg(l.ia), sMin = raggio(l.a) + est(w, 18) + 3;
       et.push(Object.assign({}, base, {tipo: 'if', it: l.ia, nodo: l.a, w, s: Math.max(sMin, Math.min(52, len * 0.28)), sMin, sMax: Math.max(sMin, len / 2 - 8)}));
     }
-    if (l.ib) {
-      const w = largIface(l.ib), sMax = len - raggio(l.b) - est(w, 18) - 3;
+    if (vede(l.ib)) {
+      const w = larg(l.ib), sMax = len - raggio(l.b) - est(w, 18) - 3;
       et.push(Object.assign({}, base, {tipo: 'if', it: l.ib, nodo: l.b, w, s: Math.min(sMax, len - Math.min(52, len * 0.28)), sMin: Math.min(sMax, len / 2 + 8), sMax}));
     }
+  }
+  for (const g of opz.segni || []) {
+    const A = pos[g.da], B = pos[g.verso]; if (!A || !B) continue;
+    const dx = B.x - A.x, dy = B.y - A.y, len = Math.sqrt(dx * dx + dy * dy) || 1, ux = dx / len, uy = dy / len;
+    const ing = g.w / 2 * Math.abs(ux) + g.h / 2 * Math.abs(uy), sMin = raggio(g.da) + ing + 2;
+    const sMax = Math.max(sMin, g.meta ? len * 0.75 : len / 2 - 4);
+    const s0 = g.meta ? len / 2 : sMin + (iface ? 58 : 10);
+    et.push({tipo: 'seg', g, ax: A.x, ay: A.y, ux, uy, len, o: 0, w: g.w, h: g.h, s: Math.max(sMin, Math.min(sMax, s0)), sMin: g.meta ? len * 0.25 : sMin, sMax});
   }
   const centro = e => { e.x = e.ax + e.ux * e.s - e.uy * e.o; e.y = e.ay + e.uy * e.s + e.ux * e.o; };
   // sposta e di (Dx, Dy): prima lungo il link, poi (se è al limite o il link è di traverso) di lato
@@ -234,8 +140,59 @@ export function posizionaEtichette(G, pos, iface, extra) {
   et.forEach(centro);
   return {et, nomi};
 }
+// livello acceso (senza la barra dei livelli, es. nei test, tutti accesi)
+export const livello = id => !S.livelli || S.livelli.has(id);
+const titolo = t => `<title>${esc(t)}</title>`;
+const curva = (a, b, piega) => {
+  const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
+  const k = Math.min(60, len * 0.22) * piega, cx = mx - dy / len * k, cy = my + dx / len * k;
+  return {d: `M${a.x},${a.y} Q${cx},${cy} ${b.x},${b.y}`, x: (a.x + 2 * cx + b.x) / 4, y: (a.y + 2 * cy + b.y) / 4};
+};
+// link del disegno che porta dal router alla LAN di un neighbor: id dell'altro capo (LAN o router)
+function versoLan(G, router, lan) {
+  const id = 'd:' + router;
+  for (const l of G.links) {
+    if (l.a === id && l.ia && l.ia.lan === lan) return l.b;
+    if (l.b === id && l.ib && l.ib.lan === lan) return l.a;
+  }
+  return null;
+}
+// segni dei livelli Policy (sigle sui link, frecce Customer-Provider-Peer) per posizionaEtichette
+function segniLink(G, pos, lab) {
+  const out = [];
+  if (!lab || !livello('policy')) return out;
+  for (const x of siglePolicy(lab)) {
+    const verso = (x.lan && versoLan(G, x.router, x.lan)) || (x.peer && pos['d:' + x.peer] ? 'd:' + x.peer : null);
+    if (verso) out.push({tipo: 'pol', da: 'd:' + x.router, verso, w: largh(x.testo, 10.5) + 12, h: 16, x});
+  }
+  for (const r of relazioniCpp(lab)) {
+    if (r.provider) {
+      const verso = versoLan(G, r.provider, r.lan); if (!verso) continue;
+      out.push({tipo: 'cpp', da: 'd:' + r.provider, verso, w: 16, h: 16, titolo: `${r.customer} è cliente di ${r.provider} (Customer-Provider-Peer): la freccia punta al provider`});
+    } else {
+      const verso = versoLan(G, r.peer[0], r.lan); if (!verso) continue;
+      out.push({tipo: 'peer', da: 'd:' + r.peer[0], verso, w: largh('peer', 10.5) + 12, h: 16, meta: true, titolo: `${r.peer[0]} e ${r.peer[1]} sono peer (Customer-Provider-Peer)`});
+    }
+  }
+  return out;
+}
+function htmlSegno(e) {
+  const g = e.g;
+  if (g.tipo === 'pol') return `<g class="pol" data-mod="pol" data-dev="${esc(g.x.router)}" data-ip="${esc(g.x.ip)}">${titolo(g.x.titolo)}<rect class="polr" x="${e.x - e.w / 2}" y="${e.y - 8}" width="${e.w}" height="16" rx="8"/><text class="polt" x="${e.x}" y="${e.y + 3.8}" text-anchor="middle">${esc(g.x.testo)}</text></g>`;
+  if (g.tipo === 'peer') return `<g>${titolo(g.titolo)}<rect class="polr" x="${e.x - e.w / 2}" y="${e.y - 8}" width="${e.w}" height="16" rx="8"/><text class="polt" x="${e.x}" y="${e.y + 3.8}" text-anchor="middle">peer</text></g>`;
+  // freccia verso il provider (l'inizio del segmento, e.ax/e.ay)
+  const px = -e.ux, py = -e.uy, x = e.x, y = e.y;
+  const p = [[x + px * 8, y + py * 8], [x - px * 6 - py * 7, y - py * 6 + px * 7], [x - px * 6 + py * 7, y - py * 6 - px * 7]];
+  return `<g>${titolo(g.titolo)}<path class="cpp" d="M${p.map(q => q[0].toFixed(1) + ',' + q[1].toFixed(1)).join(' L')} Z"/></g>`;
+}
+// piccolo cerchio con una scritta accanto al nodo (0/0, R, !)
+const distintivo = (cx, cy, testo, cls, tit) => `<g>${titolo(tit)}<circle class="bdg ${cls}" cx="${cx}" cy="${cy}" r="${testo.length > 1 ? 11 : 8.5}"/><text class="bt ${cls}t" x="${cx}" y="${cy + 3.4}">${esc(testo)}</text></g>`;
+
 export function svgContenuto(G, pos) {
   let h = STILE_SVG, etichetteAS = '';
+  const lab = S.lab && G === S.G ? S.lab : null;      // l'editor usa solo posizionaEtichette
+  const disp = lab ? Object.fromEntries(lab.dispositivi.map(d => [d.nome, d])) : {};
+  const avvisi = lab && livello('avvisi') ? avvisiSulDisegno(lab) : {dev: {}, as: {}};
   const ostAS = [];      // scritte degli AS: ostacoli per le etichette
   const gruppi = [...new Set(G.nodes.map(n => n.gruppo).filter(g => g && g !== '_'))];
   for (const g of gruppi) {
@@ -245,12 +202,45 @@ export function svgContenuto(G, pos) {
     h += `<path d="${d}" fill="${c}" stroke="${c}" stroke-width="110" stroke-linejoin="round" stroke-linecap="round" opacity="0.10"/>`;
     const top = pts.reduce((a, b) => b.y < a.y ? b : a);
     ostAS.push({x: top.x, y: top.y - 69, w: largh('AS' + g, 16) + (igp ? largh('· ' + igp, 12) + 6 : 0) + 6, h: 22});
-    etichetteAS += `<text class="ga" x="${top.x}" y="${top.y - 64}" text-anchor="middle" fill="${c}">AS${esc(g)}${igp ? `<tspan class="gp" dx="6">· ${esc(igp)}</tspan>` : ''}</text>`;
+    const wAS = ostAS[ostAS.length - 1].w;   // area di clic della scritta (modalità Modifica), anche tra le parole
+    etichetteAS += `<rect data-mod="as" data-as="${esc(g)}" x="${top.x - wAS / 2}" y="${top.y - 80}" width="${wAS}" height="22" fill="transparent"/>`;
+    etichetteAS += `<text class="ga" x="${top.x}" y="${top.y - 64}" text-anchor="middle" fill="${c}" data-mod="as" data-as="${esc(g)}">AS${esc(g)}${igp ? `<tspan class="gp" dx="6">· ${esc(igp)}</tspan>` : ''}</text>`;
+    if (avvisi.as[g]) etichetteAS += distintivo(top.x + wAS / 2 + 10, top.y - 69, '!', 'bA', avvisi.as[g].join('\n\n'));
+  }
+  // livello Sessioni BGP: link eBGP marcati; iBGP e sessioni sbagliate come curve tratteggiate
+  const ebgp = new Set(), curve = [];
+  if (lab && livello('sessioni')) for (const x of sessioniBgp(lab)) {
+    const A = pos['d:' + x.a], B = pos['d:' + x.b]; if (!A || !B) continue;
+    if (x.tipo === 'eBGP' && x.stato === 'ok') {
+      for (const r of [x.a, x.b]) { const v = x.lan && versoLan(G, r, x.lan); if (v) ebgp.add(['d:' + r, v].sort().join('|')); }
+      if (x.lan) continue;                // eBGP fra loopback: anche la curva
+    }
+    const c = curva(A, B, 1), col = x.stato === 'ko' ? '' : ` stroke="${S.colori[(disp[x.a] || {}).gruppo] || '#475569'}"`;
+    const tit = x.stato === 'ko' ? 'Sessione BGP da controllare: ' + x.perche : `${x.tipo} ${x.a} - ${x.b}`;
+    curve.push(`<path class="ses${x.stato === 'ko' ? ' ko' : ''}" d="${c.d}"${col}>${titolo(tit)}</path>`
+      + (x.stato === 'ko' ? distintivo(c.x, c.y, '!', 'bA', tit) : ''));
   }
   for (const l of G.links) { const a = pos[l.a], b = pos[l.b];
-    const cls = S.spenti && S.spenti.has(l.lan) ? ' off' : evidLink(l) ? ' ev' : (S.evid && S.evid.manca && S.evid.manca.has(l.lan)) ? ' manca' : '';
+    const cls = S.spenti && S.spenti.has(l.lan) ? ' off' : evidLink(l) ? ' ev' : (S.evid && S.evid.manca && S.evid.manca.has(l.lan)) ? ' manca'
+      : ebgp.has([l.a, l.b].sort().join('|')) ? ' bgp' : '';
     h += `<line class="lk${cls}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`; }
-  const {et, nomi} = posizionaEtichette(G, pos, $('#cIface').checked, ostAS);
+  h += curve.join('');
+  // livello DNS: deleghe dal server padre al figlio, con il nome della zona
+  if (lab && livello('dns')) for (const x of alberoDns(lab)) {
+    const A = pos['d:' + x.da], B = x.a && pos['d:' + x.a]; if (!A || !B) continue;
+    const c = curva(A, B, -1);
+    h += `<path class="dnsl" d="${c.d}">${titolo(`Delega: ${x.da} delega la zona ${x.zona} a ${x.ns} (${x.ip || '?'}, ${x.a})`)}</path><text class="dnst" x="${c.x}" y="${c.y}" text-anchor="middle">${esc(x.zona)}</text>`;
+  }
+  // righe sotto il nome: loopback (Segni sui router) e resolver (DNS)
+  const sotto = {};
+  if (lab) for (const n of G.nodes) { const d = disp[n.nome]; if (!d || n.tipo === 'lan') continue;
+    const r = [];
+    if (livello('segni') && d.tipo === 'router') r.push(...segniRouter(d).loopback.map(ip => 'lo ' + ip));
+    if (livello('dns') && resolver(lab, d)) r.push(resolver(lab, d));
+    if (r.length) sotto[n.id] = r;
+  }
+  const iface = !!S.modifica || livello('indirizzi');
+  const {et, nomi} = posizionaEtichette(G, pos, iface, ostAS, {costi: livello('costi'), segni: segniLink(G, pos, lab), sotto});
   const ord = (S.evid && S.evid.ordine) || {};
   for (const n of G.nodes) { const p = pos[n.id];
     h += `<g class="nodo" data-id="${esc(n.id)}" transform="translate(${p.x},${p.y})">`;
@@ -265,22 +255,31 @@ export function svgContenuto(G, pos) {
       if (n.tipo === 'router') {
         h += `<circle r="20" fill="${c}" stroke="#fff" stroke-width="2"/><path d="M-10,-4 H9 M5,-8 L9,-4 L5,0 M10,4 H-9 M-5,0 L-9,4 L-5,8" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
       } else {
-        const lab = {host: '', www: 'www', dns: 'DNS'}[n.tipo];
+        const scritta = {host: '', www: 'www', dns: 'DNS'}[n.tipo];
         h += `<rect x="-17" y="-13" width="34" height="26" rx="4" fill="${c}" stroke="#fff" stroke-width="2"/>`;
-        h += lab ? `<text y="4" text-anchor="middle" style="font:700 10px system-ui,sans-serif;fill:#fff">${lab}</text>` : '<rect x="-10" y="-7" width="20" height="12" rx="1.5" fill="none" stroke="#fff" stroke-width="1.6"/>';
+        h += scritta ? `<text y="4" text-anchor="middle" style="font:700 10px system-ui,sans-serif;fill:#fff">${scritta}</text>` : '<rect x="-10" y="-7" width="20" height="12" rx="1.5" fill="none" stroke="#fff" stroke-width="1.6"/>';
       }
       const t = nomi[n.id];
       h += `<text class="t" x="${(t.x - p.x).toFixed(1)}" y="${(t.y - p.y).toFixed(1)}" text-anchor="${t.anc}">${esc(n.nome)}</text>`;
+      (sotto[n.id] || []).forEach((r, k) => { h += `<text class="ts" x="${(t.x - p.x).toFixed(1)}" y="${(t.y - p.y + 13 * (k + 1)).toFixed(1)}" text-anchor="${t.anc}">${esc(r)}</text>`; });
       if (ord[n.nome] != null) h += `<circle cx="20" cy="-20" r="10" fill="#f59e0b"/><text class="ord" x="20" y="-16" text-anchor="middle">${esc(ord[n.nome])}</text>`;
+      const d = disp[n.nome];
+      if (d && livello('segni') && d.tipo === 'router') {
+        const sg = segniRouter(d);
+        if (sg.default.length) h += distintivo(-21, -19, '0/0', 'b00', 'Manda la default route: ' + sg.default.join('; '));
+        if (sg.redistribuisce.length) h += distintivo(20, 19, 'R', 'bR', 'Ridistribuisce BGP in ' + sg.redistribuisce.join(' e ') + ' (redistribute bgp)');
+      }
+      if (avvisi.dev[n.nome]) h += distintivo(-20, 19, '!', 'bA', avvisi.dev[n.nome].join('\n\n'));
     }
     h += '</g>';
   }
-  // etichette sopra a tutto: link punto-punto (nome e subnet) e interfacce
+  // etichette sopra a tutto: link punto-punto (nome e subnet), interfacce, sigle delle policy
   const col = id => { const n = G.nodes.find(x => x.id === id); return (n && S.colori[n.gruppo]) || '#475569'; };
   for (const e of et) {
-    if (e.tipo === 'lan') h += `<rect x="${e.x - e.w / 2}" y="${e.y - 9}" width="${e.w}" height="18" rx="9" fill="#f8fafc" stroke="#cbd5e1"/>`
-      + `<text class="lt" x="${e.x}" y="${e.y + 4}" text-anchor="middle"><tspan class="lb">${esc(e.l.lan)}</tspan> ${esc(e.l.subnet || '')}</text>`;
-    else h += etichettaIface(e.it, e.x, e.y, col(e.nodo));
+    if (e.tipo === 'lan') h += `<g data-mod="lan" data-lan="${esc(e.l.lan)}"><rect class="pill-lan" x="${e.x - e.w / 2}" y="${e.y - 9}" width="${e.w}" height="18" rx="9" fill="#f8fafc" stroke="#cbd5e1"/>`
+      + `<text class="lt" x="${e.x}" y="${e.y + 4}" text-anchor="middle"><tspan class="lb">${esc(e.l.lan)}</tspan> ${esc(e.l.subnet || '')}</text></g>`;
+    else if (e.tipo === 'seg') h += htmlSegno(e);
+    else h += `<g data-mod="if" data-dev="${esc(e.nodo.slice(2))}" data-iface="${esc(e.it.dev)}">${iface ? etichettaIface(e.it, e.x, e.y, col(e.nodo)) : etichettaCosto(e.it, e.x, e.y)}</g>`;
   }
   return h + etichetteAS;
 }
@@ -294,20 +293,26 @@ export function ridisegna() {
   if (!S.G) return;
   if (!S.vb) S.vb = viewBox();
   const svg = $('#svg'); svg.setAttribute('viewBox', S.vb); svg.innerHTML = svgContenuto(S.G, S.pos);
+  svg.classList.toggle('mod', !!S.modifica);
   $('#bTogli').hidden = !S.evid;
 }
 let trascina = null;
+// modalità Modifica (modifica.js): clic senza trascinare su un'etichetta d'interfaccia o sulla
+// scritta di un AS -> gesti.su({mod: 'if', dev, iface} | {mod: 'as', as})
+export const gesti = {su: null, punto: null};
 export function puntoSvg(e) { const m = $('#svg').getScreenCTM().inverse(); const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m); return {x: p.x, y: p.y}; }
 // trascinando un nodo lo si sposta, trascinando lo sfondo si sposta la vista; rotellina = zoom
 $('#svg').addEventListener('pointerdown', e => {
-  const g = e.target.closest('[data-id]');
-  trascina = g ? {id: g.dataset.id, x: e.clientX, y: e.clientY, mosso: false}
-               : {sfondo: true, x: e.clientX, y: e.clientY, vb: S.vb.split(' ').map(Number), scala: 1 / $('#svg').getScreenCTM().a};
+  const g = e.target.closest('[data-id]'), m = S.modifica && e.target.closest('[data-mod]');
+  trascina = g && !m ? {id: g.dataset.id, x: e.clientX, y: e.clientY, mosso: false}
+               : {sfondo: true, x: e.clientX, y: e.clientY, vb: S.vb.split(' ').map(Number), scala: 1 / $('#svg').getScreenCTM().a,
+                  mod: m ? Object.assign({}, m.dataset) : null, mosso: false};
   $('#svg').setPointerCapture(e.pointerId);
 });
 $('#svg').addEventListener('pointermove', e => {
   if (!trascina) return;
   if (trascina.sfondo) {
+    if (Math.abs(e.clientX - trascina.x) + Math.abs(e.clientY - trascina.y) > 4) trascina.mosso = true;
     const [x, y, w, h] = trascina.vb, s = trascina.scala;
     S.vb = [x - (e.clientX - trascina.x) * s, y - (e.clientY - trascina.y) * s, w, h].join(' ');
     $('#svg').setAttribute('viewBox', S.vb); return;
@@ -318,9 +323,13 @@ $('#svg').addEventListener('pointermove', e => {
 $('#svg').addEventListener('pointerup', () => {
   if (!trascina) return;
   const t = trascina; trascina = null;
-  if (t.sfondo) return;
+  if (t.sfondo) { if (t.mod && !t.mosso && gesti.su) gesti.su(t.mod); return; }
   if (t.mosso) mem('pos:' + S.nome, S.pos);
-  else if (t.id.startsWith('d:')) { S.sel = t.id.slice(2); ridisegna(); lato(); }
+  else if (t.id.startsWith('d:')) {
+    if (S.modifica && gesti.su && gesti.punto && gesti.punto({mod: 'dev', nome: t.id.slice(2)})) return;   // punto del percorso voluto
+    S.sel = t.id.slice(2); if (S.modifica) S.op = null; ridisegna(); lato();
+  }
+  else if (t.id.startsWith('l:') && S.modifica && gesti.su) gesti.su({mod: 'lan', lan: t.id.slice(2)});
 });
 $('#svg').addEventListener('wheel', e => {
   e.preventDefault();
@@ -335,7 +344,8 @@ $('#bRiordina').onclick = () => {
   S.pos = JSON.parse(JSON.stringify(S.varianti[S.variante]));
   mem('pos:' + S.nome, null); S.vb = null; ridisegna();
 };
-$('#cIface').onchange = ridisegna;
+// barra dei livelli del disegno (la scelta resta nel browser)
+S.livelli = creaLivelli($('#livelli'), LIVELLI, a => { S.livelli = a; ridisegna(); }, 'livelli:topologia').attivi();
 $('#bTogli').onclick = () => { S.evid = null; ridisegna(); };
 $('#bSvg').onclick = () => {
   const testo = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox()}" width="1400" style="background:#fff">${svgContenuto(S.G, S.pos)}</svg>`;

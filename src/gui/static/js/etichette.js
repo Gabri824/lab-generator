@@ -29,3 +29,11 @@ export function etichettaIface(it, x, y, colore) {
   }
   return h;
 }
+
+// solo il costo (livello "Costi OSPF" acceso e "Indirizzi" spento): [c20]
+export const largCosto = it => largh(testoCosto(it), 11) + 10;
+export function etichettaCosto(it, x, y) {
+  const c = testoCosto(it), w = largCosto(it);
+  return `<g class="costo"><title>${esc(`${it.dev}: costo OSPF ${it.costo} (scritto nel frr.conf)`)}</title>`
+    + `<rect class="cs" x="${x - w / 2}" y="${y - 9}" width="${w}" height="18" rx="4"/><text class="ct" x="${x}" y="${y + 4}" text-anchor="middle">${esc(c)}</text></g>`;
+}

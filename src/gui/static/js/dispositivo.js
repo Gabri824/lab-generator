@@ -1,13 +1,34 @@
 // Pannello del dispositivo accanto alla topologia: interfacce, file e comandi Kathará.
 import { $, api, azione, errore, esc, esegui, S } from './comune.js';
 import { percorso } from './test.js';
+import { avvisiSulDisegno, segniRouter } from './livelli.js';
 import { ridisegna } from './topologia.js';
 
 // ---------- pannello del dispositivo ----------
 export const ETICHETTE = {bgp_summary: 'show ip bgp summary', bgp: 'show ip bgp', route: 'show ip route', ospf_nei: 'show ip ospf neighbor', ospf_if: 'show ip ospf interface', rip: 'show ip rip', running: 'show running-config', ip_route: 'ip route', ip_addr: 'ip -br addr', apache_stato: 'stato apache2', apache_avvia: 'avvia apache2'};
 export function dispositivo(nome) { return S.lab && S.lab.dispositivi.find(d => d.nome === nome); }
+// avvisi automatici che citano il dispositivo e, per i router, la configurazione in breve
+// (come la scheda Riepilogo): si arriva qui anche dal "!" sul disegno (fase 5.6)
+function htmlAvvisiERiepilogo(d) {
+  const av = avvisiSulDisegno(S.lab).dev[d.nome] || [];
+  let h = av.length ? `<div class="warnline small" role="status" style="margin:6px 0">${av.map(esc).join('<br><br>')}</div>` : '';
+  const R = d.riepilogo;
+  if (!R) return h;
+  const righe = [];
+  for (const g of R.igp) righe.push(`${g.protocollo}: ${g.voci.join(', ') || '-'}${g.redistribute.length ? ' · redistribute ' + g.redistribute.join(', ') : ''}`);
+  if (R.costi.length) righe.push('Costo OSPF: ' + R.costi.join(', '));
+  if (d.demoni.includes('bgpd')) righe.push('Network BGP: ' + (R.bgp_networks.join(', ') || '-'));
+  for (const n of R.neighbor) righe.push(`Neighbor ${n.ip} ${n.chi} (AS${n.asn}, ${n.tipo})${n.relazione ? ' · ' + n.relazione : ''}`
+    + (n.policy.length ? ': ' + n.policy.map(p => `${p.direzione} ${p.testo}`).join('; ') : ''));
+  const sg = segniRouter(d);
+  if (sg.default.length) righe.push('Default route: ' + sg.default.join('; '));
+  return h + `<details class="small" style="margin:6px 0"><summary>Configurazione in breve</summary><ul style="margin:4px 0;padding-left:18px">${righe.map(r => `<li>${esc(r)}</li>`).join('')}</ul></details>`;
+}
+
 export function lato() {
   const d = dispositivo(S.sel), el = $('#side');
+  // modalità Modifica (modifica.js): operazione aperta o pannello iniziale al posto dell'elenco
+  if (S.modifica && S.latoModifica && (S.op || !d)) { S.latoModifica(el); return; }
   if (!d) {
     el.innerHTML = `<h3>Dispositivi</h3><div class="muted small">Clic su un dispositivo nella topologia per vedere la sua configurazione e lanciare i comandi.</div>
       <table style="margin-top:8px"><tr><th>Nome</th><th>Tipo</th><th>AS</th></tr>${S.lab.dispositivi.map(x => `<tr><td><a href="#" data-sel="${esc(x.nome)}">${esc(x.nome)}</a></td><td>${esc(x.tipo)}</td><td>${esc(x.asn || '')}</td></tr>`).join('')}</table>`;
@@ -25,6 +46,7 @@ export function lato() {
   const web = S.lab.web || {server: [], bersagli: [], client: []};
   if (web.server.some(x => x.nome === d.nome)) cmd.push('apache_stato', 'apache_avvia');
   el.innerHTML = `<div class="riga" style="margin:0"><h3>${esc(d.nome)}</h3><span class="badge">${esc(d.tipo)}</span>${d.asn ? `<span class="badge">AS${esc(d.asn)}</span>` : ''}<div class="sp"></div><a href="#" data-sel="">elenco</a></div>
+    ${htmlAvvisiERiepilogo(d)}
     <table><tr><th>Interf.</th><th>IP</th><th>LAN</th></tr>${d.interfacce.map(i => `<tr><td>${esc(i.dev)}</td><td>${esc(i.ip || '-')}</td><td>${esc(i.lan)}</td></tr>`).join('')}
     ${d.loopback.map(ip => `<tr><td>lo</td><td>${esc(ip)}</td><td></td></tr>`).join('')}</table>
     ${d.gateway ? `<div class="small" style="margin-top:6px">Gateway: <code>${esc(d.gateway)}</code></div>` : ''}
@@ -35,10 +57,12 @@ export function lato() {
     ${web.client.includes(d.nome) ? `<div class="riga"><input id="sWeb" list="webList" placeholder="${esc(web.bersagli.length ? 'IP o nome del server web' : 'nessun server web nel lab')}" size="20" aria-label="Pagina web da aprire con links"><button class="small" id="sLinks" title="links -dump http://…/ (lab acceso)">links</button></div>` : ''}
     <div class="btns"><button class="small" id="sTerm">Apri terminale (kathara connect)</button></div>
     <div id="sTermMsg" class="small"></div>
+    ${S.modifica && S.htmlModificaDispositivo ? S.htmlModificaDispositivo(d) : ''}
     <div id="sFile" class="muted small">Caricamento dei file…</div>`;
+  // il pannello può essere già stato ridisegnato quando arrivano i file: allora non serve più
   api('/api/file?lab=' + encodeURIComponent(S.nome) + '&dev=' + encodeURIComponent(d.nome)).then(fs => {
-    $('#sFile').outerHTML = '<div>' + fs.map(f => `<details><summary>${esc(f.file)}</summary><pre class="file">${esc(f.testo)}</pre></details>`).join('') + '</div>';
-  }).catch(e => { $('#sFile').textContent = String(e.message); });
+    const x = $('#sFile'); if (x) x.outerHTML = '<div>' + fs.map(f => `<details><summary>${esc(f.file)}</summary><pre class="file">${esc(f.testo)}</pre></details>`).join('') + '</div>';
+  }).catch(e => { const x = $('#sFile'); if (x) x.textContent = String(e.message); });
 }
 $('#side').addEventListener('click', async e => {
   const s = e.target.closest('[data-sel]');

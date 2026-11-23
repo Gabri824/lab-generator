@@ -94,13 +94,80 @@ def opzioni_costo_ospf(stato):
             for n, d in stato['dispositivi'].items() if d['frr'] and d['frr']['ospf']}
 
 
+_RE_COSTO = re.compile(r'^(\s*(?:ip\s+)?ospf\s+cost\s+)(\d+)(\s*)$')
+
+
+def _blocchi_interfaccia(righe, interfaccia):
+    """[(inizio, fine)] dei blocchi 'interface <interfaccia>' del frr.conf (fine esclusa)."""
+    from .file_utils import _fine_blocco
+    rx = re.compile(rf'^interface\s+{re.escape(interfaccia)}\s*$')
+    return [(k, _fine_blocco(righe, k)) for k, l in enumerate(righe) if rx.match(l)]
+
+
+def _righe_costo(righe, interfaccia):
+    """Indici delle righe 'ospf cost N' dentro i blocchi dell'interfaccia."""
+    return [k for a, b in _blocchi_interfaccia(righe, interfaccia) for k in range(a + 1, b) if _RE_COSTO.match(righe[k])]
+
+
 def calcola_costo_ospf(stato, router, interfaccia, costo):
-    if int(costo) < 1:
+    """Costo OSPF di un'interfaccia. Se l'interfaccia ha già un costo si cambia il numero nella sua
+    riga; se ha un blocco 'interface' senza costo la riga va dentro quel blocco; altrimenti si
+    aggiunge il blocco in fondo al frr.conf."""
+    costo = int(costo)
+    if not 1 <= costo <= 65535:
+        raise ErroreOperazione('Il costo OSPF deve essere un intero da 1 a 65535.')
+    rel = os.path.join(router, 'etc', 'frr', 'frr.conf')
+    path = os.path.join(stato['percorso'], rel)
+    righe = _righe_file(path) if os.path.isfile(path) else None
+    if righe is not None:
+        gia = _righe_costo(righe, interfaccia)
+        blocchi = _blocchi_interfaccia(righe, interfaccia)
+        if gia:
+            vecchi = sorted({_RE_COSTO.match(righe[k]).group(2) for k in gia})
+            if vecchi == [str(costo)]:
+                return _piano_diretto(f"Costo OSPF di {router} {interfaccia}", {}, vuoto=f"Il costo è già {costo}.")
+            nuove = list(righe)
+            for k in gia:
+                nuove[k] = _RE_COSTO.sub(lambda m: f"{m.group(1)}{costo}{m.group(3)}", nuove[k])
+            note = [f"C'erano {len(gia)} righe di costo per {interfaccia} (blocchi ripetuti): ora dicono tutte {costo}."] if len(gia) > 1 else []
+            return _piano_diretto(f"Costo OSPF di {router} {interfaccia}: {' / '.join(vecchi)} -> {costo}",
+                                  {rel: (righe, nuove)}, note)
+        if blocchi:
+            _, fine = blocchi[-1]
+            nuove = righe[:fine] + [f"    ospf cost {costo}"] + righe[fine:]
+            return _piano_diretto(f"Costo OSPF di {router} {interfaccia}: {costo}", {rel: (righe, nuove)})
+    if costo < 1:
         raise ErroreOperazione('Il costo OSPF deve essere un intero ≥ 1.')
     with _in_memoria(stato) as (fs, out):
         if append_frr_stanza(stato['percorso'], router, f"interface {interfaccia}\n    ospf cost {costo}\n"):
             print(f"✅ Costo impostato su {router} {interfaccia} = {costo} (append su frr.conf).")
     return _piano(f"Costo OSPF di {router} {interfaccia}: {costo}", fs, out)
+
+
+def calcola_togli_costo_ospf(stato, router, interfaccia):
+    """Toglie il costo OSPF scritto per l'interfaccia (torna quello predefinito); un blocco
+    'interface' rimasto vuoto sparisce con la sua riga vuota."""
+    rel = os.path.join(router, 'etc', 'frr', 'frr.conf')
+    path = os.path.join(stato['percorso'], rel)
+    if not os.path.isfile(path):
+        raise ErroreOperazione(f"{router} non ha frr.conf.")
+    righe = _righe_file(path)
+    gia = set(_righe_costo(righe, interfaccia))
+    if not gia:
+        return _piano_diretto(f"Togli il costo OSPF di {router} {interfaccia}", {},
+                              vuoto=f"{interfaccia} non ha un costo scritto: usa già quello predefinito.")
+    vuoti = {a for a, b in _blocchi_interfaccia(righe, interfaccia)
+             if all(k in gia or not righe[k].strip() for k in range(a + 1, b))}
+    togli = set(gia)
+    for a in vuoti:
+        togli.add(a)
+        if a > 0 and not righe[a - 1].strip():          # la riga vuota che separava il blocco
+            togli.add(a - 1)
+    nuove = [l for k, l in enumerate(righe) if k not in togli]
+    while nuove and not nuove[-1].strip():
+        nuove.pop()
+    vecchi = sorted({_RE_COSTO.match(righe[k]).group(2) for k in gia})
+    return _piano_diretto(f"Togli il costo OSPF di {router} {interfaccia} ({' / '.join(vecchi)})", {rel: (righe, nuove)})
 
 
 # ----------------------------------------------------------------------------- 10. auto-cost
@@ -217,14 +284,20 @@ def _network_bgp(righe):
     return presenti
 
 
-def opzioni_network_bgp(stato, router=None):
-    """Router BGP con la proposta di aggregato e le network già annunciate."""
+def opzioni_network_bgp(stato, router=None, reti=None):
+    """Router BGP con la proposta di aggregato e le network già annunciate; con `router` e `reti`
+    anche le network già annunciate che quelle reti coprirebbero ('coperte', come chiede il terminale)."""
     routers = routers_dello_stato(stato)
     out = {}
     for n, d in stato['dispositivi'].items():
         if d['frr'] and d['frr']['bgp'] and (router is None or n == router):
             out[n] = {'proposta': default_bgp_aggregate(n, routers[n]),
                       'presenti': sorted(_network_bgp(_righe_file(_frr(stato, n))))}
+    if router in out and reti:
+        try:
+            out[router]['coperte'] = reti_coperte(stato, router, [str(ipaddress.ip_network(r, strict=False)) for r in reti])
+        except ValueError:
+            raise ErroreOperazione('Rete non valida: scrivila come 20.20.0.0/16.')
     return out
 
 
@@ -601,6 +674,83 @@ def opzioni_policy(stato, router):
             for ip, nb in d['frr']['bgp']['neighbor'].items()}
 
 
+_RE_RELAZIONE = re.compile(r'^(provider|customer|peer)', re.I)
+_INVERSA = {'provider': 'customer', 'customer': 'provider', 'peer': 'peer'}
+
+
+def _bgp(stato, nome):
+    d = stato['dispositivi'].get(nome)
+    return d['frr']['bgp'] if d and d['frr'] and d['frr']['bgp'] else None
+
+
+def _relazione_scritta(bgp, ip):
+    """Relazione Customer-Provider-Peer verso il neighbor `ip`, dal nome delle sue prefix-list
+    (provider_X_in del programma, providerIn delle soluzioni del corso); None se non c'è."""
+    for p in (bgp['neighbor'].get(ip) or {}).get('policy', []):
+        m = p['tipo'] == 'prefix-list' and _RE_RELAZIONE.match(p['nome'])
+        if m:
+            return m.group(1).lower()
+    return None
+
+
+def opzioni_policy_bgp(stato, router):
+    """Per la GUI (Opzioni 2 del terminale): i neighbor del router con le policy già scritte e la
+    relazione Customer-Provider-Peer ('relazione_da': 'qui' se è scritta su questo router, 'vicino'
+    se è ricavata, rovesciata, da quella scritta sull'altro), le reti
+    annunciate nel lab (da scegliere per prefix-list, access-list e local-preference) e la proposta
+    per le prefix-list in uscita verso provider e peer: come nelle soluzioni del corso
+    (pear-to-pear) le reti proprie, i link con i clienti e le reti dei clienti; non i link con
+    provider e peer."""
+    neighbor = opzioni_policy(stato, router)
+    bgp = _bgp(stato, router)
+    ip_di = {}
+    for n, d in stato['dispositivi'].items():
+        for it in d['interfacce']:
+            if it['ip']:
+                ip_di.setdefault(n, []).append(it['ip'])
+    for ip, nb in neighbor.items():
+        rel = _relazione_scritta(bgp, ip)
+        nb['relazione_da'] = 'qui' if rel else None
+        altro = _bgp(stato, nb['dispositivo']) if nb['dispositivo'] else None
+        if rel is None and altro:
+            mio = next((i for i, x in altro['neighbor'].items() if x.get('dispositivo') == router
+                        or i in [a.split('/')[0] for a in ip_di.get(router, [])]), None)
+            r2 = _relazione_scritta(altro, mio) if mio else None
+            rel = _INVERSA[r2] if r2 else None
+            nb['relazione_da'] = 'vicino' if rel else None
+        nb['relazione'] = rel
+    clienti = {nb['dispositivo'] for nb in neighbor.values() if nb['relazione'] == 'customer' and nb['dispositivo']}
+
+    def con_chi(rete, di):
+        """Router BGP di un altro AS (rispetto a `di`) con un indirizzo nella rete: è un link.
+        I router dello stesso AS e quelli senza BGP non contano (l'aggregato dell'AS è una rete propria)."""
+        try:
+            net = ipaddress.ip_network(rete, strict=False)
+        except ValueError:
+            return []
+        mio = stato['dispositivi'][di]['asn']
+        return sorted(n for n, ips in ip_di.items() if n != di and stato['dispositivi'][n]['asn']
+                      and stato['dispositivi'][n]['asn'] != mio
+                      and any(ipaddress.ip_interface(i).ip in net for i in ips))
+
+    reti = []
+    for x in bgp['network']:
+        con = con_chi(x['rete'], router)
+        tipo = 'link' if con else 'propria'
+        reti.append({'rete': x['rete'], 'tipo': tipo, 'con': con,
+                     'proposta': tipo == 'propria' or any(n in clienti for n in con)})
+    for cl in sorted(clienti):
+        for x in (_bgp(stato, cl) or {'network': []})['network']:
+            if x['rete'] not in [r['rete'] for r in reti] and not con_chi(x['rete'], cl):
+                reti.append({'rete': x['rete'], 'tipo': 'cliente', 'con': [cl], 'proposta': True})
+    reti_lab = []
+    for n in sorted(stato['dispositivi']):
+        b = _bgp(stato, n)
+        for x in (b['network'] if b else []):
+            reti_lab.append({'rete': x['rete'], 'router': n, 'asn': b['asn']})
+    return {'asn': bgp['asn'], 'neighbor': neighbor, 'reti': reti, 'reti_lab': reti_lab}
+
+
 def calcola_policy(stato, router, neighbor, tipo, direzione=None, reti=(), valore=None, asn_nuovo=None):
     """Policy BGP verso un neighbor. tipo:
     - 'prefix_list': deny delle `reti` in `direzione` (in/out) + permit any;
@@ -731,12 +881,19 @@ def _piano_diretto(titolo, modifiche, note=None, vuoto=None, spostati=None):
 def dopo_scrittura(lab_path, piano=None, routers=None):
     """Da chiamare dopo la scrittura di un piano (GUI e terminale): rigenera dai file l'XML dei
     metadati, fuori dal lab; dopo una rinomina sposta anche la posizione del dispositivo nel disegno
-    salvato dalla GUI (.labgenerator/<lab>/disegno.json), così la Topologia resta com'era."""
+    salvato dalla GUI (.labgenerator/<lab>/disegno.json), così la Topologia resta com'era; registra
+    la modifica nella storia (per annullarla), o la toglie se il piano era un annullamento."""
+    from . import storia
     from .persistence import rigenera_xml
     from .supporto import rinomina_nel_disegno
     rigenera_xml(lab_path)
     if piano and piano.get('rinomina'):
         rinomina_nel_disegno(lab_path, *piano['rinomina'])
+    if piano and piano.get('modifiche'):
+        if piano.get('annulla'):
+            storia.togli(lab_path, piano['annulla'])
+        else:
+            storia.registra(lab_path, piano)
 
 
 def _calcola_sostituzione(stato, ip_map, iface_map, net_map, titolo, extra=None, note=None):
@@ -1225,9 +1382,8 @@ def calcola_rinomina(stato, vecchio, nuovo):
 # ----------------------------------------------------------------------------- 13. aggiungi / togli un dispositivo
 
 def _modello_dello_stato(stato):
-    from .persistence import dati_da_stato, resolver_da_stato
-    r, h, w = dati_da_stato(stato)
-    return {'routers': r, 'hosts': h, 'wwws': w, 'resolver': resolver_da_stato(stato)}
+    from .persistence import modello_da_stato
+    return modello_da_stato(stato)
 
 
 def opzioni_aggiungi_dispositivo(stato):
@@ -1563,8 +1719,28 @@ def calcola_togli_interfaccia(stato, nome, dev, togli_neighbor=True):
 # ----------------------------------------------------------------------------- elenco
 
 # nome -> (opzioni, calcola): le operazioni che terminale e GUI possono eseguire
+# ----------------------------------------------------------------------------- annulla
+
+def opzioni_annulla(stato):
+    """Modifiche della storia, dalla più recente: [{'id', 'ora', 'titolo', 'file'}]."""
+    from .storia import riassunto
+    return riassunto(stato['percorso'])
+
+
+def calcola_annulla(stato):
+    """Piano che annulla l'ultima modifica della storia (core/storia.py)."""
+    from .storia import ErroreStoria, piano_inverso
+    try:
+        piano = piano_inverso(stato['percorso'])
+    except ErroreStoria as e:
+        raise ErroreOperazione(str(e))
+    piano.update(messaggi=[f"✅ {piano['titolo']}."], vuoto=None)
+    return piano
+
+
 OPERAZIONI = {
     'costo_ospf': (opzioni_costo_ospf, calcola_costo_ospf),
+    'togli_costo_ospf': (opzioni_costo_ospf, calcola_togli_costo_ospf),
     'auto_cost': (opzioni_auto_cost, calcola_auto_cost),
     'loopback': (opzioni_loopback, calcola_loopback),
     'network_bgp': (opzioni_network_bgp, calcola_network_bgp),
@@ -1575,8 +1751,8 @@ OPERAZIONI = {
     'redistribuzione_route_map': (opzioni_redistribuzione, calcola_redistribuzione_route_map),
     'resolver': (opzioni_resolver, calcola_resolver),
     'delega_dns': (opzioni_delega_dns, calcola_delega_dns),
-    'policy': (opzioni_policy, calcola_policy),
-    'cpp': (opzioni_policy, calcola_cpp),
+    'policy': (opzioni_policy_bgp, calcola_policy),
+    'cpp': (opzioni_policy_bgp, calcola_cpp),
     'ip_interfaccia': (opzioni_ip_interfaccia, calcola_ip_interfaccia),
     'rinumera_lan': (proposta_rinumera_lan, calcola_rinumera_lan),
     'sposta_interfaccia': (opzioni_ip_interfaccia, calcola_sposta_interfaccia),
@@ -1590,4 +1766,5 @@ OPERAZIONI = {
     'togli_dispositivo': (opzioni_togli_dispositivo, calcola_togli_dispositivo),
     'aggiungi_interfaccia': (opzioni_ip_interfaccia, calcola_aggiungi_interfaccia),
     'togli_interfaccia': (opzioni_ip_interfaccia, calcola_togli_interfaccia),
+    'annulla': (opzioni_annulla, calcola_annulla),
 }

@@ -36,15 +36,60 @@ copia, non i lab veri.
 
 ## Topologia
 
-- [ ] Disegno con AS, LAN, interfacce; "Riordina", "Adatta", interfacce sì/no.
-- [ ] Costo OSPF `c<N>` accanto all'interfaccia solo dove `frr.conf` ha `ospf cost`; sparisce con
-      "interfacce" spento.
+- [ ] Disegno con AS, LAN, interfacce; "Riordina", "Adatta", livello "Indirizzi" sì/no.
+- [ ] Costo OSPF `c<N>` accanto all'interfaccia solo dove `frr.conf` ha `ospf cost`; con
+      "Indirizzi" spento resta da solo, sparisce con "Costi OSPF" spento.
 - [ ] Trascinamento dei nodi e dello sfondo, rotellina per lo zoom; le posizioni restano dopo
       una nuova apertura.
 - [ ] Clic su un dispositivo: pannello con interfacce, file, comandi (`show ip route`,
       `show ip bgp`, `ip -br addr`, ...), ping e traceroute verso un IP, "percorso sulla mappa".
 - [ ] **A mano:** "Apri terminale (kathara connect)" apre il terminale o mostra il comando.
 - [ ] "Scarica immagine (SVG)".
+
+## Modifica del lab (fase 5)
+
+```bash
+# pilota della modalità Modifica su una COPIA del lab (circa un minuto)
+node tests/strumenti/prova_modifica.mjs --url http://127.0.0.1:8791/ --lab papillon_mio \
+     --lab-path /tmp/labs/papillon_mio --shots foto
+```
+
+- [ ] "Modifica" accende la modalità (pulsante blu, etichette delle interfacce sempre visibili).
+- [ ] Clic sull'etichetta di un'interfaccia: menu dell'interfaccia; "Costo OSPF" con anteprima e "Applica";
+      `c<N>` compare sul disegno. Su un router senza OSPF: avviso, nessun modulo.
+- [ ] Clic sulla scritta di un AS: auto-cost (metti o togli, proposta già scelta).
+- [ ] Pannello del dispositivo in modalità Modifica: pulsanti delle interfacce e delle azioni.
+- [ ] Valore sbagliato (costo 0): errore del motore, niente scritto.
+- [ ] File cambiato dopo l'anteprima: "Non ho scritto nulla", "Rifai l'anteprima".
+- [ ] "Annulla modifica" (intestazione): anteprima e applica; più volte di fila; anche per le
+      modifiche fatte dal terminale. File cambiato a mano dopo: rifiuto con il rimando alle copie.
+- [ ] Copie di sicurezza: elenco con data e ora, "Ripristina" con conferma; dopo, storia vuota.
+- [ ] Interfaccia (5.2): cambia IP con l'ultimo numero, sposta su un'altra LAN o su una nuova,
+      costo OSPF e togli il costo, togli l'interfaccia.
+- [ ] LAN: cambia subnet (IP proposti modificabili), collega un dispositivo, aggiungi qui.
+- [ ] Dispositivo: rinomina (resta al suo posto sul disegno), gateway, AS, aggiungi e togli
+      protocolli, file a righe, togli; "+ Router/Host/Server web/Server DNS" con i valori proposti.
+- [ ] Dopo una modifica il disegno non si ridispone: i nodi nuovi compaiono vicino ai vicini.
+- [ ] Menu dell'AS (5.3): aggregato con le reti già coperte, completa l'iBGP, auto-cost.
+- [ ] Router: loopback (proposta modificabile), network BGP, default route (BGP, OSPF, RIP),
+      ridistribuzione (togli, rimetti, route-map eBGP).
+- [ ] DNS (5.4): "Resolver" su host, server web e DNS; "Delega una zona" sul server root con
+      nameserver e glue proposti.
+- [ ] Policy BGP (5.5): dal pannello del router (neighbor dall'elenco o nuovo) e dal link fra due
+      AS; local-preference 150 e MED 20 proposti, prefix-list in/out e access-list con le caselle
+      delle reti; Customer-Provider-Peer con le reti proposte e il lato opposto subito dopo.
+- [ ] Percorso voluto (5.5b): clic su sorgente, link o AS, destinazione (evidenziati con l'ordine),
+      "Togli l'ultimo", divieto per AS; proposte una alla volta con Salta; a lab acceso "niente da
+      fare" dove la strada è già quella; alla fine Verifica percorso già compilata.
+- [ ] Livelli del disegno (5.6): interruttori (accesi all'apertura tutti tranne Sessioni BGP e
+      DNS, scelta ricordata); sigle delle policy e frecce Customer-Provider-Peer; sessioni iBGP e
+      sessione sbagliata in rosso; `0/0`, `R`, loopback; deleghe DNS e `ns:`; "!" degli avvisi;
+      "Configurazione in breve" nel pannello; clic su una sigla in modalità Modifica.
+- [ ] Editor, "Parti da un lab esistente" (5.7): dall'elenco o da una cartella (es. una soluzione);
+      disegno con riquadri giusti; riquadro del lab di partenza; rinomina, aggiungi, Anteprima con
+      "Dal lab di partenza"; Crea con un altro nome: policy e righe in più conservate, lab di
+      partenza non toccato; cartella non valida e data center spiegati; "Resolver solo di questo
+      dispositivo"; "OSPF: no" sul router RIP di confine.
 
 ## Riepilogo, Interfacce, Test
 

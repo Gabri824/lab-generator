@@ -20,7 +20,8 @@ Interfacce disponibili:
   3) eth2 - 20.20.5.2/24
 
 Seleziona interfaccia (numero o nome, vuoto per annullare): 2
-Inserisci il costo OSPF desiderato per eth1 (intero ≥ 1): 50
+Costo attuale di eth1: quello predefinito (nessun costo scritto)
+Costo OSPF per eth1 (da 1 a 65535; 0 = togli il costo scritto): 50
 
 --- Costo OSPF di r1 eth1: 50: anteprima (1 file) ---
   r1/etc/frr/frr.conf

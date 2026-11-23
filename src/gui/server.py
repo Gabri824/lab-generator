@@ -20,7 +20,7 @@ from urllib.parse import parse_qs, quote, urlparse
 from core import web
 from core.operazioni import ErroreOperazione
 
-from . import api, dati, kathara
+from . import api, dati, kathara, percorso_voluto
 
 
 def open_browser(url):
@@ -189,6 +189,9 @@ def azione(st, dati_rich):
         return {'percorso': dest, 'file': file, 'comando': comando, 'esclusi': esclusi,
                 'scarica': '/api/scarica?nome=' + quote(os.path.basename(dest))}
 
+    if tipo == 'percorso_voluto':
+        return _percorso_voluto(st, nome_lab, lab_path, dati_rich)
+
     st.serve_kathara()
     lab = st.leggi_lab(nome_lab)
 
@@ -337,6 +340,55 @@ def azione(st, dati_rich):
         return {'lavoro': lid}
 
     raise Errore('Azione non prevista')
+
+
+def _punti(x):
+    if not isinstance(x, list) or not 2 <= len(x) <= 40:
+        raise Errore('Punti del percorso non validi: servono la sorgente e la destinazione.')
+    out = []
+    for p in x:
+        if not isinstance(p, dict) or p.get('tipo') not in ('dev', 'lan', 'as') or not isinstance(p.get('nome'), str):
+            raise Errore('Punto del percorso non valido.')
+        out.append({'tipo': p['tipo'], 'nome': p['nome']})
+    return out
+
+
+def _percorso_voluto(st, nome_lab, lab_path, dati_rich):
+    """Fase 5.5b: proposte di policy per il percorso disegnato. A lab acceso legge le tabelle BGP
+    dei router degli AS del percorso; a lab spento ragiona solo sui file (funziona anche senza Kathará)."""
+    lab = st.leggi_lab(nome_lab)
+    stato = st.gen.leggi_stato(lab_path)
+    punti = _punti(dati_rich.get('punti'))
+    vieta = [str(a) for a in (dati_rich.get('vieta') or []) if isinstance(a, (str, int))]
+    try:
+        analisi = percorso_voluto.analizza(lab, punti)
+        percorso_voluto.proponi(analisi, stato, vieta)          # gli errori arrivano subito alla pagina
+    except percorso_voluto.ErrorePercorso as e:
+        raise Errore(str(e))
+    k = st.kathara
+    acceso = bool(k) and bool(kathara.avvio_lab(st.base, nome_lab))
+    routers = percorso_voluto.router_da_leggere(analisi)
+    rete = analisi['rete']
+
+    def corpo(lav):
+        tabelle = None
+        if acceso:
+            lav.scrivi(f"Lab acceso: leggo la rotta BGP per {rete} su {', '.join(routers)}.")
+            tabelle = kathara.tabelle_bgp(k, lab_path, lab, routers, rete, lav)
+        else:
+            lav.scrivi("Lab spento: ragiono solo sui file (AS path più corto, policy già scritte). "
+                       "Accendi il lab per proposte basate sulle tabelle vere.")
+        r = percorso_voluto.proponi(analisi, stato, vieta, tabelle)
+        lav.scrivi(f"Percorso: {' -> '.join('AS' + a for a in r['sequenza'])}, rete {rete}.")
+        for n in r['note']:
+            lav.scrivi(n)
+        for x in r['proposte']:
+            lav.scrivi('Proposta: ' + x['titolo'])
+        lav.risultato = r
+        return 0
+    comando = (f"vtysh -c 'show ip bgp {rete} json' su {', '.join(routers)}" if acceso else 'nessun comando (lab spento)')
+    lid = st.lavori.avvia(f"percorso voluto {punti[0]['nome']} -> {rete}", comando, corpo)
+    return {'lavoro': lid}
 
 
 class Gestore(BaseHTTPRequestHandler):

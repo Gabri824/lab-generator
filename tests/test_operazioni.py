@@ -90,6 +90,8 @@ CASI = {
     'togli_dispositivo': ('candy_test', lambda st: op.calcola_togli_dispositivo(st, 'as80r1')),
     'aggiungi_interfaccia': ('candy_test', lambda st: op.calcola_aggiungi_interfaccia(st, 'as10r1', 'Q', '190.0.0.1/24')),
     'togli_interfaccia': ('candy_test', lambda st: op.calcola_togli_interfaccia(st, 'as50r1', 'eth1')),
+    'cambia_costo': ('papillon_mio', lambda st: op.calcola_costo_ospf(st, 'r2', 'eth0', 50)),
+    'togli_costo': ('papillon_mio', lambda st: op.calcola_togli_costo_ospf(st, 'r2', 'eth0')),
 }
 
 
@@ -156,6 +158,47 @@ class TestStessiFileDelTerminale(unittest.TestCase):
             op.calcola_gateway(papillon, 'client', '10.9.9.9')
         with self.assertRaises(op.ErroreOperazione):
             op.calcola_righe(papillon, 'lab.conf', ['x'])
+
+    def test_costo_ospf_sostituito(self):
+        """Stessa interfaccia: si cambia il numero (niente secondo blocco); altra interfaccia: blocco
+        suo; blocco 'interface' senza costo: la riga va dentro; togli: torna il predefinito."""
+        with tempfile.TemporaryDirectory() as tmp:
+            p = os.path.join(tmp, 'papillon_mio')
+            shutil.copytree(os.path.join(c.FIXTURE_LABS, 'papillon_mio'), p)
+            frr = os.path.join(p, 'r2', 'etc', 'frr', 'frr.conf')
+            leggi = lambda: open(frr, encoding='utf-8').read()
+            originale = leggi()
+            st = lambda: c.core.leggi_stato(p)
+            scrivi_piano(p, op.calcola_costo_ospf(st(), 'r2', 'eth0', 50))          # aveva 100
+            self.assertEqual(1, leggi().count('interface eth0'))
+            self.assertIn('    ospf cost 50', leggi())
+            self.assertNotIn('ospf cost 100', leggi())
+            self.assertTrue(op.calcola_costo_ospf(st(), 'r2', 'eth0', 50)['vuoto'])  # stesso valore
+            scrivi_piano(p, op.calcola_costo_ospf(st(), 'r2', 'eth1', 30))          # altra interfaccia
+            self.assertEqual(1, leggi().count('interface eth1'))
+            self.assertIn('interface eth1\n    ospf cost 30', leggi())
+            scrivi_piano(p, op.calcola_togli_costo_ospf(st(), 'r2', 'eth1'))
+            scrivi_piano(p, op.calcola_togli_costo_ospf(st(), 'r2', 'eth0'))
+            self.assertNotIn('ospf cost', leggi())
+            self.assertNotIn('interface eth', leggi(), 'i blocchi rimasti vuoti spariscono')
+            self.assertTrue(op.calcola_togli_costo_ospf(st(), 'r2', 'eth0')['vuoto'])
+            # blocco interface con altre righe: la riga del costo va dentro, e togliendola il blocco resta
+            with open(frr, 'w', encoding='utf-8') as f:
+                f.write(originale.replace('    ospf cost 100', '    ip ospf hello-interval 5'))
+            scrivi_piano(p, op.calcola_costo_ospf(st(), 'r2', 'eth0', 9))
+            self.assertIn('interface eth0\n    ip ospf hello-interval 5\n    ospf cost 9', leggi())
+            scrivi_piano(p, op.calcola_togli_costo_ospf(st(), 'r2', 'eth0'))
+            self.assertIn('interface eth0\n    ip ospf hello-interval 5', leggi())
+            # blocchi ripetuti (file vecchi): tutte le righe prendono il valore nuovo, con una nota
+            with open(frr, 'a', encoding='utf-8') as f:
+                f.write('\ninterface eth0\n    ospf cost 3\n\ninterface eth0\n    ospf cost 4\n')
+            piano = op.calcola_costo_ospf(st(), 'r2', 'eth0', 8)
+            self.assertTrue(any('2 righe' in n for n in piano['note']), piano['note'])
+            scrivi_piano(p, piano)
+            self.assertEqual(2, leggi().count('ospf cost 8'))
+            for sbagliato in (0, 65536, -3):
+                with self.assertRaises(op.ErroreOperazione):
+                    op.calcola_costo_ospf(st(), 'r2', 'eth0', sbagliato)
 
     def test_rinomina(self):
         with tempfile.TemporaryDirectory() as tmp:

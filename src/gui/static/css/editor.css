@@ -66,3 +66,8 @@ kbd { font: 600 11px/1 var(--mono); padding: 2px 4px; border-radius: 4px; border
 .ed-ip__fisso { color: var(--mut); white-space: nowrap; }
 .ed-ip input { width: 5.5em; }
 .ed-intf select { min-height: var(--h-ctl-sm); padding: 0 4px; font-size: var(--t-small); }
+
+/* fase 5.7: parti da un lab esistente */
+.ed-dalab { margin: var(--s-3) 0; }
+.ed-origine { margin: var(--s-2) 0; padding: var(--s-2) var(--s-3); border: 1px solid var(--bor); border-radius: var(--r-md); background: var(--pan-2); }
+.ed-origine ul { margin: 4px 0; padding-left: 18px; }

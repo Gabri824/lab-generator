@@ -125,6 +125,8 @@ def export_lab_to_xml(lab_name, lab_path, routers, hosts, wwws, resolver=None, s
                 h_attrib['gw_dev'] = h.get('gw_dev')
             if h.get('image'):
                 h_attrib['image'] = h.get('image')
+            if h.get('nameserver'):
+                h_attrib['nameserver'] = ','.join(h['nameserver'])
             h_el = ET.SubElement(hosts_el, 'host', attrib=h_attrib)
             if h_ifaces:
                 ifs_el = ET.SubElement(h_el, 'interfaces')
@@ -177,6 +179,8 @@ def export_lab_to_xml(lab_name, lab_path, routers, hosts, wwws, resolver=None, s
             }
             if w.get('image'):
                 w_attrib['image'] = w.get('image')
+            if w.get('nameserver'):
+                w_attrib['nameserver'] = ','.join(w['nameserver'])
             ET.SubElement(www_el, 'server', attrib=w_attrib)
 
         if resolver:
@@ -284,6 +288,8 @@ def load_lab_from_xml(path):
             host_rec['image'] = image
         if h.attrib.get('gw_dev'):
             host_rec['gw_dev'] = h.attrib.get('gw_dev')
+        if h.attrib.get('nameserver'):
+            host_rec['nameserver'] = h.attrib['nameserver'].split(',')
         h_ifaces = [
             {'name': it.attrib.get('name', ''), 'lan': it.attrib.get('lan', ''), 'ip': it.attrib.get('ip', '')}
             for it in h.findall('./interfaces/interface')
@@ -338,6 +344,8 @@ def load_lab_from_xml(path):
         wrec = {'name': name, 'ip': ip, 'gateway': gateway, 'lan': lan}
         if image:
             wrec['image'] = image
+        if w.attrib.get('nameserver'):
+            wrec['nameserver'] = w.attrib['nameserver'].split(',')
         wwws.append(wrec)
 
     lab_conf_text = None
@@ -613,7 +621,16 @@ def dati_da_stato(stato):
         statiche = [{'network': r['rete'], 'via': r['via'], 'dev': r['dev']}
                     for r in sorted(rotte, key=lambda r: r['riga'])]
 
-        if d['tipo'] == 'router':
+        # router senza FRR, con sole rotte statiche (crab): almeno due interfacce e rotte verso
+        # altre reti; per il lettore dei file è un host, per il modello un router 'statico'
+        statico = (d['tipo'] != 'router' and not d['frr'] and len(ifaces) >= 2
+                   and any(r['rete'] != 'default' for r in rotte))
+        if statico and st['gateway']:
+            rotte.append({'rete': 'default', 'via': st['gateway']['via'].split('/')[0],
+                          'dev': st['gateway']['dev'], 'riga': st['gateway']['riga']})
+            statiche = [{'network': r['rete'], 'via': r['via'], 'dev': r['dev']}
+                        for r in sorted(rotte, key=lambda r: r['riga'])]
+        if d['tipo'] == 'router' or statico:
             f = d['frr'] or {}
             protos = [p for p in ('bgp', 'ospf', 'rip') if f.get(p)]
             if statiche:
@@ -690,6 +707,22 @@ def dati_da_stato(stato):
     return routers, hosts, wwws
 
 
+def modello_da_stato(stato):
+    """Modello completo di un lab letto dai file: routers, hosts, wwws, resolver del lab e, per
+    gli host, i www e i DNS che ne usano un altro (o lo hanno solo loro, come pc in palabra),
+    il loro 'nameserver' (elenco di IP)."""
+    routers, hosts, wwws = dati_da_stato(stato)
+    res = resolver_da_stato(stato)
+    ip_res = None
+    if res:
+        ip_res = next((it['ip'].split('/')[0] for it in stato['dispositivi'][res]['interfacce'] if it['ip']), None)
+    for voce in hosts + wwws:
+        ns = list(stato['dispositivi'][voce['name']]['nameserver'])
+        if ns and ns != [ip_res]:
+            voce['nameserver'] = ns
+    return {'routers': routers, 'hosts': hosts, 'wwws': wwws, 'resolver': res}
+
+
 def resolver_da_stato(stato):
     """Server DNS usato come resolver da tutti gli host, i www e i DNS del lab (come lo imposta il
     wizard), oppure None se i resolv.conf mancano o non sono tutti uguali."""
@@ -710,9 +743,9 @@ def rebuild_lab_metadata_and_export(lab_path, stato=None, stampa=True):
     lab_name = os.path.basename(os.path.normpath(lab_path))
     if stato is None:
         stato = leggi_stato(lab_path)
-    routers, hosts, wwws = dati_da_stato(stato)
+    m = modello_da_stato(stato)
     try:
-        export_lab_to_xml(lab_name, lab_path, routers, hosts, wwws, resolver=resolver_da_stato(stato), stampa=stampa)
+        export_lab_to_xml(lab_name, lab_path, m['routers'], m['hosts'], m['wwws'], resolver=m['resolver'], stampa=stampa)
         return percorso_xml(lab_path, lab_name)
     except Exception as e:
         print('Errore rigenerazione XML:', e)

@@ -44,11 +44,25 @@
         <div class="ed-bozza">
           <span class="small muted" id="edStatoBozza">La bozza si salva da sola in questo browser.</span>
           <div class="sp"></div>
+          <button id="edDaLab" class="ghost small" type="button" aria-expanded="false" aria-controls="edDaLabSez">Parti da un lab esistente</button>
           <button id="edNuova" class="ghost small" type="button">Nuova bozza</button>
           <button id="edEsporta" class="ghost small" type="button">Esporta JSON</button>
           <button id="edImporta" class="ghost small" type="button">Importa JSON</button>
           <input id="edFile" type="file" accept=".json,application/json" hidden>
         </div>
+        <section id="edDaLabSez" class="card ed-dalab" aria-labelledby="edDaLabTitolo" hidden>
+          <h2 id="edDaLabTitolo">Parti da un lab esistente</h2>
+          <p class="small muted">Il lab diventa la bozza (dispositivi dove li avevi messi, riquadri AS, zone RIP e aree OSPF ricostruiti).
+            Il lab di partenza non viene toccato: crea il nuovo con un altro nome. Le righe che l'editor non mostra (policy, costi,
+            pagine web, righe in più degli startup...) passano nel nuovo lab così come sono; cambiano solo le righe che tocchi con la bozza.</p>
+          <div class="riga">
+            <label class="campo"><span>Lab</span><select id="edDaLabScelta"></select></label>
+            <label class="campo"><span>oppure una cartella</span><input id="edDaLabCartella" placeholder="es. ~/esami/lift/solution/lab" size="34" autocomplete="off" spellcheck="false"></label>
+            <button id="edDaLabCarica" type="button" class="primario">Carica nella bozza</button>
+          </div>
+          <div id="edDaLabEsito" aria-live="polite"></div>
+        </section>
+        <div id="edOrigine" class="ed-origine small" hidden></div>
         <div class="editor">
           <div class="canvas">
             <div class="toolbar">
@@ -78,6 +92,7 @@
           <button id="bStart" class="primario" type="button"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.5v9l7-4.5z"/></svg>Avvia (lstart)</button>
           <button id="bClean" class="danger" type="button"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="4" width="8" height="8" rx="1"/></svg>Ferma (lclean)</button>
           <button id="bRileggi" class="ghost" type="button">Rileggi i file</button>
+          <button id="bAnnulla" class="ghost" type="button" disabled title="Nessuna modifica da annullare">Annulla modifica</button>
         </div>
         <div id="xmlNota" class="nota" hidden></div>
         <div id="modNota" class="nota" hidden></div>
@@ -94,9 +109,10 @@
           <div class="topo">
             <div class="canvas">
               <div class="toolbar">
+                <button id="bModifica" class="small" type="button" aria-pressed="false" title="Modifica il lab dal disegno: ogni modifica ha l'anteprima e si può annullare">Modifica</button>
                 <button id="bRiordina" class="ghost small" type="button">Riordina</button>
                 <button id="bAdatta" class="ghost small" type="button">Adatta</button>
-                <label class="scelta small"><input type="checkbox" id="cIface" checked> interfacce</label>
+                <div id="livelli" aria-label="Livelli del disegno"></div>
                 <button id="bSvg" class="ghost small" type="button">Scarica immagine (SVG)</button>
                 <button id="bTogli" class="ghost small" type="button" hidden>Togli evidenziazione</button>
                 <span class="toolbar__aiuto small">Trascina i nodi o lo sfondo · rotellina per lo zoom · clic su un dispositivo per i comandi</span>

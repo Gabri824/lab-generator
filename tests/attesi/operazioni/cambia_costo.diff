@@ -1,0 +1,9 @@
+--- prima/r2/etc/frr/frr.conf
++++ dopo/r2/etc/frr/frr.conf
+@@ -12,5 +12,5 @@
+ 
+ 
+ interface eth0
+-    ospf cost 100
++    ospf cost 50
+ 

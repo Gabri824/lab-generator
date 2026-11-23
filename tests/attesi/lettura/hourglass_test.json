@@ -109,6 +109,7 @@
   "dispositivi": [
    {
     "asn": "50",
+    "deleghe": [],
     "demoni": [
      "ripd"
     ],
@@ -174,6 +175,7 @@
     "riepilogo": {
      "bgp_networks": [],
      "costi": [],
+     "default": [],
      "igp": [
       {
        "auto_cost": null,
@@ -187,7 +189,8 @@
       }
      ],
      "neighbor": [],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -195,6 +198,7 @@
    },
    {
     "asn": "50",
+    "deleghe": [],
     "demoni": [
      "ripd"
     ],
@@ -243,6 +247,7 @@
     "riepilogo": {
      "bgp_networks": [],
      "costi": [],
+     "default": [],
      "igp": [
       {
        "auto_cost": null,
@@ -256,7 +261,8 @@
       }
      ],
      "neighbor": [],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -264,6 +270,7 @@
    },
    {
     "asn": "50",
+    "deleghe": [],
     "demoni": [
      "ripd",
      "bgpd"
@@ -280,6 +287,7 @@
         "chi": "r4",
         "ip": "10.1.0.1",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -339,6 +347,7 @@
       "50.50.0.0/16"
      ],
      "costi": [],
+     "default": [],
      "igp": [
       {
        "auto_cost": null,
@@ -358,10 +367,14 @@
        "chi": "r4",
        "ip": "10.1.0.1",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": [
+      "RIP"
+     ]
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -369,6 +382,7 @@
    },
    {
     "asn": "40",
+    "deleghe": [],
     "demoni": [
      "ospfd",
      "bgpd"
@@ -419,6 +433,7 @@
         "chi": "r3",
         "ip": "10.1.0.2",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -446,6 +461,7 @@
      "costi": [
       "eth1 100"
      ],
+     "default": [],
      "igp": [
       {
        "auto_cost": null,
@@ -465,10 +481,14 @@
        "chi": "r3",
        "ip": "10.1.0.2",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": [
+      "OSPF"
+     ]
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -476,6 +496,7 @@
    },
    {
     "asn": "40",
+    "deleghe": [],
     "demoni": [
      "ospfd"
     ],
@@ -524,6 +545,7 @@
     "riepilogo": {
      "bgp_networks": [],
      "costi": [],
+     "default": [],
      "igp": [
       {
        "auto_cost": null,
@@ -537,7 +559,8 @@
       }
      ],
      "neighbor": [],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -545,6 +568,7 @@
    },
    {
     "asn": "40",
+    "deleghe": [],
     "demoni": [
      "ospfd"
     ],
@@ -593,6 +617,7 @@
     "riepilogo": {
      "bgp_networks": [],
      "costi": [],
+     "default": [],
      "igp": [
       {
        "auto_cost": null,
@@ -606,7 +631,8 @@
       }
      ],
      "neighbor": [],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -614,6 +640,7 @@
    },
    {
     "asn": "40",
+    "deleghe": [],
     "demoni": [
      "ospfd"
     ],
@@ -679,6 +706,7 @@
     "riepilogo": {
      "bgp_networks": [],
      "costi": [],
+     "default": [],
      "igp": [
       {
        "auto_cost": null,
@@ -692,7 +720,8 @@
       }
      ],
      "neighbor": [],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -700,6 +729,7 @@
    },
    {
     "asn": null,
+    "deleghe": [],
     "demoni": [],
     "gateway": "40.40.1.1",
     "gruppo": "40",
@@ -731,6 +761,7 @@
    },
    {
     "asn": null,
+    "deleghe": [],
     "demoni": [],
     "gateway": "50.50.1.1",
     "gruppo": "50",

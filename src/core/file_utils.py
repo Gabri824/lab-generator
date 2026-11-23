@@ -5,6 +5,7 @@ Funzioni di lettura/scrittura file, manipolazione blocchi FRR, backup e diff con
 import contextlib
 import contextvars
 import datetime
+import io
 import os
 import re
 import shutil
@@ -316,14 +317,35 @@ def copia_di_sicurezza(lab_path, etichetta=''):
     return dest
 
 
-def ripristina_copia(lab_path, routers=None, _nome=None):
-    from .persistence import rigenera_xml
-
+def elenco_copie(lab_path):
+    """Nomi delle copie di sicurezza del lab, dalla più recente."""
     base = _cartella_copie(lab_path)
-    copie = sorted(
+    return sorted(
         (d for d in os.listdir(base) if os.path.isfile(os.path.join(base, d, 'lab.conf'))),
         reverse=True
     ) if os.path.isdir(base) else []
+
+
+def ripristina(lab_path, nome):
+    """Riporta il lab alla copia `nome` (una di elenco_copie), senza domande. Prima salva lo stato
+    attuale in un'altra copia; la storia delle modifiche si svuota (i file non sono più quelli).
+    Restituisce il percorso della copia dello stato di prima."""
+    from .persistence import rigenera_xml
+    from .storia import svuota
+    if nome not in elenco_copie(lab_path):
+        raise ValueError(f"Copia di sicurezza non trovata: {nome}")
+    src = os.path.join(_cartella_copie(lab_path), nome)
+    attuale = copia_di_sicurezza(lab_path, 'prima_del_ripristino')
+    shutil.rmtree(lab_path)
+    shutil.copytree(src, lab_path)
+    svuota(lab_path)
+    with contextlib.redirect_stdout(io.StringIO()):
+        rigenera_xml(lab_path)
+    return attuale
+
+
+def ripristina_copia(lab_path, routers=None, _nome=None):
+    copie = elenco_copie(lab_path)
     if not copie:
         print('Nessuna copia di sicurezza per questo lab.')
         return False
@@ -335,15 +357,11 @@ def ripristina_copia(lab_path, routers=None, _nome=None):
     if not (s.isdigit() and 1 <= int(s) <= min(len(copie), 15)):
         print('Annullato.')
         return False
-    src = os.path.join(base, copie[int(s) - 1])
     if input(f"Il lab tornerà com'era in {copie[int(s) - 1]}. Confermi? (s/N): ").strip().lower() not in ('s', 'si', 'sì'):
         print('Annullato.')
         return False
-    attuale = copia_di_sicurezza(lab_path, 'prima_del_ripristino')
-    shutil.rmtree(lab_path)
-    shutil.copytree(src, lab_path)
+    attuale = ripristina(lab_path, copie[int(s) - 1])
     print(f"✅ Lab ripristinato. Lo stato di prima del ripristino è salvato in: {attuale}")
-    rigenera_xml(lab_path)
     return True
 
 

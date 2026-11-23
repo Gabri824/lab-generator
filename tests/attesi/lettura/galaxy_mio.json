@@ -130,6 +130,7 @@
   "dispositivi": [
    {
     "asn": "1",
+    "deleghe": [],
     "demoni": [
      "ripd"
     ],
@@ -178,6 +179,7 @@
     "riepilogo": {
      "bgp_networks": [],
      "costi": [],
+     "default": [],
      "igp": [
       {
        "auto_cost": null,
@@ -191,7 +193,8 @@
       }
      ],
      "neighbor": [],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -199,6 +202,7 @@
    },
    {
     "asn": "1",
+    "deleghe": [],
     "demoni": [
      "ripd"
     ],
@@ -247,6 +251,7 @@
     "riepilogo": {
      "bgp_networks": [],
      "costi": [],
+     "default": [],
      "igp": [
       {
        "auto_cost": null,
@@ -260,7 +265,8 @@
       }
      ],
      "neighbor": [],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -268,6 +274,7 @@
    },
    {
     "asn": "1",
+    "deleghe": [],
     "demoni": [
      "ripd",
      "bgpd"
@@ -302,11 +309,13 @@
         "ip": "10.20.0.2",
         "policy": [
          {
+          "breve": "solo",
           "direzione": "out",
           "nome": "SOLO_DEFAULT_10_20_0_2",
           "testo": "prefix-list permit 0.0.0.0/0, 1.0.0.0/8"
          }
         ],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -331,16 +340,19 @@
         "ip": "20.10.0.2",
         "policy": [
          {
+          "breve": "solo",
           "direzione": "out",
           "nome": "SOLO_DEFAULT_20_10_0_2",
           "testo": "prefix-list permit 0.0.0.0/0, 1.0.0.0/8"
          },
          {
+          "breve": "filtro",
           "direzione": "in",
           "nome": "PL_as1r3_20_10_0_2_in",
           "testo": "prefix-list deny 2.4.0.0/24; permit any"
          }
         ],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -367,6 +379,10 @@
       "1.0.0.0/8"
      ],
      "costi": [],
+     "default": [
+      "BGP default-originate verso as2r1",
+      "BGP default-originate verso as2r5"
+     ],
      "igp": [
       {
        "auto_cost": null,
@@ -387,11 +403,13 @@
        "ip": "10.20.0.2",
        "policy": [
         {
+         "breve": "solo",
          "direzione": "out",
          "nome": "SOLO_DEFAULT_10_20_0_2",
          "testo": "prefix-list permit 0.0.0.0/0, 1.0.0.0/8"
         }
        ],
+       "relazione": null,
        "tipo": "eBGP"
       },
       {
@@ -400,20 +418,26 @@
        "ip": "20.10.0.2",
        "policy": [
         {
+         "breve": "solo",
          "direzione": "out",
          "nome": "SOLO_DEFAULT_20_10_0_2",
          "testo": "prefix-list permit 0.0.0.0/0, 1.0.0.0/8"
         },
         {
+         "breve": "filtro",
          "direzione": "in",
          "nome": "PL_as1r3_20_10_0_2_in",
          "testo": "prefix-list deny 2.4.0.0/24; permit any"
         }
        ],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": [
+      "RIP"
+     ]
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -421,6 +445,7 @@
    },
    {
     "asn": "2",
+    "deleghe": [],
     "demoni": [
      "ospfd",
      "bgpd"
@@ -437,6 +462,7 @@
         "chi": "as1r3",
         "ip": "10.20.0.1",
         "policy": [],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -503,6 +529,7 @@
       "2.7.0.0/24"
      ],
      "costi": [],
+     "default": [],
      "igp": [
       {
        "auto_cost": null,
@@ -522,10 +549,14 @@
        "chi": "as1r3",
        "ip": "10.20.0.1",
        "policy": [],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": [
+      "OSPF"
+     ]
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -533,6 +564,7 @@
    },
    {
     "asn": "2",
+    "deleghe": [],
     "demoni": [
      "ospfd"
     ],
@@ -598,6 +630,7 @@
     "riepilogo": {
      "bgp_networks": [],
      "costi": [],
+     "default": [],
      "igp": [
       {
        "auto_cost": null,
@@ -611,7 +644,8 @@
       }
      ],
      "neighbor": [],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -619,6 +653,7 @@
    },
    {
     "asn": "2",
+    "deleghe": [],
     "demoni": [
      "ospfd"
     ],
@@ -701,6 +736,7 @@
     "riepilogo": {
      "bgp_networks": [],
      "costi": [],
+     "default": [],
      "igp": [
       {
        "auto_cost": null,
@@ -714,7 +750,8 @@
       }
      ],
      "neighbor": [],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -722,6 +759,7 @@
    },
    {
     "asn": "2",
+    "deleghe": [],
     "demoni": [
      "ospfd"
     ],
@@ -770,6 +808,7 @@
     "riepilogo": {
      "bgp_networks": [],
      "costi": [],
+     "default": [],
      "igp": [
       {
        "auto_cost": null,
@@ -783,7 +822,8 @@
       }
      ],
      "neighbor": [],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": []
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -791,6 +831,7 @@
    },
    {
     "asn": "2",
+    "deleghe": [],
     "demoni": [
      "ospfd",
      "bgpd"
@@ -808,11 +849,13 @@
         "ip": "20.10.0.1",
         "policy": [
          {
+          "breve": "MED 20",
           "direzione": "out",
           "nome": "LOCALMED_OUT_20_10_0_1",
           "testo": "route-map metric 20 su tutte"
          }
         ],
+        "relazione": null,
         "tipo": "eBGP"
        }
       ],
@@ -879,6 +922,7 @@
       "2.7.0.0/24"
      ],
      "costi": [],
+     "default": [],
      "igp": [
       {
        "auto_cost": null,
@@ -899,15 +943,20 @@
        "ip": "20.10.0.1",
        "policy": [
         {
+         "breve": "MED 20",
          "direzione": "out",
          "nome": "LOCALMED_OUT_20_10_0_1",
          "testo": "route-map metric 20 su tutte"
         }
        ],
+       "relazione": null,
        "tipo": "eBGP"
       }
      ],
-     "redistribute_bgp": []
+     "redistribute_bgp": [],
+     "redistribute_bgp_igp": [
+      "OSPF"
+     ]
     },
     "riferimenti_frr": [],
     "tipo": "router",
@@ -915,6 +964,7 @@
    },
    {
     "asn": null,
+    "deleghe": [],
     "demoni": [],
     "gateway": "1.0.0.1",
     "gruppo": "1",
@@ -946,6 +996,7 @@
    },
    {
     "asn": null,
+    "deleghe": [],
     "demoni": [],
     "gateway": "2.7.0.2",
     "gruppo": "2",

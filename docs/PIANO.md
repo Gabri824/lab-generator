@@ -1068,10 +1068,318 @@ Punti 1-7 fatti (il Registro: vedi sezione 8). Il punto 8 (`papillon_gui` con gl
 BGP) e il resto della prova si fanno alla fine della fase 5, quando le Opzioni sono anche nella
 GUI.
 
+## Fase 5: completata (2026-11-23) — lab esistenti, modifica grafica e Opzioni nella GUI
+
+Decisioni dell'autore (2026-11-22): si modifica sulla Topologia del lab, un'operazione alla volta
+con l'anteprima (non riaprendo il lab nell'editor); ogni modifica si annulla (GUI e terminale) e
+si può ripristinare una copia di sicurezza anche dalla GUI; "partire da un lab esistente"
+nell'editor diventa l'ultima sottofase (5.7). Prova guidata dell'autore alla fine della fase 5,
+insieme al punto 8 della fase web.
+
+Sottofasi: 5.1 base, costo OSPF e auto-cost, annulla e copie; 5.2 dispositivi e indirizzi
+(Opzione 11, aggiungi/togli); 5.3 BGP (loopback, network, iBGP, default route, ridistribuzione);
+5.4 DNS (resolver, deleghe); 5.5 policy e Customer-Provider-Peer; 5.6 livelli del disegno e
+Riepilogo sul disegno; 5.7 partire da un lab esistente.
+
+### Fase 5.1: completata (2026-11-22) — modalità Modifica, annulla e copie
+
+- **Storia delle modifiche** (`core/storia.py`, `.labgenerator/<lab>/storia.json`, fuori dal lab):
+  `dopo_scrittura`, chiamata da GUI e terminale, registra ogni piano scritto con il contenuto dei
+  file prima e dopo (riletto dal disco); l'operazione `annulla` (in `OPERAZIONI`, quindi con
+  anteprima, impronte e firma come le altre) riporta i file a prima dell'ultima modifica e toglie
+  la voce. Si annulla in ordine inverso; se un file è cambiato dopo (a mano o fuori dalla storia)
+  si rifiuta senza scrivere e rimanda alle copie. La rinomina annullata rimette anche il disegno.
+  Ultime 50 voci; storia svuotata quando il lab viene ricreato o ripristinato.
+- **Copie di sicurezza nella GUI**: `file_utils.elenco_copie` e `ripristina` (senza domande, usate
+  anche dal menu del terminale); azioni `copie` e `ripristina` dell'API (nome della copia preso
+  solo dall'elenco), con il Registro.
+- **Terminale**: Opzioni 14 "Annulla l'ultima modifica o ripristina una copia di sicurezza".
+- **GUI**: pulsante "Modifica" nella Topologia (etichette delle interfacce sempre visibili e
+  cliccabili, scritte degli AS cliccabili con un'area trasparente dietro); pannello
+  dell'operazione con modulo (componente `creaPannello`), "Anteprima" (`htmlAnteprima`),
+  "Applica", conflitto (`htmlConflitto`); esito con file scritti, messaggi, avvisi nuovi e risolti;
+  "Annulla modifica" nell'intestazione (anche per le modifiche fatte dal terminale); pannello
+  della modalità con le ultime modifiche e le copie di sicurezza. Prime Opzioni: costo OSPF
+  (clic sull'etichetta dell'interfaccia o pulsanti nel pannello del router) e auto-cost (clic
+  sulla scritta dell'AS o pulsante nel pannello).
+- Corretto: il pannello del dispositivo poteva cercare l'elenco dei file dopo essere stato
+  ridisegnato (errore nella console).
+- Verifiche: `tests/test_storia.py` (tutte le 33 operazioni di prova del motore applicate e
+  annullate lasciano il lab identico; ordine inverso, rinomina e disegno, file cambiato, terminale,
+  limite, storia illeggibile, ripristino e lab ricreato); `test_api` (annulla, copie, ripristino,
+  nomi di copia non validi); otto rotture apposta fanno fallire i test (una nona, righe "dopo"
+  prese dal piano invece che dal disco, è equivalente: entrambe le strade scrivono con
+  `scrivi_piano`). Pilota `tests/strumenti/prova_modifica.mjs` (9 passi con mouse vero: costo dal
+  disegno e dal pannello, costo 0 rifiutato, auto-cost, conflitto, annulla due volte con il lab
+  identico all'originale, copie e ripristino); terminale vero: modifica fatta dalla GUI annullata
+  dal menu 14. Un giro del pilota su cinque è fallito per i ritardi dei clic di Chromium senza
+  finestra (già visti nella fase 4); le scritture della storia hanno comunque un lucchetto.
+
+### Fase 5.2: completata (2026-11-22) — dispositivi e indirizzi
+
+Decisioni dell'autore: il clic su un'interfaccia apre il suo menu di azioni (il costo è una di
+queste); spostare un collegamento e cambiare AS si fanno con la scelta nel pannello, non
+trascinando (il trascinamento resta per disporre il disegno); costo OSPF corretto anche nel
+terminale.
+
+- **Costo OSPF** (`calcola_costo_ospf`, GUI e terminale): se l'interfaccia ha già un costo si
+  cambia il numero nella sua riga (tutte, se ci sono blocchi ripetuti, con una nota); se ha un
+  blocco `interface` senza costo la riga va dentro; altrimenti il blocco si aggiunge in fondo come
+  prima. Costo da 1 a 65535. Operazione nuova `togli_costo_ospf` (torna il predefinito; il blocco
+  rimasto vuoto sparisce). Terminale, Opzioni 1: mostra il costo attuale, `0` lo toglie.
+- **GUI, modalità Modifica** (`static/js/modifica_lab.js`, proposte in `static/js/proposte.js`):
+  - interfaccia (clic sull'etichetta o pulsante ethX nel pannello del dispositivo): cambia IP
+    (basta l'ultimo numero), sposta su un'altra LAN o su una LAN nuova (IP proposto), costo OSPF e
+    togli il costo, togli l'interfaccia;
+  - LAN (clic sul nodo o sull'etichetta del link): cambia subnet (IP nuovi proposti con la stessa
+    parte host, modificabili), collega un dispositivo, aggiungi qui un router, host, server web o
+    DNS;
+  - dispositivo (pannello): rinomina, gateway (candidati sulla LAN o un altro IP), cambia AS,
+    aggiungi o togli OSPF, RIP, BGP (network, area, sessioni BGP con i vicini proposte), file a
+    righe (editor con anteprima delle differenze), togli il dispositivo (con chi lo usa come
+    gateway o resolver);
+  - "+ Router / Host / Server web / Server DNS": nome libero (as<AS>r<n> se il lab usa quei nomi;
+    il primo DNS è `root`, master per ".", come nel wizard), IP libero, protocolli e gateway dei
+    vicini della LAN.
+  - Moduli in più passi ("Avanti") e menu di azioni nel pannello; "indietro" torna al passo prima.
+- **Topologia**: dopo una modifica i nodi restano dove sono; quelli nuovi vanno vicino ai vicini
+  (`completaPosizioni`); la disposizione automatica riparte solo se manca più di metà dei nodi.
+  Dopo una rinomina il dispositivo resta al suo posto.
+- Verifiche: `test_modifica_gui` (router OSPF e RIP, host, server web, primo DNS e DNS successivo
+  aggiunti dalla GUI danno gli stessi file del terminale, che risponde alle domande del wizard
+  in base al testo; tre rotture apposta dei dati della GUI fanno fallire il test);
+  `test_operazioni` (costo sostituito, altra interfaccia, blocco con altre righe, blocchi
+  ripetuti, togli, valori sbagliati; due casi nuovi nei file attesi, annullati esattamente come
+  tutti gli altri da `test_storia`); `tests/js/proposte.test.mjs` (IP liberi, completamento
+  dell'IP, nomi, vicini, rinumerazione, posizioni); pilota `prova_modifica.mjs` 16 passi su 16
+  con mouse vero (subnet di una LAN, IP, LAN nuova, host aggiunto, rinominato e tolto, RIP
+  aggiunto, file a righe, poi tutto annullato: lab identico all'originale); Kathará: router OSPF
+  e host aggiunti con i dati della GUI a una copia di papillon, raggiungibilità 0 ping falliti su
+  11 dispositivi.
+- I fallimenti saltuari del pilota nella 5.1 erano con ogni probabilità dovuti a una seconda GUI
+  di prova avviata sulla stessa porta (non partiva e il pilota parlava con quella vecchia): con
+  la traccia delle scritture della storia, tre giri completi senza errori.
+
+### Fase 5.3: completata (2026-11-22) — BGP dalla Topologia
+
+Decisioni dell'autore: il clic sulla scritta dell'AS apre il menu dell'AS; i segni sul disegno
+(loopback, sessioni iBGP, 0/0, ridistribuzione) vanno nella 5.6 con i livelli; la loopback
+proposta è la successiva della serie già usata nel lab, sempre modificabile (come ogni proposta).
+
+- **Menu dell'AS** (scritta dell'AS o pulsante "AS<n>" nel pannello): aggregato (network BGP sul
+  router BGP dell'AS, quello di confine proposto se ce n'è più d'uno), "Completa l'iBGP" (con
+  almeno due router BGP; con l'avviso del terminale sugli esercizi che vietano l'iBGP),
+  auto-cost.
+- **Pannello del router**: aggiungi loopback (anche su host e server), network BGP, default route
+  (menu: BGP default-originate verso i neighbor scelti, eBGP proposti, con "solo la default" e
+  reti in più; OSPF con o senza `always`; RIP con `route <rete>` o `default-information
+  originate`), ridistribuzione BGP → IGP (togli, rimetti, route-map eBGP con la rete del vicino
+  di un altro AS proposta).
+- Network BGP in due passi come nel terminale: prima le reti (proposta del motore, `/8` del primo
+  ottetto come nel terminale, modificabile), poi, se ci sono, le network già annunciate che le
+  nuove coprono, con la casella per toglierle (`opzioni_network_bgp` accetta ora anche `reti` e
+  restituisce le `coperte`).
+- Parametri costruiti da funzioni senza pagina in `proposte.js` (`listaReti`, `prossimaLoopback`,
+  `retiEbgp`, `parametriDefaultBgp`, `parametriDefaultIgp`), provate con Node.
+- Verifiche: `test_modifica_gui.TestBgpComeIlTerminale` (per i dieci scenari BGP del terminale,
+  aggregato con e senza reti coperte, network, iBGP, loopback con iBGP, default BGP "solo",
+  default OSPF e RIP, route-map, togli e rimetti la ridistribuzione, la stessa modifica con i
+  parametri della GUI dà esattamente il diff atteso del terminale); rotture apposta prese (una
+  dal test Node); pilota con i passi della 5.3 (aggregato con reti coperte, loopback, default
+  OSPF e BGP, ridistribuzione tolta, poi tutto annullato: lab identico all'originale; ha trovato
+  un errore della pagina, il formato di `default_orig`, corretto); Kathará: copia di
+  `papillon_gui` con gli aggregati 20.20.0.0/16 e 30.30.0.0/16 annunciati con i parametri della
+  GUI: sessioni BGP Established, 0 ping falliti, pagina web dal client ricevuta (il punto 8 della
+  fase web).
+
+### Fase 5.4: completata (2026-11-22) — DNS (strada A, decisione dell'autore)
+
+Prima di aggiungere funzioni, controllo degli esami del corso (`Esami_IDC`, 39 esami, il DNS in 6:
+tennis, crab, mirada, palabra, patchwork, Shuriken): usano solo record A e NS, la delega dal root
+e, in crab e Shuriken, quella da un dominio di primo livello a un sottodominio (`it` ->
+`roma3.it`, `net` -> `rm3.net`), un resolver locale con `allow-recursion` e `dnssec-validation
+no`, il `nameserver` sui client (10 in mirada); mai CNAME, MX, forwarders o zone slave. Tutto
+questo si crea già con il wizard e con l'editor: per risolvere gli esami non servono operazioni
+nuove. Decisione: nella GUI solo le due Opzioni DNS che il terminale ha (resolver e delega dal
+root); zone, record e ricorsione di un lab già creato restano a "File a righe" (sezione 8).
+
+- **GUI**: "Resolver" nel pannello di host, server web e DNS (server DNS candidati o un altro IP);
+  "Delega una zona" nel pannello del server root (zona e server che la gestirà, poi nameserver
+  `dns.<zona>` e IP del glue proposti come nel terminale).
+- **Corretto**: `allow-recursion { 0/0; }`, come lo scrivono le soluzioni del corso, era rifiutato
+  ("Rete non valida: '0/0'") da `valida_lab` e dal wizard: `parse_reti` accetta ora la forma
+  abbreviata di bind (`0/0`, `10/8`, `192.168/16`), completata con gli zeri.
+- **Verifica con Kathará**: Shuriken e crab rifatti dal modello come li si fa nel wizard o
+  nell'editor (resolver del lab `local`; per crab i router con le rotte statiche della traccia):
+  dal client `dig` risolve il nome del web, ping e pagina web ok.
+- Verifiche: `test_dns_esami` (forma abbreviata; gerarchia di crab creata con delega verso il
+  sottodominio, glue e resolver locale); `test_modifica_gui` con gli scenari `resolver`,
+  `resolver_manuale` e `delega_dns` del terminale (stesso diff con i parametri della GUI); pilota
+  con un DNS aggiunto (nasce `root`, master), delega di `com` e resolver del client, poi tutto
+  annullato.
+
+### Fase 5.5: completata (2026-11-22) — policy BGP (Opzione 2 del terminale)
+
+Controllo degli esami prima di cominciare: su 25 esami con BGP le soluzioni usano
+local-preference (12), MED (9), prefix-list (9), access-list (4) e lo stile Customer-Provider-Peer
+(pear-to-pear); mai as-path, community, weight o prepend, e le policy non si tolgono mai. Nella GUI
+quindi solo le policy che il terminale ha già, nessuna operazione nuova. Decisioni dell'autore:
+valori proposti 150 (local-preference) e 20 (MED), modificabili; Customer-Provider-Peer un lato
+alla volta con il lato opposto proposto subito dopo; niente "togli policy" (Annulla, la stessa
+policy con un altro valore sostituisce la route-map, "File a righe"). "Traccia il percorso" resta
+un'opzione in più, non al posto di questa: è la 5.5b.
+
+- **GUI**: "Policy BGP" nel pannello del router (si sceglie il neighbor, con le policy già
+  scritte e la relazione, oppure un neighbor non ancora configurato) e "Policy BGP su A verso B"
+  nel menu del link fra due AS; poi local-preference in ingresso, MED in uscita, prefix-list
+  (in/out), access-list in ingresso, Customer-Provider-Peer. Le reti si scelgono con le caselle
+  (le network del lab, prima quelle dell'AS del vicino) o si scrivono.
+- **Customer-Provider-Peer**: verso provider e peer le reti proposte sono quelle delle soluzioni
+  (pear-to-pear): reti proprie, link con i clienti, reti dei clienti; non i link con provider e
+  peer. La relazione si riconosce dai nomi delle prefix-list (`provider_X_out` del programma e
+  `providerOut`, `peerIn` delle soluzioni), anche rovesciando quella scritta sull'altro router.
+  Dopo l'applica la GUI propone il lato opposto, già compilato (si conferma o si torna indietro).
+- **Motore**: `opzioni_policy_bgp` (neighbor con relazione, reti proposte, reti del lab); il
+  pannello mostra sopra il passo successivo l'esito di quello appena applicato (`conf.poi`).
+- **Verifica con Kathará**: lift e stairs rifatti con i parametri della GUI su una copia senza
+  policy: file identici a `lift_mio` e `stairs_mio`; lift: as300r1 preferisce AS400 per
+  10.1.0.0/24 e AS500 per 10.2.0.0/24 (local-preference 150), as100r1 non usa as300r1 per le
+  10.x (access-list); stairs: MED 20 visto sui link meno preferiti e l'altro scelto,
+  local-preference 150 su as4r2 da un vicino iBGP (come la soluzione).
+- Verifiche: `test_modifica_gui` con gli 11 scenari di policy e Customer-Provider-Peer del
+  terminale (stesso diff con i parametri della GUI; `cpp_provider` con le reti proposte) e
+  `TestOpzioniPolicy` (relazioni e proposta); test di `proposte.js`; pilota con local-preference
+  dal router, MED e prefix-list dal link F, Customer-Provider-Peer con il lato opposto, poi tutto
+  annullato.
+
+### Fase 5.5b: completata (2026-11-22) — "Percorso voluto" (proposte di policy dal disegno)
+
+Opzione in più accanto alla 5.5, non al posto suo (decisione dell'autore: le proposte non sono una
+garanzia). Nella GUI si chiama "Percorso voluto" perché "Traccia il percorso" è già il pulsante del
+traceroute nella scheda Test. Decisioni dell'autore: funziona a lab spento (solo i file) e acceso
+(tabelle BGP vere); le proposte si applicano una alla volta (anteprima, applica o salta); resta solo
+nella GUI e scrive solo policy dell'Opzione 2, quindi gli stessi file del terminale.
+
+- **Gesto**: nel pannello iniziale della modalità Modifica "Percorso voluto"; poi clic sulla
+  sorgente, sugli AS o sui link fra AS da attraversare e sulla destinazione (LAN o dispositivo),
+  evidenziati sul disegno con l'ordine; per AS si può dire "le altre strade sono vietate".
+- **Motore** (`gui/percorso_voluto.py`): sequenza di AS (i buchi si riempiono con il cammino più
+  corto, i loop si rifiutano), rete BGP di destinazione (la network più specifica che contiene la
+  destinazione), e per ogni AS del percorso: un'altra uscita con AS path non più lungo ->
+  local-preference 150 sulla sessione voluta per quella rete (unita alle reti che la route-map
+  aveva già); solo link paralleli verso lo stesso AS -> MED 20 messo dall'AS successivo sui link da
+  non usare; AS con il divieto -> prefix-list deny sulle altre sessioni. A lab acceso legge `show ip
+  bgp <rete> json` sui router degli AS del percorso e non propone niente dove la strada è già quella.
+  Avvisa se una local-preference già scritta va contro il percorso.
+- **Alla fine**: "Verifica percorso" nella scheda Test già compilata (sorgente, IP di destinazione,
+  link attesi, "deve passare per").
+- **Verifica con Kathará**: stairs senza policy, percorso di as4r2 verso 1.0.0.0/24 lungo H, F, B
+  della traccia: a lab acceso le tre proposte sono i tre MED della soluzione; dopo, il traceroute
+  passa per J H G F D B e una seconda richiesta non propone più niente. Lift senza policy, as100r1
+  verso K lungo A, C, G con il divieto in AS100: prefix-list su as100r1 e local-preference su
+  as300r1 come la soluzione; dopo, il traceroute passa per A C G F J (B evitato).
+- Verifiche: `test_percorso_voluto` (stairs e lift: proposte uguali alle soluzioni e righe uguali a
+  `stairs_mio` e `lift_mio`; tabelle simulate; divieto solo dove chiesto; local-preference che si
+  somma; errori); pilota `tests/strumenti/prova_percorso.mjs` (clic sul disegno, tre MED applicati,
+  Verifica percorso compilata, divieto e "Salta" su lift, tutto annullato).
+
+Limiti dichiarati: a lab spento conta solo la lunghezza dell'AS path (non spareggi, policy già
+scritte diverse da quelle del programma, regole Customer-Provider-Peer); il ritorno è un percorso a
+parte; dentro un AS decide l'IGP (costo OSPF, 5.2).
+
+### Fase 5.6: completata (2026-11-23) — livelli del disegno e Riepilogo sul disegno
+
+Decisioni dell'autore: all'apertura accesi Indirizzi, Costi OSPF, Policy, Segni sui router e
+Avvisi, spenti Sessioni BGP e DNS (linee in più); il resolver degli host come scritta sotto il nome
+(`ns: local`), non come linea; Customer-Provider-Peer con la freccia verso il provider e "peer" fra
+pari. Tutto dai file (gli stessi dati del Riepilogo), quindi anche le modifiche fatte dal terminale
+o a mano.
+
+- **Barra dei livelli** (componente `creaLivelli` della fase 2, al posto della casella
+  "interfacce"; la scelta resta nel browser): Indirizzi; Costi OSPF (con gli indirizzi spenti resta
+  il solo `c20`); Sessioni BGP (link eBGP marcati, iBGP come curve tratteggiate del colore dell'AS,
+  sessione sbagliata come curva rossa puntinata con "!": vicino senza BGP, neighbor scritto da una
+  parte sola, remote-as diverso dall'AS del vicino); Policy (sigle `LP 150 in`, `MED 20 out`,
+  `filtro in`, `solo out` sul link vicino al router che le applica, testo completo nel tooltip;
+  frecce Customer-Provider-Peer, relazione presa anche da una parte sola); Segni sui router (`0/0`
+  su chi manda la default in BGP, OSPF o RIP, `R` su chi ridistribuisce BGP nell'IGP, loopback
+  sotto il nome); DNS (deleghe dal server padre al figlio con il nome della zona, resolver sotto il
+  nome); Avvisi ("!" sui dispositivi e sugli AS citati dagli avvisi automatici, testo nel tooltip).
+- **Riepilogo sul disegno**: il pannello del dispositivo mostra gli avvisi che lo citano e la
+  "Configurazione in breve" (IGP, costi, network, neighbor con relazione e policy, default route).
+- **Modalità Modifica**: clic su una sigla di policy apre le policy verso quel neighbor (5.5).
+- **Dati** (`gui/dati.py`): per ogni policy la sigla (`breve`), per ogni neighbor la relazione
+  Customer-Provider-Peer, per ogni router `default` e `redistribute_bgp_igp`, per ogni server DNS
+  le deleghe scritte nelle sue zone master. Funzioni pure in `static/js/livelli.js`.
+- Verifiche: `tests/js/livelli.test.mjs`; `test_livelli_disegno` (lift, stairs, candy con
+  Customer-Provider-Peer da una parte, galaxy, una sessione rotta, tennis); golden della lettura
+  aggiornati (solo campi aggiunti); tutte le soluzioni di Esami_IDC lette senza errori; pilota
+  `tests/strumenti/prova_livelli.mjs`; schermate controllate su pear-to-pear (frecce e peer),
+  stairs, lift, tennis, galaxy, Shuriken.
+
+### Fase 5.7: completata (2026-11-23) — parti da un lab esistente
+
+Misura di partenza (39 soluzioni di Esami_IDC rilette e ricreate dal modello): si perdevano tutte le
+righe delle Opzioni (policy, `neighbor` che le collegano, costi, `debug`, `hostname`, `iptables`,
+pagine web scritte a mano), i router con sole rotte statiche di crab diventavano host e i resolver
+di un solo dispositivo (pc di palabra) sparivano; 4 data center non si caricano. Decisioni
+dell'autore: le righe delle Opzioni passano nel nuovo lab; si parte dall'elenco dei lab o da una
+cartella qualunque; resolver di un dispositivo nel modello, nell'editor e nell'XML (wizard invariato).
+
+- **Unione a tre vie** (`core/unione.py`): nuovo lab = file del lab di partenza + (file dal
+  modello della bozza - file dal modello iniziale della bozza). Senza modifiche il nuovo lab è
+  identico al lab di partenza; ogni modifica cambia solo le sue righe; i file che il generatore non
+  scrive (pagine, `resolv.conf` dei router di mirada) seguono il dispositivo, anche rinominato;
+  quelli che il generatore aggiungerebbe ma il lab non aveva (es. `daemons`) non si creano. Avviso
+  per le righe conservate che citano un IP sparito dalla bozza.
+- **Modello** (`persistence.modello_da_stato`): router senza FRR con almeno due interfacce e rotte
+  statiche verso altre reti = router `statico` (crab, chair-01, chair-02); `nameserver` per host,
+  www e DNS che usano un resolver diverso da quello del lab (tennis, palabra, crab, Shuriken),
+  scritto dal generatore, letto e scritto nell'XML, controllato da `valida_lab`; uguale all'Opzione
+  5 del terminale.
+- **Editor**: "Parti da un lab esistente" (elenco dei lab o cartella); bozza costruita da
+  `editor/da_lab.js` con le posizioni spostate a mano, poi il disegno salvato, poi la disposizione
+  della Topologia (`disposizione.js`, ora un modulo a sé); riquadri AS (anche i router interni
+  dello stesso AS), zone RIP e aree OSPF intorno ai membri, o uno per membro se il riquadro di
+  gruppo prenderebbe dentro altro; eccezione nuova "OSPF: no" per il router RIP sul confine con
+  OSPF (maracas, street-light, up-arrow); campo "Resolver solo di questo dispositivo". Riquadro del
+  lab di partenza (con le differenze di rappresentazione, se ci sono) e "Crea solo dalla bozza".
+  Anteprima e creazione mandano l'origine al server (`lab_come_modello`, `origine` in
+  `anteprima_lab` e `crea_lab`).
+- **Verifiche**: 17 lab di prova e 35 soluzioni d'esame caricabili diventano bozze con lo stesso
+  modello (t2-c1 ha IP sbagliati nella soluzione: l'editor li segnala) e, senza modifiche, ridanno
+  file identici; con un host in più nessuna riga originale si perde; `test_unione`, `test_da_lab`,
+  `tests/js/da_lab.test.mjs`; pilota `tests/strumenti/prova_da_lab.mjs` (lift caricato, router
+  rinominato dal pannello, anteprima e creazione con policy e filtro conservati, cartella non valida
+  e data center rifiutati con la spiegazione); Kathará: crab2 da crab con un host in più (dig e
+  ping attraverso i router con sole statiche).
+
+### Prova guidata della fase 5: fatta (2026-11-23), scaletta in `docs/PROVA_FASE5.md`
+
+- 2026-11-23, `papillon_gui` (modalità Modifica, annulla e copie, dispositivi, aggregati BGP di
+  AS20 e AS30, default route e policy in anteprima, livelli): tutto ok. **Punto 8 della fase web
+  fatto**: con gli aggregati la pagina del server arriva al client. Corretta la scaletta: anche
+  AS30 va annunciato (la `network 30.30.0.0/16` di r5 è nel blocco RIP, non in BGP).
+- 2026-11-23, `stairs_senza_policy` (policy dal router e dal link, Customer-Provider-Peer con il
+  lato opposto, Percorso voluto con Salta, Verifica percorso con Kathará e "niente da fare" a lab
+  acceso): tutto ok.
+- Corretto dalla prova: in "Parti da un lab esistente" l'elenco dei lab parte dal lab aperto e,
+  se era scelto un lab, la cartella scritta veniva ignorata (si ricaricava lift invece di crab).
+  Ora la cartella scritta vince; scrivendo la cartella l'elenco torna vuoto e viceversa (pilota
+  aggiornato con questo caso).
+- 2026-11-23, `tennis_test` (resolver, delega, livello DNS) e "Parti da un lab esistente" (lift_mio
+  con rinomina e creazione, soluzione di crab, patchwork rifiutato): tutto ok dopo la correzione.
+- 2026-11-23, `lift_senza_policy` con il Percorso voluto (K via AS400 e L via AS500 senza il link B,
+  divieto in AS100), verificato con Kathará (Verifica percorso e Rotta verso una rete): tutto ok.
+
+- 2026-11-23, terminale: MED dalle Opzioni 2 visto nella GUI (disegno e "Annulla modifica") e
+  annullato dalle Opzioni 14: ok. **Fase 5 chiusa**, con il punto 8 della fase web.
+
 ### Prossimo passo
 
-Fase 5 (da spiegare prima di cominciare). Alla fine: prova guidata della fase 5 insieme al punto 8
-della fase web.
+Fase 6 (obiettivi della traccia e verifica), da spiegare prima di cominciare: il "percorso
+richiesto" è già in gran parte nella 5.5b (Percorso voluto); restano i costi OSPF dentro un AS, la
+risoluzione di un nome e il test suggerito dopo ogni operazione.
 
 ---
 
@@ -1085,10 +1393,13 @@ Cose trovate durante il lavoro e messe da parte di proposito. Non bloccano le fa
 | Codice morto: `ensure_neighbor_exists` | `src/core/net_frr.py` | Non è chiamata da nessuna parte. Lasciata dov'è. |
 | La proposta delle network IGP aggrega per primo ottetto | `net_frr.default_igp_networks` | Può mettere in un'area OSPF un link dichiarato in un'altra; ora `valida_lab` lo segnala come avviso. |
 | Il resolver finale viene scritto anche sui server DNS | `generazione._scrivi_lab` | Lasciato così (decisione della fase 1.4). |
-| Il costo OSPF aggiunge sempre un nuovo blocco `interface` | `operazioni.calcola_costo_ospf` | Anche se l'interfaccia ha già un costo: si potrebbe sostituire quello esistente. |
 | Riga di soli spazi prima di `redistribute bgp route-map eBGP` | `operazioni.calcola_redistribuzione_route_map` | Viene da `insert_lines_into_protocol_block` con una riga vuota. |
 | Quando le Opzioni aggiornano l'XML lo riscrivono per intero | `persistence._aggiorna_xml` | Cambia, per esempio, `&quot;` in `"` dentro `lab_conf`. Da decidere nella fase 1.7 (XML fuori dal lab, forse rigenerato dai file). |
 | `--output` (o un'opzione scritta male) viene ignorato in silenzio | `main` in [labGenerator.py](../src/labGenerator.py) (`parse_known_args`) | Visto nella prova guidata della fase 3: la GUI partiva sulla cartella corrente senza lab. Proposta: `--output` come sinonimo di `--out` e un avviso per le opzioni non riconosciute. |
 | Il costo OSPF predefinito citato nei messaggi (10000 senza auto-cost, 10 con) non vale ovunque | `analyzer` (avviso 6), `operazioni.calcola_auto_cost` | Misurato con Kathará il 2026-11-22: con veth a 10 Gbit/s è 10 senza auto-cost e 1 con `reference-bandwidth 100`. Proposta: dire che dipende dalla macchina e rimandare a `show ip ospf interface`. |
 | Il Registro della GUI è solo in memoria e contiene solo le operazioni della GUI | `gui/kathara.Lavori` | Visto nella prova guidata della fase web: chiudendo la GUI si svuota, e le operazioni del terminale non ci sono. Idea: salvarlo per lab in `.labgenerator/<lab>/` e aggiungere le operazioni fatte dal terminale del generatore. Non urgente (decisione dell'autore). |
+| Zone, record e ricorsione di un lab già creato si cambiano solo con "File a righe" | GUI e terminale | Decisione della 5.4 (strada A): agli esami non servono, il wizard e l'editor li creano. Se servisse: aggiungi zona, aggiungi/togli record A e delega da qualunque zona, ricorsione, resolver per più dispositivi. |
+| Data center senza IPv4 sulle interfacce non si caricano | `persistence.modello_da_stato`, editor (5.7) | puzzle, ceci-n'est-pas-une-pipe, exapus, patchwork (spine/leaf): il modello descrive solo interfacce con un IP. L'editor lo spiega. Da valutare se servono. |
+| I dispositivi aggiunti nella bozza finiscono in cima a `lab.conf` | `core/unione.unisci` (5.7) | Il generatore li mette in ordine di nome; l'unione li inserisce dopo l'ultima riga comune che li precede. Solo estetica. |
+| Pagina personale di un utente su apache (`http://web.com/~guest/`, modulo userdir) | tennis (Esami_IDC) | Chiesta dalla traccia di tennis; il generatore non la prepara. Da valutare per la fase web. |
 | Circa 130 stampe con emoji | tutto il terminale | Protette all'avvio (`reconfigure(errors='replace')`); nessuna è più dentro una domanda. |

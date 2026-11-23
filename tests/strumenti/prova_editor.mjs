@@ -329,6 +329,7 @@ let conTerzo = null;
     const messaggio = await js(`document.querySelector('#edPannello .ed-errore-motore').textContent`);
     await js(`(() => { const e = document.querySelector('#edPannello [data-chiave="gateway:${id}"]'); e.value = ''; e.dispatchEvent(new Event('change', {bubbles: true})); e.blur(); })()`);
     await aspetta(`!document.querySelector('#edPannello .ed-errore-motore') && document.querySelectorAll('#edSvg .ed-err').length === 0`, 5000, 'errore sparito');
+    await js(`document.activeElement && document.activeElement.blur()`);   // Esc dentro un campo non deseleziona (dopo Tab c'è il campo del resolver)
     await tasto('Escape');
     await aspetta(`document.querySelector('#edPannello').innerText.includes('Controlli del motore')`, 5000, 'controlli del motore nel pannello del lab');
     return { messaggio };

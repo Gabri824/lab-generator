@@ -7,7 +7,11 @@ import { registro } from './registro.js';
 import { riepilogo } from './riepilogo.js';
 import { apriEditor } from './editor/editor.js';
 import { attendiConvergenza, controllaSpenti, lanGuasto, origini, preparaWeb } from './test.js';
-import { colori, grafo, ridisegna, varianti } from './topologia.js';
+import { aggiornaStoria, esciModifica } from './modifica.js';
+import './modifica_lab.js';
+import { colori, grafo, varianti } from './disposizione.js';
+import { ridisegna } from './topologia.js';
+import { completaPosizioni } from './proposte.js';
 
 // ---------- elenco lab e stato ----------
 export async function caricaLabs() {
@@ -42,7 +46,7 @@ export async function apriLab(nome, mantieni) {
     const cambiato = nome !== S.nome;
     S.lab = lab; S.nome = nome; S.sintassi = null;   // i file possono essere cambiati: sintassi da ricontrollare
     history.replaceState(null, '', '#lab=' + encodeURIComponent(nome) + '&tab=' + S.tab);
-    if (cambiato) { S.sel = null; S.evid = null; $('#rPing').innerHTML = $('#rSessioni').innerHTML = $('#rPercorso').innerHTML = $('#rArchivio').innerHTML = ''; }
+    if (cambiato) { S.sel = null; S.evid = null; esciModifica(); $('#rPing').innerHTML = $('#rSessioni').innerHTML = $('#rPercorso').innerHTML = $('#rArchivio').innerHTML = ''; }
     $('#vuoto').hidden = true; $('#editor').hidden = true; $('#vista').hidden = false;
     $('#labNome').textContent = nome;
     $('#xmlNota').hidden = !lab.xml;
@@ -50,13 +54,18 @@ export async function apriLab(nome, mantieni) {
     S.colori = colori(lab); S.G = grafo(lab);
     // posizioni: quelle spostate a mano nella Topologia, poi quelle del disegno dell'editor
     // (.labgenerator/<lab>/disegno.json), altrimenti la disposizione automatica
+    // (dopo una modifica dalla GUI: quelle di adesso; i nodi nuovi vanno vicino ai loro vicini)
     let salvate = mem('pos:' + nome);
     const tutte = p => p && S.G.nodes.every(n => p[n.id]);
+    let disegno = null;
     if (!tutte(salvate)) {
-      try { const d = (await api('/api/disegno?lab=' + encodeURIComponent(nome))).disegno; salvate = d && d.posizioni; } catch (e) { salvate = null; }
+      try { const d = (await api('/api/disegno?lab=' + encodeURIComponent(nome))).disegno; disegno = d && d.posizioni; } catch (e) { disegno = null; }
     }
+    const adesso = !cambiato && S.pos ? S.pos : null;
     S.varianti = null; S.variante = 0;
-    S.pos = tutte(salvate) ? JSON.parse(JSON.stringify(salvate)) : (S.varianti = varianti(S.G))[0];
+    S.pos = tutte(salvate) ? JSON.parse(JSON.stringify(salvate))
+      : tutte(disegno) && !adesso ? JSON.parse(JSON.stringify(disegno))
+      : completaPosizioni(S.G, Object.assign({}, disegno || {}, salvate || {}, adesso || {})) || (S.varianti = varianti(S.G))[0];
     if (!mantieni || cambiato) S.vb = null;
     $('#ipList').innerHTML = lab.dispositivi.flatMap(d => d.interfacce.filter(i => i.ip).map(i => `<option value="${esc(i.ip.split('/')[0])}">${esc(d.nome + ' ' + i.dev)}</option>`)
       .concat(d.loopback.map(ip => `<option value="${esc(ip.split('/')[0])}">${esc(d.nome + ' lo')}</option>`))).join('');
@@ -71,7 +80,9 @@ export async function apriLab(nome, mantieni) {
     preparaWeb();
     interfacce(); avvisoArchivio();
     if (!$('#aNome').value || cambiato) $('#aNome').value = nome;
+    if (cambiato) S.storia = [];
     disegnaLabs(); testaLab(); ridisegna(); lato(); riepilogo();
+    aggiornaStoria().then(() => { if (S.modifica && !S.op && !S.sel) lato(); });
   } catch (e) { errore(e); }
 }
 

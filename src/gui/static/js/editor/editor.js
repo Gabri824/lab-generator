@@ -9,6 +9,8 @@ import {
 import { apriLab, caricaLabs } from '../main.js';
 import { converti, elementoDelCampo, leggiRete, nuovaBozza, proponiSubnet, TIPI, VERSIONE } from './bozza.js';
 import { riquadro, svgBozza } from './disegno.js';
+import { caricaLab } from './da_lab.js';
+import { grafo, varianti } from '../disposizione.js';
 import { campo, htmlDns, htmlGateway, htmlLab, htmlRouter } from './pannelli.js';
 
 const STRUMENTI = {
@@ -112,12 +114,88 @@ function segnaCampi() {
   }
 }
 
+// ----------------------------------------------------------------------------- fase 5.7: parti da un lab esistente
+//
+// La bozza tiene il lab di partenza (bozza.origine: percorso, modello iniziale, nome di partenza di
+// ogni dispositivo): anteprima e creazione lo mandano al server, che unisce i file (core/unione.py).
+function elencoLab() {
+  $('#edDaLabScelta').innerHTML = '<option value="">(scrivi la cartella)</option>'
+    + (S.labs || []).map(n => `<option value="${esc(n)}"${n === S.nome ? ' selected' : ''}>${esc(n)}</option>`).join('');
+}
+
+// posizioni: quelle spostate a mano nella Topologia, poi il disegno salvato, poi la disposizione automatica
+function posizioniDi(r) {
+  const G = grafo(r.lab), tutte = p => p && G.nodes.every(n => p[n.id]);
+  const mano = r.nome && (S.labs || []).includes(r.nome) ? mem('pos:' + r.nome) : null;
+  if (tutte(mano)) return mano;
+  if (tutte(r.posizioni)) return r.posizioni;
+  return varianti(G)[0];
+}
+
+async function caricaDaLab() {
+  const lab = $('#edDaLabScelta').value, cartella = $('#edDaLabCartella').value.trim();
+  const esito = $('#edDaLabEsito');
+  if (!lab && !cartella) { esito.innerHTML = '<div class="warnline">Scegli un lab o scrivi la cartella.</div>'; return; }
+  if (!vuota(E.bozza) && !confirm('La bozza attuale verrà sostituita (si può tornare indietro con Annulla). Continuare?')) return;
+  esito.innerHTML = '<div class="muted small">Leggo il lab…</div>';
+  let r;
+  // la cartella scritta vince sul lab scelto nell'elenco (che parte dal lab aperto)
+  try { r = await azione(cartella ? {azione: 'lab_come_modello', cartella} : {azione: 'lab_come_modello', lab}); }
+  catch (e) { esito.innerHTML = `<div class="koline" role="alert">${esc(e.message)}</div>`; return; }
+  if (r.senza_ip.length) {
+    esito.innerHTML = `<div class="koline" role="alert">Questo lab non si può caricare: interfacce senza indirizzo IPv4 (${esc(r.senza_ip.slice(0, 4).join(', '))}${r.senza_ip.length > 4 ? ', …' : ''}).
+      Il generatore descrive solo interfacce con un IP (es. i data center spine/leaf degli esami non si rappresentano).</div>`;
+    return;
+  }
+  const x = caricaLab(r, posizioniDi(r));
+  E.vb = null; E.sel.clear(); E.anteprima = null; disegnaAnteprima();
+  cambia(x.bozza);
+  $('#edNome').value = '';
+  E.differenze = x.differenze;
+  esito.innerHTML = '';
+  $('#edDaLabSez').hidden = true; $('#edDaLab').setAttribute('aria-expanded', 'false');
+  avvisa(`Bozza partita da ${r.nome}: scrivi il nome del nuovo lab in alto. Con "Anteprima file" vedi i file con le righe che passano dal lab di partenza.`);
+}
+
+function dimenticaOrigine() {
+  if (!confirm('Il nuovo lab verrà creato solo dalla bozza: le righe che l\'editor non mostra (policy, costi, ...) non passeranno. Continuare?')) return;
+  const b = JSON.parse(JSON.stringify(E.bozza)); delete b.origine;
+  E.differenze = null;
+  cambia(b);
+}
+
+// parametro 'origine' per anteprima e creazione: nome di partenza dei dispositivi rinominati
+function conOrigine() {
+  const o = E.bozza.origine; if (!o) return {};
+  const c = converti(E.bozza), nomi = {};
+  for (const d of E.bozza.dispositivi) if (o.nomi[d.id] && c.nomi[d.id] && c.nomi[d.id] !== o.nomi[d.id]) nomi[c.nomi[d.id]] = o.nomi[d.id];
+  return {origine: {cartella: o.percorso, modello: o.modello, nomi}};
+}
+
+function htmlOrigine() {
+  const o = E.bozza.origine, el = $('#edOrigine');
+  if (!o) { el.hidden = true; return; }
+  el.hidden = false;
+  const diff = E.differenze || [];
+  el.innerHTML = `<b>Bozza partita da ${esc(o.nome)}</b> <span class="muted">(${esc(o.percorso)})</span>: le righe che l'editor non mostra passano nel nuovo lab; cambiano solo quelle che tocchi.
+    ${diff.length ? `<div class="warnline">L'editor rappresenta in modo diverso:<ul>${diff.map(t => `<li>${esc(t)}</li>`).join('')}</ul>I file non cambiano per questo: cambiano solo se modifichi quella parte.</div>` : ''}
+    <button type="button" class="ghost small" data-dimentica>Crea solo dalla bozza (senza le righe del lab di partenza)</button>`;
+}
+
+function htmlUnione(u) {
+  const n = Object.keys(u.conservate).length;
+  return `<div class="ed-origine small"><b>Dal lab di partenza</b> (${esc(u.percorso)}): righe che l'editor non mostra conservate in ${n} file${u.copiati.length ? `; file portati così come sono: ${u.copiati.map(esc).join(', ')}` : ''}${u.non_creati.length ? `; non creati perché il lab di partenza non li aveva: ${u.non_creati.map(esc).join(', ')}` : ''}.
+    ${u.avvisi.length ? `<div class="warnline" role="alert">Da controllare:<ul>${u.avvisi.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>` : ''}</div>`;
+}
+const righeUnione = u => (u ? [`Dal lab di partenza: righe conservate in ${Object.keys(u.conservate).length} file, ${u.copiati.length} file portati così come sono.`].concat(u.avvisi.map(t => 'Da controllare: ' + t)) : []);
+
 function aggiornaTutto() {
   const tutti = new Set([...E.bozza.dispositivi, ...E.bozza.lan, ...E.bozza.collegamenti, ...E.bozza.zone].map(x => x.id));
   E.sel = new Set([...E.sel].filter(id => tutti.has(id)));
   if (E.attesa && !tutti.has(E.attesa)) E.attesa = null;
   disegna();
   pannello();
+  htmlOrigine();
 }
 
 function disegna() {
@@ -493,6 +571,7 @@ function disegnaAnteprima() {
     ? `<div class="conflitto" role="alert"><b>Il lab non si può ancora creare: ${errori.length} ${errori.length === 1 ? 'errore' : 'errori'}.</b>
        <ul class="ed-problemi">${errori.map(p => { const el = elementoDelCampo(E.conv, p.campo); return `<li><button type="button" class="ghost small ed-vai"${el ? ` data-vai="${esc(el.id)}"` : ' disabled'}>✘ <code>${esc(p.campo)}</code> ${esc(p.messaggio)}</button></li>`; }).join('')}</ul></div>`
     : '';
+  if (r.unione) $('#edAntErrori').innerHTML += htmlUnione(r.unione);
   const file = r.file || [];
   $('#edAntConta').textContent = file.length ? `${file.length} file` : '';
   if (!file.some(f => f.file === E.fileAperto)) E.fileAperto = file.length ? file[0].file : null;
@@ -506,7 +585,7 @@ async function anteprima() {
   const b = $('#edAnteprimaBtn');
   b.disabled = true;
   try {
-    const r = await azione({azione: 'anteprima_lab', nome: (E.bozza.nome || '').trim() || 'anteprima', modello: converti(E.bozza).modello});
+    const r = await azione(Object.assign({azione: 'anteprima_lab', nome: (E.bozza.nome || '').trim() || 'anteprima', modello: converti(E.bozza).modello}, conOrigine()));
     E.anteprima = r;
     disegnaAnteprima();
     $('#edAnteprima').scrollIntoView({block: 'nearest'});
@@ -534,7 +613,7 @@ async function crea(sovrascrivi = false) {
   const b = $('#edCrea');
   b.disabled = true;
   let r;
-  try { r = await azione({azione: 'crea_lab', nome, modello: converti(E.bozza).modello, disegno: disegnoDellaBozza(), sovrascrivi}); }
+  try { r = await azione(Object.assign({azione: 'crea_lab', nome, modello: converti(E.bozza).modello, disegno: disegnoDellaBozza(), sovrascrivi}, conOrigine())); }
   catch (e) { avvisa('Creazione non riuscita: ' + e.message); b.disabled = false; return; }
   b.disabled = false;
   if (r.esiste) {
@@ -548,7 +627,7 @@ async function crea(sovrascrivi = false) {
     return;
   }
   outInizio('Crea laboratorio ' + nome);
-  outScrivi(['Creato: ' + r.percorso].concat(r.copia ? ['Il lab di prima è nella copia di sicurezza: ' + r.copia] : [], r.messaggi || []));
+  outScrivi(['Creato: ' + r.percorso].concat(r.copia ? ['Il lab di prima è nella copia di sicurezza: ' + r.copia] : [], r.messaggi || [], righeUnione(r.unione)));
   outFine(true, 'completato');
   // il disegno ora è il lab: l'editor riparte da un foglio vuoto (annullabile con Ctrl+Z)
   E.anteprima = null; disegnaAnteprima();
@@ -621,6 +700,11 @@ function prepara() {
   $('#edAnteprimaBtn').onclick = anteprima;
   $('#edCrea').onclick = () => crea(false);
   $('#edNuova').onclick = nuovaBozzaVuota;
+  $('#edDaLab').onclick = () => { const s = $('#edDaLabSez'); s.hidden = !s.hidden; $('#edDaLab').setAttribute('aria-expanded', String(!s.hidden)); if (!s.hidden) elencoLab(); };
+  $('#edDaLabCarica').onclick = caricaDaLab;
+  $('#edDaLabCartella').addEventListener('input', () => { if ($('#edDaLabCartella').value.trim()) $('#edDaLabScelta').value = ''; });
+  $('#edDaLabScelta').addEventListener('change', () => { if ($('#edDaLabScelta').value) $('#edDaLabCartella').value = ''; });
+  $('#edOrigine').addEventListener('click', e => { if (e.target.closest('[data-dimentica]')) dimenticaOrigine(); });
   $('#edEsporta').onclick = esporta;
   $('#edImporta').onclick = () => $('#edFile').click();
   $('#edFile').onchange = () => { const f = $('#edFile').files[0]; if (f) importa(f); $('#edFile').value = ''; };

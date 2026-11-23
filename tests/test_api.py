@@ -163,11 +163,37 @@ class TestOperazioni(ServerDiProva):
         with open(os.path.join(p, 'web1', 'var', 'www', 'html', 'index.html'), encoding='utf-8') as f:
             self.assertIn('<h1>Server web1</h1>', f.read())
 
+    def test_annulla_copie_e_ripristino(self):
+        p = self.lab('papillon_mio')
+        frr = os.path.join(p, 'r1', 'etc', 'frr', 'frr.conf')
+        with open(frr, encoding='utf-8') as f:
+            prima = f.read()
+        self.anteprima_e_applica('papillon_mio', 'costo_ospf', {'router': 'r1', 'interfaccia': 'eth1', 'costo': 50})
+        codice, r = self.azione(azione='opzioni', lab='papillon_mio', operazione='annulla')
+        self.assertEqual(['Costo OSPF di r1 eth1: 50'], [v['titolo'] for v in r['opzioni']])
+        self.anteprima_e_applica('papillon_mio', 'annulla', {})
+        with open(frr, encoding='utf-8') as f:
+            self.assertEqual(prima, f.read())
+        codice, r = self.azione(azione='anteprima', lab='papillon_mio', operazione='annulla', parametri={})
+        self.assertEqual(422, codice, r)                  # storia vuota
+        codice, r = self.azione(azione='copie', lab='papillon_mio')
+        self.assertEqual(200, codice, r)
+        self.assertEqual(2, len(r['copie']), 'una copia per ogni scrittura')
+        for cattivo in ('../papillon_mio', '', None, 'nonesiste'):
+            codice, e = self.azione(azione='ripristina', lab='papillon_mio', copia=cattivo)
+            self.assertEqual(400, codice, e)
+        codice, e = self.azione(azione='ripristina', lab='papillon_mio', copia=r['copie'][0]['nome'])
+        self.assertEqual(200, codice, e)
+        with open(frr, encoding='utf-8') as f:
+            self.assertIn('ospf cost 50', f.read(), 'la copia più recente è quella fatta prima di annullare')
+        codice, reg = self.richiesta('GET', '/api/registro')
+        self.assertTrue(any(v['operazione'].startswith('Ripristino di papillon_mio') for v in reg))
+
     def test_registro(self):
         self.lab('papillon_mio')
         self.anteprima_e_applica('papillon_mio', 'costo_ospf', {'router': 'r2', 'interfaccia': 'eth0', 'costo': 7})
         codice, reg = self.richiesta('GET', '/api/registro')
-        self.assertTrue(any('Costo OSPF di r2 eth0: 7' in v['operazione'] for v in reg))
+        self.assertTrue(any('Costo OSPF di r2 eth0: 100 -> 7' in v['operazione'] for v in reg))
 
 
 class TestConflitti(ServerDiProva):

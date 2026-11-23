@@ -131,6 +131,7 @@ def leggi_lab(gen, lab_path, stato=None):
     owner = indirizzi(dispositivi)
     for d in dispositivi.values():
         d['riepilogo'] = _riepilogo(gen, d, owner)
+        d['deleghe'] = _deleghe(stato['dispositivi'][d['nome']], owner)
     for d in dispositivi.values():
         _dettaglio_interfacce(d, dispositivi, lan, owner)
     for d in dispositivi.values():
@@ -185,10 +186,69 @@ def _riepilogo(gen, d, owner):
                 cosa = f"route-map {gen._descrivi_route_map(cfg, nome)}"
             else:
                 cosa = f"{t} {nome}"
-            policy.append({'direzione': direz, 'nome': nome, 'testo': cosa})
+            policy.append({'direzione': direz, 'nome': nome, 'testo': cosa, 'breve': _breve(cfg, t, nome)})
+        rel = next((m.group(1).lower() for t, nome, _ in cfg['link'].get(ip, [])
+                    for m in [_RE_RELAZIONE.match(nome)] if t == 'prefix-list' and m), None)
         r['neighbor'].append({'ip': ip, 'chi': owner.get(ip) or cfg['descr'].get(ip, '?'), 'asn': asn,
-                              'tipo': 'iBGP' if asn == cfg['asn'] else 'eBGP', 'policy': policy})
+                              'tipo': 'iBGP' if asn == cfg['asn'] else 'eBGP', 'policy': policy, 'relazione': rel})
+    # segni sul disegno (fase 5.6): chi manda la default e chi ridistribuisce BGP nell'IGP
+    r['default'] = ([f"BGP default-originate verso {owner.get(ip, ip)}" for ip in cfg['default_orig']]
+                    + [f"{x}" for x in cfg['default_igp']]
+                    + [f"RIP route {x}" for x in cfg['rip_route'] if x.startswith('0.0.0.0')]
+                    + [f"BGP network {x}" for x in cfg['bgp_networks'] if x.startswith('0.0.0.0/0')])
+    r['redistribute_bgp_igp'] = [g['protocollo'] for g in r['igp'] if any(x.split()[:1] == ['bgp'] for x in g['redistribute'])]
     return r
+
+
+# relazione Customer-Provider-Peer dal nome della prefix-list (provider_X_out del programma,
+# providerOut / peerIn delle soluzioni del corso), come operazioni.opzioni_policy_bgp
+_RE_RELAZIONE = re.compile(r'^(provider|customer|peer)', re.I)
+
+
+def _breve(cfg, tipo, nome):
+    """Sigla della policy per il disegno: 'LP 150', 'MED 20', 'filtro', 'solo' (prefix-list che
+    lascia passare solo alcune reti); '' se non cambia niente (es. permit any)."""
+    tag = []
+    if tipo == 'prefix-list':
+        voci = cfg['prefix_lists'].get(nome, [])
+        if any(a == 'deny' for a, _ in voci):
+            tag.append('filtro')
+        elif voci and not any(a == 'permit' and r == 'any' for a, r in voci):
+            tag.append('solo')
+    elif tipo == 'route-map':
+        for e in cfg['route_maps'].get(nome, []):
+            if e['azione'] == 'deny':
+                tag.append('filtro')
+            for st in e['set']:
+                m = re.match(r'(local-preference|metric|as-path prepend)\s+(.+)', st)
+                if m:
+                    tag.append({'local-preference': 'LP', 'metric': 'MED', 'as-path prepend': 'prepend'}[m.group(1)]
+                               + ' ' + m.group(2))
+            for mt in e['match']:
+                m = re.match(r'ip address (\S+)$', mt)
+                if m and any(a == 'deny' for a, _ in cfg['access_lists'].get(m.group(1), [])):
+                    tag.append('filtro')
+    else:
+        tag.append(tipo)
+    return ' '.join(dict.fromkeys(tag))
+
+
+def _deleghe(sd, owner):
+    """Deleghe scritte nelle zone master di un server DNS: [{zona, ns, ip, server}]."""
+    out = []
+    for z in ((sd.get('dns') or {}).get('zone') or []):
+        if z['tipo'] != 'master':
+            continue
+        nome_zona = z['zona'].rstrip('.') or '.'
+        glue = {r['nome'].rstrip('.'): r['valore'] for r in z['record'] if r['tipo'] == 'A'}
+        for r in z['record']:
+            figlia = r['nome'].rstrip('.')
+            if r['tipo'] != 'NS' or not figlia or figlia == nome_zona or figlia == '.':
+                continue
+            ns = r['valore'].rstrip('.')
+            ip = glue.get(ns)
+            out.append({'zona': figlia, 'da': nome_zona, 'ns': ns, 'ip': ip, 'server': owner.get(ip or '')})
+    return out
 
 
 def _rete(testo):
