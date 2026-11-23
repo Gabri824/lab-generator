@@ -811,7 +811,8 @@ def imposta_auto_cost(base_path):
             _esegui_piano(base_path, operazioni.calcola_auto_cost(stato, et, togli=True))
         return
     print(f"Aggiungo 'auto-cost reference-bandwidth 100' a {len(rs)} router di {et}: {', '.join(rs)}.")
-    print("Effetto: costo predefinito di ogni interfaccia = 100 / 10 Mbit = 10 (oggi è 10000).")
+    print("Effetto: tutti i router del gruppo calcolano il costo predefinito allo stesso modo (100 Mbit diviso la")
+    print("velocità del link; misurato con Kathará: 1 invece di 10). Controlla con show ip ospf interface.")
     print("I costi che hai scritto tu (Opzioni 1) non cambiano.")
     _esegui_piano(base_path, operazioni.calcola_auto_cost(stato, et))
 

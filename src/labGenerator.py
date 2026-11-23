@@ -159,8 +159,15 @@ def main():
             return
         if mode == '4':
             print_menu('Cosa vuoi provare?', ['Ping: comando da incollare sulle macchine del lab',
-                                              'Pagine web e apache2 (links dal client)'], [('0', 'Indietro')])
+                                              'Pagine web e apache2 (links dal client)',
+                                              'Risoluzione di un nome (catena DNS, dig dal client)'], [('0', 'Indietro')])
             scelta = input_non_vuoto('Scelta: ').strip()
+            if scelta == '3':
+                target = scegli_lab(base)
+                if target:
+                    from gui.terminale_web import testa_risoluzione
+                    testa_risoluzione(target)
+                continue
             if scelta == '2':
                 target = scegli_lab(base)
                 if target:

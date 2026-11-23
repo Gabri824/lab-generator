@@ -103,7 +103,7 @@
  ],
  "dati.leggi_lab": {
   "avvisi_config": [
-   "AS40: costi OSPF espliciti (r4 eth1 100), ma in kathara/frr il costo predefinito delle altre interfacce è 10000, non 10: il costo indicato renderà quel link il più conveniente invece del più caro. Se il testo chiede percorsi che dipendono da questo costo -> Opzioni 10 su AS40 (verifica con la GUI: show ip ospf interface / Verifica percorso)."
+   "AS40: costi OSPF espliciti (r4 eth1 100) senza auto-cost su r4, r5, r6, r7: il costo predefinito delle altre interfacce dipende dalla velocità che FRR legge sul link (misurato con Kathará: 10 senza auto-cost, 1 con 'auto-cost reference-bandwidth 100'), quindi il costo indicato può rendere quel link più o meno conveniente di quanto chiede il testo. Se il testo chiede percorsi che dipendono da questo costo -> Opzioni 10 su AS40, poi controlla i costi veri con show ip ospf interface (pannello del router) e Verifica percorso."
   ],
   "avvisi_topologia": [],
   "dispositivi": [

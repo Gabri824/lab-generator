@@ -94,7 +94,7 @@
  "dati.leggi_lab": {
   "avvisi_config": [
    "AS200: reti interne non annunciate in BGP (1.1.0.0/24, 1.2.0.0/24, 1.3.0.0/24, 1.4.0.0/24). Gli altri AS non le raggiungono -> Opzioni 6 su as200r2, as200r3, as200r4 (es. 1.0.0.0/8), a meno che il testo dica che non devono essere visibili.",
-   "AS200: costi OSPF espliciti (as200r1 eth2 90), ma in kathara/frr il costo predefinito delle altre interfacce è 10000, non 10: il costo indicato renderà quel link il più conveniente invece del più caro. Se il testo chiede percorsi che dipendono da questo costo -> Opzioni 10 su AS200 (verifica con la GUI: show ip ospf interface / Verifica percorso)."
+   "AS200: costi OSPF espliciti (as200r1 eth2 90) senza auto-cost su as200r1, as200r2, as200r3, as200r4: il costo predefinito delle altre interfacce dipende dalla velocità che FRR legge sul link (misurato con Kathará: 10 senza auto-cost, 1 con 'auto-cost reference-bandwidth 100'), quindi il costo indicato può rendere quel link più o meno conveniente di quanto chiede il testo. Se il testo chiede percorsi che dipendono da questo costo -> Opzioni 10 su AS200, poi controlla i costi veri con show ip ospf interface (pannello del router) e Verifica percorso."
   ],
   "avvisi_topologia": [],
   "dispositivi": [

@@ -587,8 +587,39 @@ def percorso(kathara, lab_path, lab, src, ip, lav):
         hop.append({'n': int(m.group(1)), 'ip': h_ip, 'dev': dev, 'lan': lan})
     arrivato = bool(hop) and hop[-1]['ip'] == ip
     lav.risultato = {'sorgente': src, 'destinazione': ip, 'dev_destinazione': owner.get(ip),
-                     'hop': hop, 'arrivato': arrivato}
+                     'hop': hop, 'arrivato': arrivato, 'costi_ospf': costi_ospf(kathara, lab_path, disp, src, hop)}
     return rc
+
+
+def _costi_interfacce(testo):
+    """{interfaccia: costo} da 'show ip ospf interface json' (FRR: {'interfaces': {...}} o {...})."""
+    j = _json_o_none(testo) or {}
+    tutte = j.get('interfaces', j) if isinstance(j, dict) else {}
+    return {n: v.get('cost') for n, v in tutte.items() if isinstance(v, dict) and v.get('cost') is not None}
+
+
+def costi_ospf(kathara, lab_path, disp, src, hop):
+    """Costo OSPF dell'interfaccia da cui ogni router OSPF del percorso fa uscire i pacchetti (fase
+    6): [{dev, iface, lan, costo}]. Serve a capire perché OSPF ha scelto una strada."""
+    passi, prec = [], src
+    for h in hop:
+        if prec in disp and h.get('lan'):
+            it = next((i for i in disp[prec]['interfacce'] if i['lan'] == h['lan']), None)
+            if it and 'ospfd' in disp[prec]['demoni']:
+                passi.append({'dev': prec, 'iface': it['dev'], 'lan': h['lan']})
+        if h.get('dev'):
+            prec = h['dev']
+    routers = sorted({x['dev'] for x in passi})
+    if not routers:
+        return []
+
+    def leggi(r):
+        _, out = esegui(kexec(kathara, lab_path, r, ['vtysh', '-c', 'show ip ospf interface json']), timeout=60)
+        return _costi_interfacce(out)
+    costi = _parallelo(leggi, routers)
+    for x in passi:
+        x['costo'] = costi.get(x['dev'], {}).get(x['iface'])
+    return passi
 
 
 def ping(kathara, lab_path, lab, src, ip, origine, lav):
@@ -1104,4 +1135,30 @@ def verifica_web(kathara, lab_path, stato, client, lav):
     lav.risultato = {'client': client, 'server': [dict(x, attivo=attivi.get(x['nome'])) for x in server], 'pagine': pagine}
     ko = sum(p['esito'] != 'ok' for p in pagine) + sum(attivi.get(x['nome']) is not True for x in server)
     lav.scrivi(f"Fatto: {ko} {'problema' if ko == 1 else 'problemi'}." if ko else 'Fatto: tutte le pagine arrivano.')
+    return 0
+
+
+def risoluzione(kathara, lab_path, stato, client, nome, lav):
+    """Fase 6, "Risoluzione di un nome": la catena dai file (core/risoluzione.py) e, sul lab acceso,
+    dig dal client e una domanda non ricorsiva a ogni server della catena, con la spiegazione."""
+    from core import risoluzione as ris
+    r = ris.controlla_nome(stato, client, nome)
+    lav.scrivi(f"Dai file ({client} -> {r['nome']}):")
+    for p in r['passi']:
+        lav.scrivi(('  ok   ' if p['ok'] else '  ??   ' if p['ok'] is None else '  NO   ') + p['testo']
+                   + (f"  -> {p['rimedio']}" if p['rimedio'] else ''))
+    prove = []
+    if kathara:
+        cmds = ris.comandi_dig(r['nome'], r['catena_ip'])
+        chi = [None] + [f"{s} ({ip})" for s, ip in zip(r['catena'], r['catena_ip'])]
+        for c, x in zip(cmds, chi):
+            rc, out = esegui(kexec(kathara, lab_path, client, c), timeout=30)
+            esito, spiegazione = ris.spiega_dig(out, r['nome'], x)
+            lav.scrivi(f"{' '.join(c)}: {esito} - {spiegazione}")
+            prove.append({'comando': ' '.join(c), 'chi': x, 'esito': esito, 'spiegazione': spiegazione, 'uscita': out[-1500:]})
+            if suggerimento(out):
+                lav.scrivi(suggerimento(out))
+                break
+    r['dig'] = prove
+    lav.risultato = r
     return 0

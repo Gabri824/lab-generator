@@ -6,7 +6,7 @@ import { interfacce } from './interfacce.js';
 import { registro } from './registro.js';
 import { riepilogo } from './riepilogo.js';
 import { apriEditor } from './editor/editor.js';
-import { attendiConvergenza, controllaSpenti, lanGuasto, origini, preparaWeb } from './test.js';
+import { attendiConvergenza, controllaSpenti, lanGuasto, origini, preparaRisoluzione, preparaWeb } from './test.js';
 import { aggiornaStoria, esciModifica } from './modifica.js';
 import './modifica_lab.js';
 import { colori, grafo, varianti } from './disposizione.js';
@@ -77,7 +77,7 @@ export async function apriLab(nome, mantieni) {
     $('#retiList').innerHTML = [...new Set(lab.lan.map(l => l.subnet).concat(lab.dispositivi.flatMap(d => (d.riepilogo || {}).bgp_networks || [])))]
       .filter(Boolean).map(r => `<option value="${esc(r)}"></option>`).join('');
     if (cambiato) { $('#rRotta').innerHTML = $('#rTabelle').innerHTML = $('#rWeb').innerHTML = ''; S.reali = null; }
-    preparaWeb();
+    preparaWeb(); preparaRisoluzione();
     interfacce(); avvisoArchivio();
     if (!$('#aNome').value || cambiato) $('#aNome').value = nome;
     if (cambiato) S.storia = [];

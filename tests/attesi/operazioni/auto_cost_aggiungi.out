@@ -5,7 +5,8 @@ Router OSPF del lab (per AS):
 
 Su quale AS? (numero, invio = annulla): 1
 Aggiungo 'auto-cost reference-bandwidth 100' a 4 router di AS40: r4, r5, r6, r7.
-Effetto: costo predefinito di ogni interfaccia = 100 / 10 Mbit = 10 (oggi è 10000).
+Effetto: tutti i router del gruppo calcolano il costo predefinito allo stesso modo (100 Mbit diviso la
+velocità del link; misurato con Kathará: 1 invece di 10). Controlla con show ip ospf interface.
 I costi che hai scritto tu (Opzioni 1) non cambiano.
 
 --- Aggiungi auto-cost reference-bandwidth 100 su AS40: anteprima (4 file) ---
@@ -20,8 +21,8 @@ I costi che hai scritto tu (Opzioni 1) non cambiano.
 
 Confermi le modifiche? (s/N): s
 ✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/hourglass_test/AAAAMMGG-HHMMSS
-   ✔ risolto: AS40: costi OSPF espliciti (r4 eth1 100), ma in kathara/frr il costo predefinito delle altre interfacce è 10000, non 10: il costo indicato renderà quel link il più conveniente invece del più caro. Se il testo chiede percorsi che dipendono da questo costo -> Opzioni 10 su AS40 (verifica con la GUI: show ip ospf interface / Verifica percorso).
+   ✔ risolto: AS40: costi OSPF espliciti (r4 eth1 100) senza auto-cost su r4, r5, r6, r7: il costo predefinito delle altre interfacce dipende dalla velocità che FRR legge sul link (misurato con Kathará: 10 senza auto-cost, 1 con 'auto-cost reference-bandwidth 100'), quindi il costo indicato può rendere quel link più o meno conveniente di quanto chiede il testo. Se il testo chiede percorsi che dipendono da questo costo -> Opzioni 10 su AS40, poi controlla i costi veri con show ip ospf interface (pannello del router) e Verifica percorso.
    Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
-✅ Fatto. Controlla con la GUI (show ip ospf interface: 'Cost: 10') e con Test -> Verifica percorso.
+✅ Fatto. Controlla con la GUI (show ip ospf interface: il costo di ogni interfaccia) e con Test -> Verifica percorso.
 
 [copie di sicurezza create: 1]

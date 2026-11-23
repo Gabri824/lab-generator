@@ -195,6 +195,10 @@ export function htmlPercorso(p, titolo, c) {
   else if (!p.arrivato && spenti.length) h += `<div class="warnline small" style="margin:6px 0">C'è un link spento (${esc(spenti.join(', '))}): se l'hai appena spento attendi la convergenza e riprova; se resta così, non c'è un percorso di riserva.</div>`;
   if (c && !c.errore && !p.arrivato) h += `<div class="small muted">Il pacchetto non arriva: il confronto con l'atteso riguarda solo il tratto percorso.</div>`;
   h += htmlConfronto(c);
+  // costi OSPF delle interfacce di uscita (fase 6): perché OSPF ha scelto questa strada
+  const co = (p.costi_ospf || []).filter(x => x.costo != null);
+  if (co.length) h += `<div class="small" style="margin:6px 0"><b>Costi OSPF sul percorso</b> (interfaccia di uscita): ${co.map(x => `${esc(x.dev)} ${esc(x.iface)} (LAN ${esc(x.lan)}) <b>${esc(x.costo)}</b>`).join(' · ')}
+    — somma ${co.reduce((t, x) => t + Number(x.costo), 0)}.${c && !c.ok && !c.errore ? ' Dentro un AS OSPF sceglie la somma dei costi più bassa: confronta con quella della strada attesa (show ip ospf interface sui router di quella strada).' : ''}</div>`;
   h += `<details${c ? '' : ' open'}><summary class="small">Hop</summary><div class="hop muted small"><b>S</b><span>${esc(p.sorgente)}</span></div>`;
   h += p.hop.map(x => `<div class="hop small"><b>${x.n}</b><code>${esc(x.ip)}</code><span>${esc(x.dev || (x.ip === '*' ? 'nessuna risposta' : 'fuori dal lab'))}</span><span class="muted">${x.lan ? 'LAN ' + esc(x.lan) : ''}</span></div>`).join('');
   return h + '</details>';
@@ -339,3 +343,29 @@ export function mostraTabelle(r) {
     : '<div class="okline" style="margin-top:8px">✔ Ogni router ha una rotta verso tutte le reti del lab.</div>';
   $('#rTabelle').innerHTML = h;
 }
+
+// ---------- risoluzione di un nome (fase 6) ----------
+export function preparaRisoluzione() {
+  const L = S.lab; if (!L) return;
+  const clienti = L.dispositivi.filter(d => d.tipo !== 'router' || (d.nameserver || []).length);
+  const prima = clienti.find(d => d.tipo === 'host' && (d.nameserver || []).length) || clienti[0];
+  $('#dnSrc').innerHTML = clienti.map(d => `<option${prima && d.nome === prima.nome ? ' selected' : ''}>${esc(d.nome)}</option>`).join('');
+  const nomi = new Set(((L.web || {}).bersagli || []).filter(x => x.tipo === 'nome').map(x => x.indirizzo));
+  $('#nomiList').innerHTML = [...nomi].map(n => `<option value="${esc(n)}">`).join('');
+}
+export async function risolvi(dev, nome, bottone) {
+  const r = await esegui({azione: 'risoluzione', lab: S.nome, dev, nome}, `Risoluzione di ${nome} da ${dev}`, bottone);
+  if (!r || !r.risultato) return null;
+  const x = r.risultato, icona = ok => (ok ? '✔' : ok === false ? '✘' : '?');
+  let h = `<div class="${x.ok ? 'okline' : x.ok === false ? 'koline' : 'warnline'}" style="margin-top:8px"><b>Dai file: ${x.ok ? `${esc(x.nome)} → ${esc(x.ip)}` : x.ok === false ? 'la catena si interrompe' : 'non controllabile fino in fondo'}</b>
+    ${x.catena.length ? `<span class="small">(${x.catena.map(esc).join(' → ')})</span>` : ''}</div>
+    <ol class="small" style="margin:6px 0">${x.passi.map(p => `<li>${icona(p.ok)} ${esc(p.testo)}${p.rimedio ? `<div class="warnline">${esc(p.rimedio)}</div>` : ''}</li>`).join('')}</ol>`;
+  if (x.dig.length) h += `<div class="small"><b>Lab acceso</b>:<ul style="margin:4px 0">${x.dig.map(d => `<li><code>${esc(d.comando)}</code>: <span class="${d.esito === 'ok' || d.esito === 'rinvio' ? 'okline' : 'koline'}">${esc(d.esito)}</span> — ${esc(d.spiegazione)}</li>`).join('')}</ul></div>`;
+  else h += '<div class="small muted">Lab spento: controllati solo i file. Avvialo per provare anche con dig.</div>';
+  $('#rRisolvi').innerHTML = h;
+  return x;
+}
+$('#bRisolvi').onclick = e => {
+  const nome = $('#dnNome').value.trim(); if (!nome) { $('#dnNome').focus(); return; }
+  risolvi($('#dnSrc').value, nome, e.target);
+};

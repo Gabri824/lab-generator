@@ -192,6 +192,20 @@ def azione(st, dati_rich):
     if tipo == 'percorso_voluto':
         return _percorso_voluto(st, nome_lab, lab_path, dati_rich)
 
+    if tipo == 'risoluzione':
+        # dai file sempre (anche senza Kathará); dig solo con il lab acceso
+        lab = st.leggi_lab(nome_lab)
+        dev = _dispositivo(lab, dati_rich.get('dev'))['nome']
+        nome = str(dati_rich.get('nome') or '').strip()
+        if not re.fullmatch(r'[A-Za-z0-9_.-]{1,253}', nome):
+            raise Errore(f"Nome non valido: {nome or '(vuoto)'} (es. web.roma3.it)")
+        stato = st.gen.leggi_stato(lab_path)
+        acceso = bool(k) and bool(kathara.avvio_lab(st.base, nome_lab))
+        comando = kathara.testo_exec(lab_path, dev, ['dig', nome]) if acceso else 'nessun comando (lab spento): solo i file'
+        lid = st.lavori.avvia(f"risoluzione di {nome} da {dev}", comando,
+                              lambda lav: kathara.risoluzione(k if acceso else None, lab_path, stato, dev, nome, lav))
+        return {'lavoro': lid}
+
     st.serve_kathara()
     lab = st.leggi_lab(nome_lab)
 

@@ -90,6 +90,9 @@ node tests/strumenti/prova_modifica.mjs --url http://127.0.0.1:8791/ --lab papil
       "Dal lab di partenza"; Crea con un altro nome: policy e righe in più conservate, lab di
       partenza non toccato; cartella non valida e data center spiegati; "Resolver solo di questo
       dispositivo"; "OSPF: no" sul router RIP di confine.
+- [ ] Fase 6: card "Risoluzione di un nome" (dai file a lab spento, con l'anello che manca e il
+      rimedio; a lab acceso anche dig su ogni server); costi OSPF nella Verifica percorso; dopo
+      "Applica" il pulsante della prova adatta.
 
 ## Riepilogo, Interfacce, Test
 

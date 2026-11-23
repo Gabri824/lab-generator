@@ -211,6 +211,19 @@
             <div id="rPercorso"></div>
           </div>
           <div class="card">
+            <h2>Risoluzione di un nome</h2>
+            <p class="muted small">Segue la catena del DNS da un dispositivo: resolver, ricorsione permessa, db.root, deleghe con il glue,
+              record A. Dai file anche a lab spento (dice il primo anello che manca e come sistemarlo); a lab acceso anche <code>dig</code>
+              dal dispositivo e una domanda a ogni server della catena.</p>
+            <div class="riga">
+              <label class="campo"><span>Da</span><select id="dnSrc"></select></label>
+              <label class="campo"><span>Nome</span><input id="dnNome" list="nomiList" placeholder="es. web.roma3.it" size="22" autocomplete="off" spellcheck="false"></label>
+              <button id="bRisolvi" type="button">Controlla</button>
+            </div>
+            <datalist id="nomiList"></datalist>
+            <div id="rRisolvi"></div>
+          </div>
+          <div class="card">
             <h2>Guasto di un link</h2>
             <p class="muted small">Spegne un link (<code>ip link set ethX down</code> su tutti i dispositivi della LAN) per vedere il percorso di riserva:
               "se il link X si guasta, il traffico deve passare per…". Vale solo a lab acceso, i file non cambiano; "Riaccendi" (o un riavvio del lab) rimette tutto com'era.</p>

@@ -194,9 +194,9 @@ def calcola_auto_cost(stato, etichetta, togli=False):
             if not togli:
                 insert_lines_into_protocol_block(_frr(stato, r), proto='ospf', lines=['auto-cost reference-bandwidth 100'])
         if togli:
-            print(f"✅ Tolto da {', '.join(rs)}: costo predefinito di nuovo 10000.")
+            print(f"✅ Tolto da {', '.join(rs)}: il costo predefinito torna quello senza auto-cost (misurato con Kathará: 10).")
         else:
-            print("✅ Fatto. Controlla con la GUI (show ip ospf interface: 'Cost: 10') e con Test -> Verifica percorso.")
+            print("✅ Fatto. Controlla con la GUI (show ip ospf interface: il costo di ogni interfaccia) e con Test -> Verifica percorso.")
     titolo = f"{'Togli' if togli else 'Aggiungi'} auto-cost reference-bandwidth 100 su {etichetta}"
     return _piano(titolo, fs, out)
 

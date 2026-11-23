@@ -869,10 +869,12 @@ def controlli_configurazione(lab_path, stato=None):
         senza = [r for r in rs if not cfgs[r]['auto_cost']]
         if costi and senza:
             avvisi.append(
-                f"{et}: costi OSPF espliciti ({', '.join(costi)}), ma in kathara/frr il costo predefinito "
-                f"delle altre interfacce è 10000, non 10: il costo indicato renderà quel link il più "
-                f"conveniente invece del più caro. Se il testo chiede percorsi che dipendono da questo "
-                f"costo -> Opzioni 10 su {et} (verifica con la GUI: show ip ospf interface / Verifica percorso)."
+                f"{et}: costi OSPF espliciti ({', '.join(costi)}) senza auto-cost su {', '.join(senza)}: il costo "
+                f"predefinito delle altre interfacce dipende dalla velocità che FRR legge sul link (misurato "
+                f"con Kathará: 10 senza auto-cost, 1 con 'auto-cost reference-bandwidth 100'), quindi il costo "
+                f"indicato può rendere quel link più o meno conveniente di quanto chiede il testo. Se il testo "
+                f"chiede percorsi che dipendono da questo costo -> Opzioni 10 su {et}, poi controlla i costi veri "
+                f"con show ip ospf interface (pannello del router) e Verifica percorso."
             )
 
     # 7. pc, www e dns

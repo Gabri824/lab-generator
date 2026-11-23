@@ -6,7 +6,7 @@ import { $, azione, esc, mem, S } from './comune.js';
 import { htmlAnteprima, htmlConflitto } from './componenti/diff.js';
 import { creaPannello } from './componenti/proprieta.js';
 import { dispositivo, lato } from './dispositivo.js';
-import { apriLab } from './main.js';
+import { apriLab, scheda } from './main.js';
 import { gesti, ridisegna } from './topologia.js';
 
 const AIUTO = 'Modifica: clic su interfacce, LAN, scritte degli AS e dispositivi per le loro azioni · trascina per spostare la vista';
@@ -118,7 +118,7 @@ async function applica(bottone) {
       if (mem('pos:' + S.nome)) mem('pos:' + S.nome, S.pos);
     }
     S.op = null; S.sel = null;        // l'esito si legge nel pannello della modalità Modifica
-    S.esito = r.scritto ? {ok: true, titolo: r.titolo, file: r.file, copia: r.copia, messaggi: r.messaggi || [],
+    S.esito = r.scritto ? {ok: true, titolo: r.titolo, file: r.file, copia: r.copia, messaggi: r.messaggi || [], operazione: op.conf.operazione, par: op.par,
       nuovi: r.nuovi || [], risolti: r.risolti || [], annullato: op.conf.operazione === 'annulla'}
       : {avviso: r.vuoto || 'Nessuna modifica.'};
     await aggiornaStoria();
@@ -143,7 +143,31 @@ function htmlEsito(x) {
     <div class="small muted">File scritti: ${x.file.map(f => `<code>${esc(f)}</code>`).join(', ')}</div>
     ${x.messaggi.length ? `<div class="small">${x.messaggi.map(m => esc(m.replace(/^\s*(✅|❌|⚠️)\s*/u, ''))).join('<br>')}</div>` : ''}
     ${x.nuovi.length ? `<div class="warnline small">Avvisi nuovi: ${x.nuovi.map(esc).join('; ')}</div>` : ''}
-    ${x.risolti.length ? `<div class="okline small">Avvisi risolti: ${x.risolti.map(esc).join('; ')}</div>` : ''}</div>`;
+    ${x.risolti.length ? `<div class="okline small">Avvisi risolti: ${x.risolti.map(esc).join('; ')}</div>` : ''}
+    ${x.annullato ? '' : htmlTestSuggerito(x)}</div>`;
+}
+
+// ---------- test suggerito dopo la modifica (fase 6) ----------
+const TEST = {
+  percorso: ['policy', 'cpp', 'costo_ospf', 'togli_costo_ospf', 'auto_cost'],
+  sessioni: ['network_bgp', 'ibgp', 'default_originate', 'default_igp', 'loopback', 'redistribuzione', 'redistribuzione_route_map', 'aggiungi_protocollo', 'togli_protocollo', 'as'],
+  ping: ['gateway', 'ip_interfaccia', 'sposta_interfaccia', 'rinumera_lan', 'aggiungi_dispositivo', 'aggiungi_interfaccia', 'togli_interfaccia', 'togli_dispositivo'],
+  risoluzione: ['resolver', 'delega_dns'],
+};
+const NOME_TEST = {percorso: 'Verifica percorso', sessioni: 'Sessioni BGP e OSPF', ping: 'Raggiungibilità', risoluzione: 'Risoluzione di un nome'};
+export const testDopo = operazione => Object.keys(TEST).find(k => TEST[k].includes(operazione)) || null;
+function htmlTestSuggerito(x) {
+  const t = testDopo(x.operazione); if (!t) return '';
+  const acceso = (S.stato[S.nome] || []).length;
+  return `<div class="small" style="margin-top:6px">Prova adatta: <button type="button" class="ghost small" data-mod-azione="prova" data-test="${t}">${NOME_TEST[t]}</button>
+    <span class="muted">${acceso ? 'Il lab è acceso: le modifiche ai file valgono dopo averlo fermato e riavviato (lclean, lstart).' : 'Prima avvia il lab (lstart).'}${t === 'risoluzione' ? ' La risoluzione si controlla anche a lab spento, dai file.' : ''}</span></div>`;
+}
+function vaiAlTest(t) {
+  const x = S.esito || {}, par = x.par || {};
+  const card = {percorso: '#bPercorso', sessioni: '#bSessioni', ping: '#bPing', risoluzione: '#bRisolvi'}[t];
+  if (t === 'risoluzione' && par.dispositivo && [...$('#dnSrc').options].some(o => o.value === par.dispositivo)) $('#dnSrc').value = par.dispositivo;
+  scheda('test');
+  const b = $(card); if (b) { b.scrollIntoView({block: 'center'}); b.focus(); }
 }
 
 function disegnaCasa(el) {
@@ -258,4 +282,5 @@ $('#side').addEventListener('click', e => {
   else if (az === 'applica') applica(a);
   else if (az === 'copie') mostraCopie();
   else if (az === 'annulla') $('#bAnnulla').click();
+  else if (az === 'prova') vaiAlTest(a.dataset.test);
 });

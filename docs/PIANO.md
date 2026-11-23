@@ -1375,11 +1375,44 @@ cartella qualunque; resolver di un dispositivo nel modello, nell'editor e nell'X
 - 2026-11-23, terminale: MED dalle Opzioni 2 visto nella GUI (disegno e "Annulla modifica") e
   annullato dalle Opzioni 14: ok. **Fase 5 chiusa**, con il punto 8 della fase web.
 
+## Fase 6: completata (2026-11-23) — obiettivi della traccia e verifica
+
+Controllo degli esami prima di cominciare: nei costi OSPF (maracas, eye, hour-glass,
+twin-pan-balance, tennis, ...) i costi li dà la traccia e il percorso è da verificare, non da
+progettare; il DNS serve in tennis, crab, Shuriken, mirada, palabra (e patchwork). Decisioni
+dell'autore: niente proposta di costi OSPF (bastano Costo OSPF e Verifica percorso); risoluzione
+di un nome dai file e dal lab acceso, GUI e terminale; test suggerito dopo ogni modifica; la pagina
+`~guest` di tennis resta nella sezione 8 (la soluzione ufficiale non la prepara).
+
+- **Costi OSPF**: l'avviso sul costo predefinito non dice più "10000": dipende dalla velocità che
+  FRR legge sul link (misurato con Kathará: 10 senza auto-cost, 1 con `reference-bandwidth 100`),
+  con il rimando a `show ip ospf interface`; stessi messaggi corretti nell'auto-cost (Opzioni 10).
+  La Verifica percorso mostra il costo dell'interfaccia di uscita di ogni router OSPF del percorso
+  (`show ip ospf interface json`) e la somma; se il percorso è diverso dall'atteso, ricorda che
+  dentro un AS vince la somma più bassa.
+- **Risoluzione di un nome** (`core/risoluzione.py`): dai file segue resolver del client,
+  ricorsione permessa (`allow-recursion`, anche `0/0` e il default di bind), db.root del resolver,
+  deleghe con il glue fino al record A (CNAME seguiti) e dice il primo anello che manca con
+  l'operazione che lo sistema; a lab acceso `dig` dal client e `dig +norecurse @server` su ogni
+  server della catena, con la spiegazione (risposta, rinvio, inesistente, rifiutata, SERVFAIL, non
+  risponde). GUI: card nella scheda Test (anche a lab spento); terminale: menu 4, voce 3 (stesse
+  funzioni, `kathara.risoluzione`).
+- **Test suggerito**: dopo "Applica" l'esito propone la prova adatta (Verifica percorso, Sessioni,
+  Raggiungibilità, Risoluzione di un nome, già sul dispositivo) e ricorda di avviare o riavviare
+  il lab.
+- Verifiche: le soluzioni dei 6 esami con DNS danno "ok" con la catena giusta; `test_risoluzione`
+  (crab giusto, cinque anelli rotti apposta riconosciuti con il rimedio, CNAME, spiegazioni di dig,
+  GUI e terminale uguali); file attesi aggiornati (solo i messaggi del costo); Kathará su tennis:
+  catena e dig a lab acceso, nome inesistente, ricorsione rifiutata, costi OSPF sul percorso;
+  pilota `tests/strumenti/prova_fase6.mjs` e pilota della modalità Modifica.
+
+- Prova guidata dell'autore (2026-11-23, `tennis_test`: risoluzione a lab spento e acceso, nome
+  inesistente, test suggerito dopo il Resolver, costi OSPF nella Verifica percorso, terminale):
+  tutto ok.
+
 ### Prossimo passo
 
-Fase 6 (obiettivi della traccia e verifica), da spiegare prima di cominciare: il "percorso
-richiesto" è già in gran parte nella 5.5b (Percorso voluto); restano i costi OSPF dentro un AS, la
-risoluzione di un nome e il test suggerito dopo ogni operazione.
+Fase 7 (collaudo, rifinitura e rilascio), da spiegare prima di cominciare.
 
 ---
 
@@ -1396,7 +1429,6 @@ Cose trovate durante il lavoro e messe da parte di proposito. Non bloccano le fa
 | Riga di soli spazi prima di `redistribute bgp route-map eBGP` | `operazioni.calcola_redistribuzione_route_map` | Viene da `insert_lines_into_protocol_block` con una riga vuota. |
 | Quando le Opzioni aggiornano l'XML lo riscrivono per intero | `persistence._aggiorna_xml` | Cambia, per esempio, `&quot;` in `"` dentro `lab_conf`. Da decidere nella fase 1.7 (XML fuori dal lab, forse rigenerato dai file). |
 | `--output` (o un'opzione scritta male) viene ignorato in silenzio | `main` in [labGenerator.py](../src/labGenerator.py) (`parse_known_args`) | Visto nella prova guidata della fase 3: la GUI partiva sulla cartella corrente senza lab. Proposta: `--output` come sinonimo di `--out` e un avviso per le opzioni non riconosciute. |
-| Il costo OSPF predefinito citato nei messaggi (10000 senza auto-cost, 10 con) non vale ovunque | `analyzer` (avviso 6), `operazioni.calcola_auto_cost` | Misurato con Kathará il 2026-11-22: con veth a 10 Gbit/s è 10 senza auto-cost e 1 con `reference-bandwidth 100`. Proposta: dire che dipende dalla macchina e rimandare a `show ip ospf interface`. |
 | Il Registro della GUI è solo in memoria e contiene solo le operazioni della GUI | `gui/kathara.Lavori` | Visto nella prova guidata della fase web: chiudendo la GUI si svuota, e le operazioni del terminale non ci sono. Idea: salvarlo per lab in `.labgenerator/<lab>/` e aggiungere le operazioni fatte dal terminale del generatore. Non urgente (decisione dell'autore). |
 | Zone, record e ricorsione di un lab già creato si cambiano solo con "File a righe" | GUI e terminale | Decisione della 5.4 (strada A): agli esami non servono, il wizard e l'editor li creano. Se servisse: aggiungi zona, aggiungi/togli record A e delega da qualunque zona, ricorsione, resolver per più dispositivi. |
 | Data center senza IPv4 sulle interfacce non si caricano | `persistence.modello_da_stato`, editor (5.7) | puzzle, ceci-n'est-pas-une-pipe, exapus, patchwork (spine/leaf): il modello descrive solo interfacce con un IP. L'editor lo spiega. Da valutare se servono. |

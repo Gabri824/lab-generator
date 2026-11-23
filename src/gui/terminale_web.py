@@ -70,3 +70,41 @@ def testa_pagine_web(lab_path, kathara=None):
             rc, out = kt.esegui(kt.kexec(kathara, lab_path, n, ['systemctl', 'start', 'apache2']), timeout=60)
             print(f"  {n}: " + ('apache2 avviato' if rc == 0 else 'avvio non riuscito\n' + out.strip()))
         print("Ricontrollo le pagine...")
+
+
+def testa_risoluzione(lab_path, kathara=None):
+    """Menu 4, "Risoluzione di un nome" (fase 6): la catena dai file e, se il lab è acceso e
+    l'utente risponde 's', dig dal dispositivo; stesse funzioni della GUI (kathara.risoluzione)."""
+    stato = leggi_stato(lab_path)
+    clienti = [n for n, d in stato['dispositivi'].items() if d.get('nameserver') or d.get('tipo') != 'router']
+    if not clienti:
+        print("Nessun dispositivo da cui risolvere un nome.")
+        return None
+    con_ns = [n for n in clienti if stato['dispositivi'][n].get('nameserver')]
+    proposto = next((n for n in con_ns if stato['dispositivi'][n].get('tipo') == 'host'), (con_ns or clienti)[0])
+    print_menu('Da quale dispositivo?', clienti)
+    while True:
+        s = input(f"Numero (Invio = {proposto}): ").strip()
+        if not s:
+            client = proposto
+            break
+        if s.isdigit() and 1 <= int(s) <= len(clienti):
+            client = clienti[int(s) - 1]
+            break
+        print(f"Scegli un numero da 1 a {len(clienti)}.")
+    nomi = [b['indirizzo'] for b in web.bersagli_web(stato) if b['tipo'] == 'nome']
+    nome = ''
+    while not nome:
+        nome = input(f"Nome da risolvere{' (Invio = ' + nomi[0] + ')' if nomi else ''}: ").strip() or (nomi[0] if nomi else '')
+    kathara = kathara or kt.trova_kathara()
+    acceso = False
+    if kathara:
+        lab = os.path.basename(os.path.normpath(lab_path))
+        acceso = client in set(kt.stato_lab(kathara, os.path.dirname(os.path.normpath(lab_path)), [lab]).get(lab, []))
+    usa = acceso and _si("Il lab è acceso: provo anche con dig dal dispositivo? (s/N): ")
+    lav = _Stampa()
+    print()
+    kt.risoluzione(kathara if usa else None, lab_path, stato, client, nome, lav)
+    if not usa:
+        print("  (solo i file" + ("" if acceso else ": il lab è spento") + ")")
+    return lav.risultato
