@@ -52,11 +52,15 @@ def main():
     parser.add_argument('--from-xml', help='Percorso file XML da importare per creare il lab')
     parser.add_argument('--from-json', help='Percorso file JSON da importare per creare il lab')
     parser.add_argument('--regen-xml', help='Percorso della directory del lab per rigenerare il file XML')
-    parser.add_argument('--out', help='Cartella in cui creare i lab (default: cartella corrente)')
+    parser.add_argument('--out', '--output', dest='out', help='Cartella in cui creare i lab (default: cartella corrente)')
     parser.add_argument('--force', action='store_true', help='Con --from-xml/--from-json: sovrascrive un lab già esistente')
     parser.add_argument('--gui', action='store_true', help='Apre la GUI nel browser (topologia, riepilogo, comandi Kathará, test)')
     parser.add_argument('--porta', type=int, default=8765, help='Porta della GUI su 127.0.0.1 (default 8765)')
-    args, _ = parser.parse_known_args()
+    args, ignote = parser.parse_known_args()
+    if ignote:
+        # prima venivano ignorate in silenzio (es. un --output scritto male faceva partire la GUI
+        # sulla cartella corrente): ora si dice quali, e si continua
+        print(f"⚠️ Opzioni non riconosciute, ignorate: {' '.join(ignote)} (python3 labGenerator.py --help)")
 
     base = os.path.abspath(os.path.expanduser(args.out)) if args.out else os.getcwd()
     os.makedirs(base, exist_ok=True)
@@ -66,6 +70,9 @@ def main():
         return
 
     if args.regen_xml:
+        if not os.path.isfile(os.path.join(args.regen_xml, 'lab.conf')):
+            print(f"❌ In {args.regen_xml} non c'è un lab.conf: non è un lab di Kathará.")
+            return
         out = rebuild_lab_metadata_and_export(args.regen_xml)
         if out:
             print(f"✅ XML rigenerato: {out}")
@@ -96,7 +103,7 @@ def main():
         print("  1) Crea nuovo Laboratorio")
         print("  2) Importa file XML/JSON")
         print("  3) Genera file XML")
-        print("  4) Testa Funzionamento (PING, pagine web e apache2)")
+        print("  4) Testa Funzionamento (PING, pagine web e apache2, nomi DNS)")
         print("  5) Opzioni Laboratorio")
         print("  6) Interfaccia grafica (browser)")
         print("  7) Crea archivio per la consegna")

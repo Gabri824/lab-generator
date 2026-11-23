@@ -460,20 +460,6 @@ def add_ibgp_loopback_neighbors(base_path, routers):
             _ensure_pair(n1, n2)
 
 
-def ensure_neighbor_exists(fpath, neigh_ip):
-    """Se non esiste una riga 'neighbor <ip> remote-as' nel file fpath, chiede ASN e la crea."""
-    content = _leggi_testo(fpath)
-    if content is None:
-        return False
-    neigh_ip_stripped = neigh_ip.split('/')[0] if '/' in neigh_ip else neigh_ip
-    if f"neighbor {neigh_ip_stripped} remote-as" in content:
-        return True
-    asn = input_asn(f"ASN del neighbor {neigh_ip_stripped} (necessario per creare il neighbor): ")
-    lines = [f"neighbor {neigh_ip_stripped} remote-as {asn}"]
-    insert_lines_into_protocol_block(fpath, proto='bgp', asn=None, lines=lines)
-    return True
-
-
 def _neighbor_presente(fpath, ip):
     return any(re.match(rf"\s*neighbor {re.escape(ip)} remote-as\b", l) for l in _leggi_righe(fpath))
 

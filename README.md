@@ -2,23 +2,24 @@
 # Kathará Lab Generator & Live Inspector
 
 Versione modificata del progetto originale di
-[sciro24](https://github.com/sciro24). Questa versione include controlli
-statici aggiuntivi, strumenti per modificare i laboratori senza
-rigenerarli e un'interfaccia web locale per ispezionare e testare i
-laboratori in esecuzione.
+[sciro24](https://github.com/sciro24). Questa versione aggiunge
+un'interfaccia web completa, che si usa al posto del terminale o insieme
+a lui, controlli statici e diagnostica dei file, modifica dei laboratori
+già creati con anteprima e annullamento, e test sui laboratori in
+esecuzione.
 
 Kathará Lab Generator permette di creare e gestire laboratori di rete
 per [Kathará](https://www.kathara.org), generando i file di
-configurazione necessari per router FRRouting, host Linux e server DNS e
-WWW. Il programma include anche alcuni controlli sulle configurazioni e
-strumenti per verificare il comportamento della rete quando i container
-sono avviati.
+configurazione per router FRRouting, host Linux e server DNS e WWW.
+Terminale e interfaccia web fanno le stesse operazioni con lo stesso
+motore: un laboratorio creato o modificato da una parte si apre e si
+modifica dall'altra, e i file scritti sono identici.
 
-Il programma può essere utilizzato senza una connessione a Internet. È
-disponibile per Linux e Windows e può essere eseguito da una chiavetta
-USB. Sui sistemi Linux è previsto anche un avvio alternativo per i
-computer in cui non si dispone dei permessi di `root` o la cartella
-`/tmp` non consente l'esecuzione dei binari.
+Il programma funziona senza connessione a Internet e usa solo la
+libreria standard di Python. È disponibile per Linux e Windows e può
+essere eseguito da una chiavetta USB, anche su computer in cui non si
+hanno i permessi di `root` o la cartella `/tmp` non consente di eseguire
+i programmi.
 
 ## Indice
 
@@ -35,41 +36,46 @@ computer in cui non si dispone dei permessi di `root` o la cartella
 
 ## Funzionalità principali
 
-Un laboratorio Kathará richiede la preparazione di diversi file, tra cui
-`lab.conf`, i file `.startup`, `daemons`, `frr.conf`, `named.conf` e le
-eventuali zone DNS. Anche una piccola incongruenza, per esempio un nome
-di dispositivo non valido o una policy BGP riferita a un oggetto
-inesistente, può causare problemi difficili da individuare.
+Un laboratorio Kathará richiede diversi file: `lab.conf`, i `.startup`,
+`daemons`, `frr.conf`, `named.conf` e le zone DNS. Anche una piccola
+incongruenza, per esempio un nome di dispositivo non valido o una policy
+BGP che punta a una route-map inesistente, può causare problemi difficili
+da trovare.
 
-Il programma offre due modalità di lavoro:
-
--   **Terminale:** una procedura guidata consente di creare il
-    laboratorio e configurare router, host e server. Dal menu delle
-    opzioni è possibile intervenire successivamente sulla
-    configurazione, per esempio aggiungendo policy BGP, sessioni iBGP,
-    costi OSPF o deleghe DNS. Le modifiche ai file esistenti possono
-    essere accompagnate da un confronto delle differenze e da una copia
-    di sicurezza.
--   **Interfaccia web locale:** permette di consultare la topologia,
-    controllare i file e confrontare la configurazione salvata con lo
-    stato dei container. Quando il laboratorio è avviato sono
-    disponibili anche test di connettività, controlli sulle sessioni di
-    routing, traceroute e simulazioni di guasto dei collegamenti.
+-   **Creare un laboratorio:** dal terminale con la procedura guidata,
+    oppure nell'interfaccia web disegnandolo (router, host, server, LAN,
+    riquadri AS, zone RIP e aree OSPF). Si può anche partire da un
+    laboratorio esistente, per esempio la soluzione di un esame, e
+    crearne uno nuovo senza perdere le righe già scritte.
+-   **Modificare un laboratorio già creato:** IP, LAN, dispositivi,
+    protocolli, costi OSPF, network e sessioni BGP, policy (local
+    preference, MED, prefix-list, access-list, Customer-Provider-Peer),
+    default route, ridistribuzione, loopback, resolver e deleghe DNS.
+    Ogni modifica mostra prima le righe che cambiano, fa una copia di
+    sicurezza e si può annullare, dal terminale o dalla GUI.
+-   **Percorso voluto:** si disegna sulla topologia il percorso chiesto
+    dalla traccia e il programma propone le policy BGP per ottenerlo.
+-   **Controlli e diagnostica:** avvisi sulle dimenticanze tipiche e
+    diagnostica di `frr.conf` (refusi, comandi nel blocco sbagliato, reti
+    scritte male, route-map e prefix-list non definite, demoni spenti),
+    con le correzioni proposte.
+-   **Test sul laboratorio acceso:** raggiungibilità, sessioni BGP e
+    OSPF, rotte, traceroute con percorso atteso e costi OSPF, guasto di
+    un link, pagine web dai client, risoluzione dei nomi DNS lungo tutta
+    la catena di server.
 
 ## Avvio
 
-Il programma può essere avviato tramite gli eseguibili precompilati,
-disponibili nella sezione *Releases* di GitHub, oppure direttamente dai
-sorgenti Python. Per quest'ultima modalità è necessario Python 3.8 o
-successivo. Non sono richieste librerie Python di terze parti.
+Il programma si avvia con gli eseguibili precompilati, nella sezione
+*Releases* di GitHub, oppure direttamente dai sorgenti Python (Python 3.8
+o successivo, nessuna libreria di terze parti).
 
 ### Linux
 
-Per utilizzare il programma da una chiavetta USB, è possibile eseguire
-lo script `avvia.sh`. È utile soprattutto sui computer dei laboratori
-universitari: filesystem come FAT32 ed exFAT non conservano i permessi
-di esecuzione e, in alcuni sistemi, `/tmp` è montata con l'opzione
-`noexec`.
+Da una chiavetta USB conviene usare lo script `avvia.sh`, pensato per i
+computer dei laboratori universitari: filesystem come FAT32 ed exFAT non
+conservano i permessi di esecuzione e, in alcuni sistemi, `/tmp` è
+montata con l'opzione `noexec`.
 
 ``` bash
 # Menu interattivo
@@ -81,15 +87,11 @@ bash /media/$USER/<NOME_CHIAVETTA>/avvia.sh --gui
 
 Lo script controlla che Docker e Kathará siano disponibili e segnala se
 l'utente non appartiene al gruppo `docker`. Copia poi il programma in
-`~/.labgenerator` e utilizza `~/labs` come directory di lavoro. Se
-l'eseguibile non può essere avviato, per esempio per un'incompatibilità
-con la versione di GLIBC o per le restrizioni su `/tmp`, prova a
-eseguire il programma tramite Python.
+`~/.labgenerator` e usa `~/labs` come cartella di lavoro. Se l'eseguibile
+non parte, per esempio per la versione di GLIBC o per le restrizioni su
+`/tmp`, prova ad avviare il programma con Python.
 
 #### Avvio manuale
-
-In alternativa, è possibile copiare l'eseguibile nella propria home e
-avviarlo da lì:
 
 ``` bash
 cp /percorso/labGenerator ~/
@@ -101,16 +103,15 @@ cd ~/labs
 ~/labGenerator --gui
 ```
 
-Se `/tmp` non consente l'esecuzione dei programmi e compare un errore
-come `failed to map segment`, si può indicare una directory temporanea
-diversa:
+Se `/tmp` non consente di eseguire programmi e compare un errore come
+`failed to map segment`, indica un'altra cartella temporanea:
 
 ``` bash
 mkdir -p ~/.lg-tmp
 TMPDIR=~/.lg-tmp ~/labGenerator
 ```
 
-È anche possibile avviare direttamente il sorgente:
+Dai sorgenti:
 
 ``` bash
 cd ~/labs
@@ -119,421 +120,354 @@ python3 /percorso/repo/src/labGenerator.py --gui
 
 ### Windows
 
-Aprire il Prompt dei comandi o PowerShell nella directory in cui si
-desidera lavorare e avviare l'eseguibile:
+Apri il Prompt dei comandi o PowerShell nella cartella in cui vuoi
+lavorare:
 
 ``` powershell
 C:\percorso\labGenerator.exe
 C:\percorso\labGenerator.exe --gui
 ```
 
-In alternativa, dai sorgenti Python:
+Dai sorgenti:
 
 ``` powershell
 python C:\percorso\repo\src\labGenerator.py --gui
 ```
 
 **Nota:** Windows Defender può segnalare come sospetti alcuni eseguibili
-creati con PyInstaller. Se succede, è possibile verificare il file e, se
-si ritiene attendibile, aggiungere un'eccezione per la cartella oppure
-avviare il programma dai sorgenti Python.
+creati con PyInstaller. In quel caso puoi verificare il file e, se lo
+ritieni attendibile, aggiungere un'eccezione, oppure avviare il programma
+dai sorgenti.
 
 ## Modalità terminale
 
-Avviando il programma senza l'opzione `--gui` viene mostrato il menu
-principale:
+Senza l'opzione `--gui` compare il menu principale:
 
 ``` text
   1) Crea nuovo Laboratorio
   2) Importa file XML/JSON
   3) Genera file XML
-  4) Testa Funzionamento (PING, pagine web e apache2)
+  4) Testa Funzionamento (PING, pagine web e apache2, nomi DNS)
   5) Opzioni Laboratorio
   6) Interfaccia grafica (browser)
+  7) Crea archivio per la consegna
   0) Esci
 ```
 
 ### Creazione di un laboratorio
 
-La voce **Crea nuovo Laboratorio** avvia una procedura guidata per
-inserire i dispositivi e le relative configurazioni. Durante
-l'inserimento sono disponibili due comandi:
+**Crea nuovo Laboratorio** avvia la procedura guidata. Durante
+l'inserimento:
 
 -   `<` torna alla domanda precedente;
 -   `<<` ricomincia la configurazione del dispositivo corrente.
 
-Prima di scrivere i file su disco, il programma mostra un riepilogo dei
-dati inseriti e chiede conferma.
+Prima di scrivere i file il programma mostra un riepilogo e chiede
+conferma. I tipi di dispositivo sono:
 
-La procedura gestisce questi tipi di dispositivi:
+-   **Router FRR (`kathara/frr`):** BGP, OSPF (anche con più aree e aree
+    stub), RIP e rotte statiche, anche insieme. Genera `daemons`,
+    `vtysh.conf`, `frr.conf` e lo `.startup`. Trova da solo i neighbor
+    eBGP sulle LAN condivise e non annuncia in BGP i collegamenti interni
+    all'AS.
+-   **Host (`kathara/base`):** una o più interfacce, con il gateway
+    controllato rispetto alle subnet.
+-   **Server WWW (`kathara/base`):** rete, pagina `index.html` di prova e
+    avvio di Apache2.
+-   **Server DNS (`kathara/base` e BIND9):** root (SOA, NS, deleghe dei
+    TLD con glue), server autoritativi (record `A`, `NS`, `CNAME`,
+    `DELEGATION`) e resolver ricorsivi (hint della radice,
+    `allow-recursion`, anche nella forma breve `0/0`). Alla fine si
+    sceglie il resolver del laboratorio, scritto in `/etc/resolv.conf`.
 
--   **Router FRR (`kathara/frr`):** supporta BGP, OSPF, RIP e routing
-    statico, anche in combinazione. Genera `daemons`, `vtysh.conf`,
-    `frr.conf` e il file `.startup`. Per i router collegati alla stessa
-    LAN individua automaticamente i neighbor eBGP. Inoltre, evita di
-    annunciare tramite BGP i collegamenti interni all'AS, che possono
-    essere gestiti dall'IGP.
--   **Host (`kathara/base`):** consente di configurare una o più
-    interfacce. Il gateway viene verificato rispetto alle subnet delle
-    interfacce configurate.
--   **Server WWW (`kathara/base`):** genera la configurazione di rete,
-    una pagina `index.html` di prova e l'avvio di Apache2.
--   **Server DNS (`kathara/base` e BIND9):** il primo server può essere
-    configurato come root DNS, con SOA, record NS, deleghe dei TLD e
-    glue record. Gli altri server possono essere configurati come
-    autoritativi, con record `A`, `NS`, `CNAME` e `DELEGATION`, oppure
-    come resolver ricorsivi con riferimento al root tramite record hint
-    e configurazione `allow-recursion`. Al termine è possibile scegliere
-    un DNS da assegnare agli altri host come resolver tramite
-    `/etc/resolv.conf`.
-
-Durante la creazione viene anche prodotto un file `<nome_lab>.xml`, che
-contiene i metadati necessari per reimportare il laboratorio. Il file è
-utile durante il lavoro, ma deve essere eliminato prima della consegna,
-se non richiesto dalla traccia.
+I metadati del laboratorio (XML) vanno in `.labgenerator/<lab>/`, accanto
+ai laboratori e fuori dalla cartella da consegnare.
 
 ### Opzioni Laboratorio
 
-La voce **Opzioni Laboratorio** permette di intervenire su un
-laboratorio già creato, senza doverlo generare nuovamente. Le modifiche
-vengono applicate ai file esistenti, cercando di preservare le
-configurazioni già presenti.
+**Opzioni Laboratorio** modifica un laboratorio già creato senza
+rigenerarlo: cambiano solo le righe interessate, il resto (policy e righe
+scritte a mano) resta com'è. Ogni modifica mostra le differenze, chiede
+conferma, fa una copia di sicurezza in `.backup_labgenerator/` e si può
+annullare (voce 14).
 
-  ---------------------------------------------------------------------------------------------
-  Voce                    Operazione              Descrizione
-  ----------------------- ----------------------- ---------------------------------------------
-  1                       Imposta costo OSPF      Aggiunge `ip ospf cost <N>` all'interfaccia
-                                                  selezionata.
+| Voce | Operazione | Descrizione |
+|---|---|---|
+| 1 | Imposta costo OSPF | Costo di un'interfaccia; se c'è già lo sostituisce, `0` lo toglie. |
+| 2 | Policy BGP | Prefix-list in ingresso o uscita, local preference (anche solo per alcune reti), MED, access-list, Customer-Provider-Peer (regole di Gao-Rexford), default-originate anche "solo la default". Invio senza valore annulla. |
+| 3 | Loopback | Indirizzo `/32` su `lo`, annunciato negli IGP attivi; con le loopback su più router dello stesso AS anche le sessioni iBGP fra loopback. |
+| 4 | Ridistribuzione BGP → IGP | Togli, rimetti o filtra (`redistribute bgp route-map eBGP`) la ridistribuzione in OSPF o RIP. |
+| 5 | Resolver DNS | `/etc/resolv.conf` di un dispositivo, proponendo i server DNS del laboratorio. |
+| 6 | Network BGP | Aggregato dell'AS, reti interne o `0.0.0.0/0`; propone di togliere le subnet già contenute nell'aggregato. |
+| 7 | Sessioni iBGP | Le sessioni mancanti fra i router BGP dello stesso AS (full mesh). |
+| 8 | Riepilogo | Controlli statici, configurazione di ogni router e diagnostica di `frr.conf`. |
+| 9 | Delega DNS sul root | Delega di un dominio di primo livello in `db.root`, con NS e glue. |
+| 10 | Costi OSPF predefiniti uguali | `auto-cost reference-bandwidth 100` su tutti i router OSPF di un AS (vedi [Problemi comuni](#costo-ospf-predefinito)). |
+| 11 | Modifica un dispositivo | IP (anche solo l'ultimo numero), LAN (anche rinumerata), gateway, AS, protocolli, rinomina, editor a righe dei file. |
+| 12 | Default route | BGP (`default-originate`), RIP e OSPF (`default-information originate`). |
+| 13 | Aggiungi o togli un dispositivo | Router, host, server web o DNS su una LAN esistente, con le stesse domande della procedura guidata. |
+| 14 | Annulla / copie di sicurezza | Annulla l'ultima modifica (anche fatta dalla GUI) o ripristina una copia di sicurezza. |
+| 15 | Diagnostica e correggi `frr.conf` | Problemi numerati con le correzioni (1a, 1b, ...): refusi, comandi fuori blocco, reti con bit host, route-map e prefix-list non definite, demoni spenti, avvio di FRR o Apache2 mancante. |
 
-  2                       Aggiungi policy BGP     Configura prefix-list in ingresso o in
-                                                  uscita, Local Preference, MED, Access-list e
-                                                  Route-map. Include anche le policy
-                                                  Customer-Provider-Peer basate sulle regole di
-                                                  Gao-Rexford e l'opzione Default-Originate,
-                                                  anche in modalità *solo default*. Premendo
-                                                  Invio senza inserire un valore si annulla il
-                                                  sottomenu corrente.
-
-  3                       Aggiungi loopback       Configura un indirizzo `/32` sull'interfaccia
-                                                  `lo` e lo annuncia negli IGP attivi, non in
-                                                  BGP. Se entrambi i router dispongono della
-                                                  loopback, può configurare le sessioni iBGP su
-                                                  questi indirizzi.
-
-  4                       Ridistribuzione BGP     Consente di attivare, disattivare o filtrare
-                          verso IGP               la ridistribuzione delle rotte BGP in OSPF o
-                                                  RIP tramite
-                                                  `redistribute bgp route-map eBGP`.
-
-  5                       Assegna resolver DNS    Scrive `/etc/resolv.conf` sul dispositivo
-                                                  selezionato, proponendo gli indirizzi dei
-                                                  server DNS presenti nel laboratorio.
-
-  6                       Aggiungi network BGP    Annuncia aggregati dell'AS, per esempio
-                                                  `100.0.0.0/8`, oppure `0.0.0.0/0`. Può
-                                                  proporre la rimozione delle subnet più
-                                                  specifiche già annunciate.
-
-  7                       Sessioni iBGP           Crea le sessioni iBGP mancanti tra i router
-                          (full-mesh)             dello stesso AS. L'indirizzo del peer viene
-                                                  ricavato dall'interfaccia raggiungibile
-                                                  tramite il percorso IGP interno; non è quindi
-                                                  necessario configurare `update-source`.
-
-  8                       Riepilogo               Esegue i controlli statici e mostra le
-                          configurazione          informazioni principali di ciascun
-                                                  dispositivo: AS, network, costi, neighbor e
-                                                  policy.
-
-  9                       Delega DNS sul root     Aggiunge al file `db.root` la delega di un
-                                                  dominio di primo livello, includendo record
-                                                  NS e glue A.
-
-  10                      Costi OSPF predefiniti  Imposta `auto-cost reference-bandwidth 100`
-                          a 10                    sui router OSPF dell'AS. Il motivo è spiegato
-                                                  nella sezione [Problemi comuni di Kathará e
-                                                  FRR](#problemi-comuni-di-kathará-e-frr).
-
-  11                      Modifica un dispositivo Permette di modificare IP, LAN, gateway, AS e
-                                                  protocolli. È possibile rinumerare una LAN
-                                                  aggiornando i dispositivi coinvolti e il file
-                                                  XML, spostare un'interfaccia su un'altra LAN
-                                                  oppure modificare direttamente il file
-                                                  tramite un editor a righe. L'editor segnala
-                                                  gli errori FRR e crea copie di sicurezza in
-                                                  `.backup_labgenerator/`.
-
-  12                      Default route           Gestisce le rotte predefinite per BGP
-                                                  (`default-originate`), RIP (`route 0.0.0.0/0`
-                                                  e `default-information originate`) e OSPF
-                                                  (`default-information originate [always]`).
-  ---------------------------------------------------------------------------------------------
+Il menu **4 Testa Funzionamento** ha tre voci: comando ping da incollare,
+pagine web e Apache2 dai client (con la spiegazione se non arrivano) e
+risoluzione di un nome lungo la catena DNS (dai file, e con `dig` se il
+laboratorio è acceso).
 
 ## Interfaccia web
 
-L'interfaccia web viene avviata con l'opzione `--gui` ed è
-raggiungibile, per impostazione predefinita, all'indirizzo
-`http://127.0.0.1:8765`. Il server è locale: l'interfaccia e le relative
-risorse HTML, CSS e JavaScript sono fornite dal programma, senza dover
-caricare librerie da Internet.
+L'interfaccia web si avvia con `--gui` (o con la voce 6) e risponde a
+`http://127.0.0.1:8765`. Il server è locale e tutta la pagina è servita
+dal programma, senza librerie da Internet.
 
-Dalla barra superiore si possono avviare o arrestare i laboratori
-tramite `lstart` e `lclean`, oltre a rileggere i file di configurazione.
-Prima dell'avvio, il programma controlla se il laboratorio è già in
-esecuzione e, in quel caso, propone un riavvio pulito.
+Dalla barra in alto si avvia o ferma il laboratorio (`lstart`, `lclean`),
+si rileggono i file e si annulla l'ultima modifica. Gli avvisi in alto
+segnalano il file XML dentro il laboratorio, i file cambiati dopo l'avvio
+dei container e i link lasciati spenti.
 
-Sono inoltre mostrati alcuni avvisi relativi allo stato del laboratorio:
+### Nuovo laboratorio (editor)
 
--   presenza del file XML dei metadati, che va rimosso prima della
-    consegna;
--   modifiche ai file effettuate dopo l'avvio dei container, per le
-    quali viene proposto il riavvio;
--   presenza di collegamenti lasciati spenti dopo una simulazione di
-    guasto, con la possibilità di riattivarli.
+Con **+ Nuovo lab** si disegna il laboratorio: router, host, server WWW e
+DNS, nodi LAN o link diretti, riquadri AS, zone RIP e aree OSPF (i
+protocolli si ricavano da cosa sta dentro quale riquadro). Nomi, subnet e
+IP sono proposti e modificabili; i controlli del motore compaiono mentre
+si disegna. **Anteprima file** mostra i file prima di scriverli, **Crea
+laboratorio** li scrive. La bozza resta nel browser e si esporta e
+importa in JSON.
 
-L'interfaccia è suddivisa in sei schede.
+**Parti da un lab esistente** carica un laboratorio, dall'elenco o da una
+cartella qualsiasi, come bozza. Il nuovo laboratorio va creato con un
+altro nome: le righe che l'editor non mostra (policy, costi, pagine web,
+righe in più degli startup) passano così come sono, e cambiano solo le
+righe toccate dalla bozza.
 
 ### 1. Topologia
 
-Mostra la rete attraverso un grafo interattivo. I router sono
-raggruppati per AS e sono indicati i protocolli IGP utilizzati, le
-subnet delle LAN e le interfacce dei dispositivi.
+Grafo della rete con i router raggruppati per AS, gli IGP, le subnet e
+le interfacce. I nodi si spostano, la disposizione si può cambiare e la
+topologia si esporta in SVG. La barra dei **livelli** accende e spegne:
+indirizzi, costi OSPF, sessioni BGP (iBGP e sessioni sbagliate in
+evidenza), policy (sigle come `LP 150 in`, `MED 20 out` e frecce
+Customer-Provider-Peer), segni sui router (`0/0`, ridistribuzione,
+loopback), DNS (deleghe e resolver) e avvisi.
 
-È possibile spostare i nodi, modificare la disposizione del grafo,
-spostare la vista e utilizzare lo zoom. Le posizioni dei nodi vengono
-conservate in `localStorage` e la topologia può essere esportata in SVG.
+Il clic su un dispositivo apre il pannello con i file, la configurazione
+in breve, i comandi `vtysh` e `ip`, ping, traceroute e il terminale
+(`kathara connect`).
 
-Selezionando un dispositivo si apre un pannello laterale dal quale è
-possibile consultare i file di configurazione (`startup`, `frr.conf`,
-`named.conf` e altri), eseguire comandi `vtysh` o `ip` e aprire un
-terminale tramite `kathara connect`.
+**Modifica** accende la modalità di modifica: un clic su
+un'interfaccia, una LAN, la scritta di un AS o un dispositivo apre le sue
+azioni (le stesse delle Opzioni del terminale). Ogni azione mostra
+l'anteprima delle righe, poi **Applica**; dopo, l'esito propone il test
+adatto. Ci sono anche:
+
+-   **Policy BGP** dal router o dal link fra due AS, con
+    Customer-Provider-Peer che propone subito il lato opposto;
+-   **Percorso voluto:** si clicca sorgente, link o AS e destinazione e
+    il programma propone local preference, MED o filtri, uno alla volta;
+    a laboratorio acceso propone solo dove serve;
+-   **Diagnostica** di ogni dispositivo, con un pulsante per ogni
+    correzione;
+-   **Annulla modifica** e le **copie di sicurezza** con il ripristino.
+
+Il programma propone dove può (IP liberi, nomi, valori come 150 e 20),
+ma il risultato non è una garanzia: va sempre verificato con i test.
 
 ### 2. Riepilogo e controlli
 
-Questa scheda raccoglie i controlli statici sulla topologia e sui file
-di configurazione. Verifica, tra le altre cose, la presenza di
-riferimenti FRR non validi e di alcune configurazioni mancanti.
-
-Quando il laboratorio è acceso è disponibile anche il controllo della
-sintassi di FRR tramite `vtysh --dryrun`. Il comando viene eseguito
-all'interno dei container e consente di individuare le righe di
-`frr.conf` che FRR non accetterebbe, senza modificare la configurazione
-del router in esecuzione.
+Controlli statici sulla topologia e sui file, controllo dei nomi in
+`frr.conf`, diagnostica di `frr.conf` di tutti i dispositivi e, a
+laboratorio acceso, sintassi FRR con `vtysh --dryrun` (senza modificare
+il router). Sotto, la configurazione di ogni router.
 
 ### 3. Interfacce
 
-La scheda mostra in forma tabellare le interfacce di tutti i
-dispositivi, con indirizzi IP, LAN di appartenenza, dispositivi
-collegati, IGP, costi OSPF, sessioni BGP e relative policy.
-
-Con **Confronta con il lab acceso** il programma interroga i container
-tramite `ip -j addr` e confronta gli indirizzi effettivamente assegnati
-con quelli indicati nei file. Viene controllato anche che le interfacce
-risultino nello stato `UP`.
+Le interfacce di tutti i dispositivi con IP, LAN, vicini, IGP, costi
+OSPF, sessioni BGP e policy. **Confronta con il lab acceso** confronta i
+file con gli indirizzi reali dei container (`ip -j addr`) e lo stato
+`UP`.
 
 ### 4. Test
 
-I test di questa scheda richiedono che il laboratorio sia avviato.
+Quasi tutti i test richiedono il laboratorio acceso.
 
--   **Raggiungibilità:** esegue ping paralleli tra i dispositivi e
-    costruisce una matrice con l'esito dei test (`OK` o `KO`).
--   **Sessioni BGP e OSPF:** controlla lo stato dei neighbor,
-    verificando che le sessioni BGP raggiungano `Established` e le
-    adiacenze OSPF `Full`. La funzione di attesa della convergenza
-    ripete il controllo ogni 15 secondi, fino a un massimo di 5 minuti.
--   **Ridistribuzione BGP verso IGP:** mostra lo stato della
-    ridistribuzione e può individuare il problema di FRR descritto nella
-    sezione successiva. Se necessario, permette di applicare nuovamente
-    il comando tramite il pulsante **Riapplica**.
--   **Rotta verso una rete:** mostra la rotta selezionata da FRR con
-    `show ip route <rete> json` e i percorsi BGP ricevuti con
-    `show ip bgp <rete> json`. Per i percorsi BGP vengono riportati
-    attributi come Local Preference, AS-Path e MED, insieme alle
-    informazioni sul motivo della scelta del *best path*.
--   **Tabelle di routing:** presenta una matrice
-    `Router × Reti del lab`, utile per individuare reti non
-    raggiungibili o presenti soltanto attraverso rotte aggregate.
--   **Ping diagnostico:** consente di specificare l'indirizzo IP
-    sorgente tramite `ping -I`. In caso di errore, il programma prova a
-    distinguere tra assenza di una rotta e mancata pubblicazione in BGP
-    della subnet sorgente, che può impedire il ritorno della risposta.
--   **Traceroute:** traduce gli indirizzi IP degli hop nei nomi dei
-    router e nelle lettere delle LAN, mostrando il percorso anche sulla
-    topologia. È possibile indicare un percorso atteso, verificare che
-    il traffico passi per determinati nodi oppure che segua una sequenza
-    esatta. Il controllo può essere esteso al percorso di ritorno e alla
-    ricerca di eventuali routing loop.
--   **Guasto di un link:** permette di spegnere e riaccendere
-    un'interfaccia con `ip link set ethX down/up`, così da verificare il
-    comportamento dei percorsi alternativi senza modificare i file di
-    configurazione.
+-   **Raggiungibilità:** ping fra tutti i dispositivi, in una matrice.
+-   **Sessioni BGP e OSPF:** `Established` e `Full`, con l'attesa della
+    convergenza (ogni 15 secondi, al massimo 5 minuti) e lo stato della
+    ridistribuzione, con **Riapplica** se serve.
+-   **Server web:** stato di Apache2 sui server e pagine aperte da un
+    client per IP e per nome, con la spiegazione se non arrivano (DNS,
+    Apache2 spento, gateway, router senza rotta).
+-   **Rotta verso una rete:** rotta scelta e percorsi BGP ricevuti, con
+    local preference, AS path, MED e motivo della scelta.
+-   **Tabelle di routing:** matrice router × reti del laboratorio.
+-   **Ping:** con l'indirizzo sorgente scelto e la spiegazione se fallisce.
+-   **Verifica percorso:** traceroute tradotto in router e LAN,
+    evidenziato sulla topologia, confrontato con il percorso atteso
+    (passa per, sequenza esatta, ritorno), con i costi OSPF delle
+    interfacce attraversate.
+-   **Risoluzione di un nome:** segue resolver, ricorsione, hint della
+    radice, deleghe con glue e record A, e dice il primo anello che
+    manca; funziona anche a laboratorio spento. A laboratorio acceso
+    interroga con `dig` ogni server della catena.
+-   **Guasto di un link:** spegne e riaccende un link con
+    `ip link set ethX down/up` per vedere il percorso di riserva.
 
 ### 5. Archivio
 
-Crea un archivio `.tar.gz` o `.zip` del laboratorio. Il file XML dei
-metadati e la directory `shared/` vuota vengono esclusi automaticamente.
-Prima della creazione viene anche controllato che il nome dell'archivio
-corrisponda a quello della cartella del laboratorio.
+Crea l'archivio `.tar.gz` o `.zip` del laboratorio, escludendo l'XML e i
+file nascosti, e controlla che il nome dell'archivio corrisponda alla
+cartella.
 
 ### 6. Registro
 
-Mostra lo storico dei comandi Kathará e `vtysh` eseguiti
-dall'interfaccia, con orario, comando e relativo esito.
+I comandi Kathará e `vtysh` eseguiti dall'interfaccia, con orario ed
+esito.
 
 ## Problemi comuni di Kathará e FRR
 
-Durante la preparazione dei laboratori possono presentarsi alcune
-situazioni che non dipendono necessariamente da errori nella
-configurazione scritta. Il programma include controlli e funzioni che
-aiutano a individuarle.
-
 ### Costo OSPF predefinito
 
-Nelle versioni recenti dell'immagine `kathara/frr`, la reference
-bandwidth predefinita può portare il costo di un'interfaccia Ethernet a
-`10000`, anziché a `10`, valore spesso utilizzato negli esercizi.
+Il costo predefinito di un'interfaccia dipende dalla velocità che FRR
+legge sul link. Misurato con Kathará sui link veth: **10** senza
+auto-cost e **1** con `auto-cost reference-bandwidth 100`. Un costo
+scritto a mano (per esempio `90` su un link da rendere secondario) va
+quindi confrontato con i costi veri delle altre interfacce, che si
+vedono con `show ip ospf interface` (pannello del router) e nella
+Verifica percorso.
 
-Questo può produrre un risultato inatteso. Per esempio, impostando
-`ip ospf cost 90` su un collegamento che si vorrebbe rendere secondario,
-il costo esplicito `90` risulta comunque inferiore a `10000` e il
-collegamento può essere preferito.
-
-Per uniformare i costi al valore atteso negli esercizi, il programma
-segnala questa condizione nei controlli statici. La voce **Opzioni
-Laboratorio → 10** applica `auto-cost reference-bandwidth 100` ai router
-OSPF dell'AS, riportando il costo predefinito a `10`.
+Il programma segnala i costi scritti a mano senza auto-cost. La voce
+**Opzioni Laboratorio → 10**, o il menu dell'AS nella GUI, mette
+`auto-cost reference-bandwidth 100` su tutti i router OSPF dell'AS, così
+calcolano il costo predefinito allo stesso modo.
 
 ### Ridistribuzione BGP in RIP
 
-Con FRR 10.5.3 può verificarsi un problema per cui, all'avvio del
-container, `ripd` non registra correttamente verso `zebra` la
-ridistribuzione BGP, anche se `redistribute bgp` è presente in
-`frr.conf`.
-
-La scheda **Test → Sessioni BGP e OSPF** controlla l'output di
-`show zebra client`. Se non risultano rotte trasferite, viene proposto
-il pulsante **Riapplica**, che esegue nuovamente `no redistribute bgp` e
-`redistribute bgp`.
+Con FRR 10.5.3, all'avvio del container `ripd` può non registrare verso
+`zebra` la ridistribuzione BGP, anche con `redistribute bgp` in
+`frr.conf`. **Test → Sessioni BGP e OSPF** controlla `show zebra client`
+e, se non passa nessuna rotta, propone **Riapplica** (`no redistribute
+bgp` e `redistribute bgp`).
 
 ### Route-map e prefix-list non definite
 
-FRR può accettare una configurazione in cui un neighbor fa riferimento a
-una `route-map` o a una `prefix-list` inesistente. In questo caso la
-sessione BGP può comunque raggiungere lo stato `Established`, ma i
-prefissi possono essere scartati senza un messaggio evidente.
-
-I controlli statici confrontano i riferimenti presenti in `frr.conf` con
-le definizioni effettive e segnalano i nomi non trovati, indicando la
-riga interessata e, quando possibile, una definizione dal nome simile.
+FRR accetta un neighbor che punta a una `route-map` o `prefix-list`
+inesistente: la sessione resta `Established` ma i prefissi vengono
+scartati senza messaggi. I controlli statici e la diagnostica trovano i
+nomi non definiti, indicano la riga e propongono la correzione quando c'è
+una definizione dal nome simile. È il caso, per esempio, di una soluzione
+d'esame con `trafficOut` usata e `trafficIn` definita.
 
 ### Router-ID OSPF dopo lo spegnimento di un'interfaccia
 
-Se il Router-ID di un router OSPF coincide con l'indirizzo di
-un'interfaccia che viene disattivata, FRR può selezionare un Router-ID
-diverso. Questo cambiamento può interrompere la convergenza prevista
-durante una simulazione di guasto.
-
-La funzione di spegnimento di un link controlla il Router-ID prima e
-dopo l'operazione. Se rileva una variazione, esegue
-`clear ip ospf process`.
+Se il Router-ID di un router OSPF è l'indirizzo di un'interfaccia che
+viene spenta, FRR può sceglierne un altro e la convergenza prevista si
+interrompe. Lo spegnimento di un link controlla il Router-ID prima e dopo
+e, se cambia, esegue `clear ip ospf process`.
 
 ### Nomi dei dispositivi in `lab.conf`
 
-Kathará non accetta tutti i caratteri nei nomi dei dispositivi. In
-particolare, nomi con trattini, punti o lettere maiuscole, come
-`web-srv`, possono causare un `SyntaxError` durante `lstart`.
-
-Il wizard e l'importatore controllano i nomi e li normalizzano nel
-formato `[a-z0-9_]+`. Quando si apre un laboratorio già esistente con
-nomi non validi, viene proposta la rinomina dei dispositivi.
+Kathará non accetta nomi con trattini, punti o maiuscole (per esempio
+`web-srv`): `lstart` dà `SyntaxError`. Procedura guidata, editor e
+importazione controllano i nomi nel formato `[a-z0-9_]+`; aprendo un
+laboratorio con nomi non validi viene proposta la rinomina.
 
 ## Controlli prima della consegna
 
-Prima di consegnare il laboratorio, è opportuno verificare i seguenti
-punti:
-
--   [ ] **Nome della cartella e dell'archivio:** entrambi devono seguire
-    il formato richiesto dalla traccia, ad esempio `<cognome><nome>` in
-    minuscolo e senza spazi o caratteri speciali.
--   [ ] **Controlli statici e sintassi:** eseguire la voce **Opzioni
-    Laboratorio → 8** oppure aprire la scheda *Riepilogo e controlli*.
-    Verificare che non siano presenti errori e che `vtysh --dryrun` non
-    segnali righe non valide.
--   [ ] **Convergenza:** con il laboratorio avviato, controllare che le
-    sessioni BGP siano `Established` e le adiacenze OSPF `Full`.
--   [ ] **Ridistribuzione:** verificare che le eventuali ridistribuzioni
-    BGP verso IGP siano effettivamente attive.
--   [ ] **Costi OSPF:** se la traccia richiede costi espliciti,
-    controllare la reference bandwidth e, se necessario, utilizzare
-    **Opzioni Laboratorio → 10**.
--   [ ] **Percorsi e raggiungibilità:** eseguire i ping e i traceroute
-    richiesti, includendo eventuali prove con un collegamento
-    disattivato.
--   [ ] **File XML:** eliminare `<cognome><nome>/<cognome><nome>.xml`,
-    oppure creare l'archivio dalla scheda *Archivio*, che esclude
-    automaticamente il file.
--   [ ] **Container:** arrestare e pulire i laboratori non più necessari
-    con `kathara lclean`.
+-   [ ] **Nome della cartella e dell'archivio:** nel formato chiesto
+    dalla traccia, per esempio `<cognome><nome>` in minuscolo, senza
+    spazi né caratteri speciali.
+-   [ ] **Controlli statici, diagnostica e sintassi:** **Opzioni
+    Laboratorio → 8** o la scheda *Riepilogo e controlli*: nessun errore,
+    e `vtysh --dryrun` senza righe non valide.
+-   [ ] **Convergenza:** sessioni BGP `Established` e adiacenze OSPF
+    `Full`.
+-   [ ] **Ridistribuzione:** le ridistribuzioni BGP verso IGP passano
+    davvero le rotte.
+-   [ ] **Costi OSPF:** se la traccia dà dei costi, controlla i costi
+    veri e, se serve, l'auto-cost (**Opzioni Laboratorio → 10**).
+-   [ ] **Percorsi e raggiungibilità:** ping e Verifica percorso
+    richiesti, anche con un link spento.
+-   [ ] **Pagine web e nomi:** le pagine si aprono dai client e i nomi si
+    risolvono (scheda *Test*).
+-   [ ] **File XML:** fuori dal laboratorio (`.labgenerator/`); l'archivio
+    creato dalla scheda *Archivio* lo esclude comunque.
+-   [ ] **Container:** ferma i laboratori che non servono con
+    `kathara lclean`.
 
 ## Opzioni da riga di comando
-
-Il programma accetta le seguenti opzioni:
 
 ``` text
 python3 src/labGenerator.py [OPZIONI]
 
   --out <cartella>     Cartella di lavoro per creare e leggere i laboratori
-                       (predefinita: directory corrente)
+                       (predefinita: cartella corrente); anche --output
   --gui                Avvia l'interfaccia web
   --porta <n>          Porta HTTP locale della GUI su 127.0.0.1
                        (predefinita: 8765)
-  --from-xml <file>    Genera un laboratorio da un file XML senza procedura guidata
-  --from-json <file>   Genera un laboratorio da un file JSON senza procedura guidata
-  --force              Con --from-xml o --from-json sovrascrive una cartella esistente
-  --regen-xml <lab>    Ricrea il file XML a partire dai file di un laboratorio esistente
+  --from-xml <file>    Crea un laboratorio da un file XML senza procedura guidata
+  --from-json <file>   Crea un laboratorio da un file JSON senza procedura guidata
+  --force              Con --from-xml o --from-json sostituisce una cartella esistente
+  --regen-xml <lab>    Ricrea l'XML dei metadati dai file di un laboratorio
   --help               Mostra le opzioni disponibili
 ```
 
+Un'opzione non riconosciuta viene segnalata e ignorata.
+
 ## Struttura del progetto
 
-Il codice è organizzato in moduli. Le funzionalità principali utilizzano
-esclusivamente la libreria standard di Python.
+Il codice usa solo la libreria standard di Python. Il motore (`core/`) è
+lo stesso per terminale e interfaccia web.
 
 ``` text
 .
 ├── avvia.sh                     # Avvio portabile su Linux
-├── FUNZIONI.txt                 # Descrizione delle voci di menu ed esempi BGP
+├── FUNZIONI.txt                 # Descrizione delle voci di menu ed esempi
 ├── LEGGIMI.txt                  # Istruzioni rapide per l'avvio offline
+├── docs/                        # Piano di lavoro, controlli della GUI, scalette di prova
 ├── .github/workflows/
-│   └── build-and-release.yml    # Compilazione Linux e Windows con PyInstaller
-└── src/
-    ├── labGenerator.py          # Entry point, argomenti e menu principale
-    ├── core/
-    │   ├── __init__.py          # Interfaccia pubblica del modulo
-    │   ├── templates.py         # Template FRR, BIND9, Apache e file startup
-    │   ├── cli_io.py            # Input, cronologia e validazione dei dati
-    │   ├── file_utils.py        # Operazioni sui file, backup e diff
-    │   ├── net_frr.py           # Calcolo subnet e configurazioni di routing
-    │   ├── generators.py        # Generazione dei file per router, host e server
-    │   ├── persistence.py       # Import/export XML e JSON e gestione dei nodi
-    │   ├── analyzer.py          # Analisi dei file e controlli di configurazione
-    │   ├── wizard.py            # Procedura guidata per creare un laboratorio
-    │   ├── routing_ops.py       # Policy BGP, OSPF, iBGP e configurazione DNS
-    │   └── device_editor.py     # Modifica dei dispositivi ed editor dei file
-    └── gui/
-        ├── __init__.py
-        ├── dati.py              # Lettura e rappresentazione dello stato del lab
-        ├── kathara.py           # Comandi Docker/Kathará e test di rete
-        ├── api.py               # Stato del lab, Opzioni con anteprima e applica, creazione lab
-        ├── server.py            # Server HTTP locale e controlli di sicurezza
-        └── static/              # La pagina: index.html, css/, js/ (moduli) e js/componenti/
+│   └── build-and-release.yml    # Eseguibili Linux e Windows con PyInstaller
+├── src/
+│   ├── labGenerator.py          # Avvio, argomenti e menu principale
+│   ├── core/
+│   │   ├── templates.py         # Template FRR, BIND9, Apache e startup
+│   │   ├── cli_io.py            # Input del terminale e validazione
+│   │   ├── modello.py           # Modello del laboratorio: completamento e controlli
+│   │   ├── generazione.py       # Creazione di un laboratorio dal modello (unica strada)
+│   │   ├── generators.py        # File di router, host e server
+│   │   ├── net_frr.py           # Subnet e configurazione del routing
+│   │   ├── stato.py             # Lettura dei file di un laboratorio
+│   │   ├── persistence.py       # XML/JSON e modello letto dai file
+│   │   ├── analyzer.py          # Controlli statici e riepilogo
+│   │   ├── frr_autofix.py       # Diagnostica di frr.conf con le correzioni
+│   │   ├── operazioni.py        # Tutte le modifiche (terminale e GUI): anteprima e piano
+│   │   ├── modifiche.py         # Scrittura dei piani con impronte e copie di sicurezza
+│   │   ├── storia.py            # Storia delle modifiche e annulla
+│   │   ├── unione.py            # Unione a tre vie per "Parti da un lab esistente"
+│   │   ├── risoluzione.py       # Catena di risoluzione DNS e spiegazioni di dig
+│   │   ├── web.py               # Server web, nomi e spiegazioni di links
+│   │   ├── wizard.py            # Procedura guidata
+│   │   ├── routing_ops.py       # Menu Opzioni del terminale
+│   │   ├── device_editor.py     # Modifica dei dispositivi dal terminale
+│   │   └── file_utils.py, archivio.py, supporto.py
+│   └── gui/
+│       ├── server.py            # Server HTTP locale e controlli di sicurezza
+│       ├── api.py               # Opzioni con anteprima e applica, creazione, parti da un lab
+│       ├── dati.py              # Dati del laboratorio per la pagina
+│       ├── kathara.py           # Comandi Kathará e test di rete
+│       ├── percorso_voluto.py   # Proposte di policy dal percorso disegnato
+│       ├── terminale_web.py     # Test web e DNS del menu 4 del terminale
+│       └── static/              # La pagina: index.html, css/, js/ (moduli), js/editor/, js/componenti/
+└── tests/                       # Test Python, test JavaScript (Node) e piloti nel browser
 ```
+
+I test si lanciano con `python3 -m unittest discover` dalla cartella
+`tests/` e con `node --test tests/js/`.
 
 ## Crediti
 
 -   **Autore del progetto originale:**
     [sciro24](https://github.com/sciro24).
--   **Nota:** il programma è pensato per facilitare la creazione e la
-    verifica di laboratori di rete con Kathará. Le configurazioni
-    generate devono comunque essere controllate rispetto ai requisiti
-    specifici dell'esercizio.
+-   **Nota:** il programma aiuta a creare e verificare laboratori di rete
+    con Kathará. Le configurazioni generate vanno comunque controllate
+    rispetto ai requisiti dell'esercizio.

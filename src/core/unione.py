@@ -108,6 +108,8 @@ def porta_nel_lab(originale, base, nuovo, nomi=None):
         orig = _rinomina(rel, nomi)
         if orig in originale and orig in base:
             file[rel] = unisci(originale[orig], base[orig], testo)
+            if rel == 'lab.conf':
+                file[rel] = _nuovi_in_fondo(file[rel], originale[orig], nomi)
             gen = set(_righe(base[orig]))
             extra = [r for r in _righe(originale[orig]) if r.strip() and r not in gen]
             if extra:
@@ -140,6 +142,25 @@ def porta_nel_lab(originale, base, nuovo, nomi=None):
             if citati:
                 avvisi.append(f"{rel}: '{r.strip()}' cita {', '.join(citati)}, che nella bozza non c'è più.")
     return file, {'conservate': conservate, 'copiati': sorted(copiati), 'non_creati': sorted(non_creati), 'avvisi': avvisi}
+
+
+_RE_LABCONF = re.compile(r'^\s*([A-Za-z0-9_]+)\s*\[')
+
+
+def _nuovi_in_fondo(testo, originale, nomi):
+    """lab.conf: le righe dei dispositivi che il lab di partenza non aveva vanno in fondo (l'unione le
+    metterebbe dove le mette il generatore, spesso in cima)."""
+    vecchi = {m.group(1) for m in map(_RE_LABCONF.match, originale.split('\n')) if m}
+    vecchi |= {k for k, v in nomi.items() if v in vecchi}
+    tenute, nuove = [], []
+    for r in testo.split('\n'):
+        m = _RE_LABCONF.match(r)
+        (nuove if m and m.group(1) not in vecchi else tenute).append(r)
+    if not nuove:
+        return testo
+    while tenute and not tenute[-1].strip():
+        tenute.pop()
+    return '\n'.join(tenute + [''] + nuove) + '\n'
 
 
 def _rinomina_al_nuovo(rel, vecchio, nuovo):

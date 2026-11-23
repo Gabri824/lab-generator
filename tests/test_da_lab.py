@@ -78,6 +78,7 @@ class TestDaLab(unittest.TestCase):
         self.assertTrue(a['creabile'], a['errori'])
         self.assertIn('pcnuovo.startup', f)
         self.assertIn('pcnuovo[0]=A', f['lab.conf'])
+        self.assertTrue(f['lab.conf'].rstrip().endswith('pcnuovo[image]="kathara/base"'), 'il dispositivo nuovo va in fondo a lab.conf')
         orig = leggi_albero(p)
         for rel, testo in orig.items():
             for riga in testo.split('\n'):

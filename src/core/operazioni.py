@@ -574,7 +574,7 @@ def calcola_redistribuzione_route_map(stato, router, rete):
             _scrivi_testo(fpath, ''.join(kept))
         applied = False
         for p in ('rip', 'ospf'):
-            if d['frr'][p] and insert_lines_into_protocol_block(fpath, proto=p, lines=['', redist_cmd]):
+            if d['frr'][p] and insert_lines_into_protocol_block(fpath, proto=p, lines=[redist_cmd]):
                 print(f"✅ Aggiunto '{redist_cmd}' a router {p}.")
                 applied = True
         if applied:

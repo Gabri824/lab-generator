@@ -746,7 +746,8 @@ def rebuild_lab_metadata_and_export(lab_path, stato=None, stampa=True):
     m = modello_da_stato(stato)
     try:
         export_lab_to_xml(lab_name, lab_path, m['routers'], m['hosts'], m['wwws'], resolver=m['resolver'], stampa=stampa)
-        return percorso_xml(lab_path, lab_name)
+        xml = percorso_xml(lab_path, lab_name)
+        return xml if os.path.isfile(xml) else None
     except Exception as e:
         print('Errore rigenerazione XML:', e)
         return None

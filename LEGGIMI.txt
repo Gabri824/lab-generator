@@ -15,6 +15,20 @@ COSA C'E' SULLA CHIAVETTA
 
 Stesso programma ovunque: menu nel terminale; con --gui (o voce 6 del
 menu) apre la GUI nel browser su http://127.0.0.1:8765
+Terminale e GUI fanno le stesse cose e scrivono gli stessi file: un lab
+fatto da una parte si modifica dall'altra. Ogni modifica si annulla
+(GUI: "Annulla modifica"; terminale: Opzioni 14).
+
+COSA C'E' DI NUOVO NELLA GUI
+  + Nuovo lab           disegna il lab; "Parti da un lab esistente" carica
+                        un lab o una soluzione (le policy restano)
+  Topologia, Modifica   clic su interfacce, LAN, AS, dispositivi: tutte le
+                        Opzioni del terminale con anteprima; Policy BGP,
+                        "Percorso voluto" (propone le policy per il
+                        percorso del testo), Diagnostica di frr.conf
+  Livelli               sul disegno: policy, sessioni BGP, 0/0, DNS, avvisi
+  Test                  pagine web, risoluzione dei nomi DNS, Verifica
+                        percorso con i costi OSPF
 
 
 1. AVVIO SU LINUX (PC del laboratorio)
@@ -77,6 +91,8 @@ SE NON PARTE
  [ ] Controlli: menu Riepilogo (8) oppure GUI "Riepilogo e controlli":
      - "Controllo configurazione FRR": nessun X rosso
        (premi anche "Controlla la sintassi" a lab acceso)
+     - "Diagnostica di frr.conf": nessun errore (correzioni: Opzioni 15
+       o GUI, Modifica -> pannello del router -> Diagnostica)
      - "Dimenticanze tipiche": confronta ogni avviso con il testo
  [ ] Lab acceso, GUI -> Test -> "Attendi convergenza":
      BGP tutte Established, OSPF tutte Full.
@@ -85,7 +101,10 @@ SE NON PARTE
      (auto-cost reference-bandwidth 100), poi Verifica percorso.
  [ ] Percorsi e ping richiesti dal testo: Test -> Raggiungibilita' e
      Verifica percorso (campo "Atteso" con le lettere dei link).
- [ ] CANCELLA L'XML DEL GENERATORE:
+ [ ] Pagine web e nomi DNS: Test -> Server web e Risoluzione di un nome
+     (oppure menu 4 del terminale).
+ [ ] L'XML del generatore sta in ~/labs/.labgenerator/, fuori dal lab.
+     Se un lab vecchio lo ha ancora dentro, cancellalo:
        rm ~/labs/<cognome><nome>/<cognome><nome>.xml
  [ ] Archivio:
        cd ~/labs && tar czvf <cognome><nome>.tar.gz <cognome><nome>
@@ -99,13 +118,16 @@ SE NON PARTE
    FRR 10.5.3, circa 1 avvio su 2). GUI: Ridistribuzione -> Riapplica.
    A mano, sul router:
      vtysh -c 'conf t' -c 'router rip' -c 'no redistribute bgp' -c 'redistribute bgp'
- - OSPF: in kathara/frr il costo predefinito di un'interfaccia e' 10000,
-   non 10. Se il testo usa costi espliciti -> Opzioni 10.
+ - OSPF: il costo predefinito dipende dal link (misurato con Kathara:
+   10 senza auto-cost, 1 con auto-cost reference-bandwidth 100). Se il
+   testo usa costi espliciti -> Opzioni 10 e controlla i costi veri con
+   "show ip ospf interface" o Verifica percorso.
  - Dopo "ip link set ethX down" OSPF puo' bloccarsi se il Router ID
    era su quel link: "show ip ospf" (Router ID cambiato?) e poi
    "clear ip ospf process". La GUI ("Guasto di un link") lo fa da sola.
  - Route-map o prefix-list con il nome scritto diverso: la sessione e'
-   Established ma riceve 0 prefissi. La card FRR lo segnala.
+   Established ma riceve 0 prefissi. La card FRR e la Diagnostica lo
+   segnalano e propongono la correzione.
  - "lstart" su un lab gia' acceso fallisce: prima lclean
    (la GUI chiede se riavviarlo).
  - Nomi dei dispositivi: solo lettere minuscole, cifre e _

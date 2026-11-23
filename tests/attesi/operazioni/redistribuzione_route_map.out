@@ -21,15 +21,14 @@ Inserisci la RETE di collegamento con il neighbor BGP (es. 50.7.1.0/24): 10.2.0.
 --- Redistribute bgp con route-map eBGP su r3 (next-hop in 10.2.0.0/30): anteprima (1 file) ---
   r3/etc/frr/frr.conf
     - riga  15: redistribute bgp
-    + riga  15: 
-    + riga  16: redistribute bgp route-map eBGP
+    + riga  15: redistribute bgp route-map eBGP
+    + riga  26: 
     + riga  27: 
-    + riga  28: 
-    + riga  29: ip prefix-list myNeighbors permit 10.2.0.0/30 le 32
-    + riga  30: 
-    + riga  31: route-map eBGP permit 10
-    + riga  32: match ip next-hop prefix-list myNeighbors
-    + riga  33: 
+    + riga  28: ip prefix-list myNeighbors permit 10.2.0.0/30 le 32
+    + riga  29: 
+    + riga  30: route-map eBGP permit 10
+    + riga  31: match ip next-hop prefix-list myNeighbors
+    + riga  32: 
 
 Confermi le modifiche? (s/N): s
 ✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/hourglass_test/AAAAMMGG-HHMMSS

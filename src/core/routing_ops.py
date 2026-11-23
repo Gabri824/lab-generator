@@ -56,62 +56,6 @@ def routers_dai_file(base_path):
     return operazioni.routers_dello_stato(leggi_stato(base_path))
 
 
-def aggiungi_relazioni_bgp_menu(base_path, routers):
-    print("\n=== Aggiungi relazioni BGP (manuale) ===")
-    if not routers:
-        print("Nessun router disponibile.")
-        return
-    while True:
-        print("\nRouter disponibili:")
-        for rn, r in routers.items():
-            print(f" - {rn} (ASN: {r.get('asn', '-')})")
-        src = input("Router sorgente (vuoto per uscire): ").strip()
-        if not src:
-            break
-        if src not in routers:
-            print("Router sorgente non valido.")
-            continue
-        dst = input("Router destinazione: ").strip()
-        if dst not in routers:
-            print("Router destinazione non valido.")
-            continue
-        if "bgp" not in routers[src]["protocols"] or "bgp" not in routers[dst]["protocols"]:
-            print("Entrambi i router devono avere BGP abilitato.")
-            continue
-        rel = input("Tipo relazione (peer/provider/customer): ").strip().lower()
-        if rel not in ("peer", "provider", "customer"):
-            print("Tipo relazione non valido.")
-            continue
-        neigh_ip = valida_ip_senza_cidr("IP neighbor verso dst (es. 10.0.0.2): ")
-        aggiungi_policy = input("Aggiungere prefix-list / route-map (s/N)? ").strip().lower().startswith("s")
-        lp_map = {"peer": 100, "provider": 80, "customer": 120}
-        local_pref = lp_map[rel]
-        fpath = os.path.join(base_path, src, "etc", "frr", "frr.conf")
-        neighbor_lines = [
-            f"neighbor {neigh_ip} remote-as {routers[dst]['asn']}",
-            f"neighbor {neigh_ip} description {rel}_{dst}"
-        ]
-        insert_lines_into_protocol_block(fpath, proto='bgp', asn=None, lines=neighbor_lines)
-
-        if aggiungi_policy:
-            policy = [
-                f"neighbor {neigh_ip} prefix-list {rel}_{dst}_in in",
-                f"neighbor {neigh_ip} prefix-list {rel}_{dst}_out out",
-                "",
-                f"ip prefix-list {rel}_{dst}_in permit any",
-                f"ip prefix-list {rel}_{dst}_out permit any",
-                "",
-                f"route-map pref_{dst}_in permit 10",
-                f"    set local-preference {local_pref}",
-                "",
-                f"neighbor {neigh_ip} route-map pref_{dst}_in in"
-            ]
-            with open(fpath, 'a', encoding='utf-8', newline='\n') as f:
-                for line in policy:
-                    f.write(line + "\n")
-        print(f"Relazione BGP ({rel}) aggiunta su {src} verso {dst} (neighbor {neigh_ip}).")
-
-
 def assegna_costo_interfaccia(base_path, routers):
     print('\n--- Assegna costo OSPF su una interfaccia di un router ---')
     target = select_router(routers, prompt='Seleziona il router su cui impostare il costo OSPF:')
@@ -903,7 +847,7 @@ def menu_opzioni_laboratorio(base_path, routers):
             'Aggiungi sessioni iBGP (full mesh tra i router BGP dello stesso AS)',
             "Riepilogo configurazione (per controllare il testo dell'esercizio)",
             'Aggiungi delega DNS sul root (es. com -> dns.com)',
-            'Costi OSPF predefiniti a 10 (auto-cost reference-bandwidth 100 su un AS)',
+            'Costi OSPF predefiniti uguali su un AS (auto-cost reference-bandwidth 100)',
             'Modifica un dispositivo (IP, LAN, gateway, protocolli, AS, righe dei file)',
             'Default route (BGP verso un neighbor, RIP, OSPF)',
             'Aggiungi o togli un dispositivo',

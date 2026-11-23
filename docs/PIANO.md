@@ -1435,10 +1435,51 @@ import-check solo `info`, ebgp-requires-policy solo per neighbor eBGP senza poli
   diagnostica (e con l'immagine kathara/frr nel lab.conf, che la soluzione non indica): as2r2 riceve
   da as1r2 il MED 20 e sceglie l'altra strada.
 
+## Fase 7: collaudo, rifinitura e rilascio — in corso
+
+Decisioni dell'autore: prima i punti di Claude (sezione 8, ingombro della pagina, eseguibile
+Linux, documentazione), poi il collaudo dell'autore su tennis; Windows da decidere; della sezione 8
+si sistemano il codice morto, la riga di soli spazi, `--output` e le opzioni sconosciute, i
+dispositivi nuovi in fondo a `lab.conf`, il resto resta. Le menzioni a sciro24 tolte dalle
+schermate di avvio (credito in README, LEGGIMI, FUNZIONI).
+
+### 7.1 Sezione 8: fatto (2026-11-23)
+
+- Tolte `aggiungi_relazioni_bgp_menu` e `ensure_neighbor_exists` (mai chiamate).
+- `redistribute bgp route-map eBGP` senza la riga di soli spazi prima (file attesi aggiornati).
+- `--output` sinonimo di `--out`; le opzioni sconosciute non sono più ignorate in silenzio
+  (avviso con l'elenco). Corretto anche `--regen-xml` su una cartella che non è un lab: diceva
+  "XML rigenerato" dopo l'errore.
+- "Parti da un lab esistente": i dispositivi nuovi della bozza vanno in fondo a `lab.conf`.
+
+### 7.2 Ingombro della pagina: fatto (2026-11-23)
+
+Pilota `tests/strumenti/prova_ingombro.mjs` (al posto di `check.mjs`/`shoot.mjs`, che non c'erano):
+ogni scheda, la modalità Modifica e l'editor a 1440, 1024, 768 e 390 px; nessuno scorrimento
+orizzontale della pagina e nessun elemento fuori dal suo riquadro. Trovato e corretto un solo caso:
+a 390 px la tabella "Host e server" del Riepilogo usciva dalla card (ora le card del Riepilogo
+scorrono in orizzontale). Schermate controllate a occhio.
+
+### 7.3 Eseguibile Linux: fatto (2026-11-23)
+
+PyInstaller 6.22 in un ambiente virtuale temporaneo, stesso comando del workflow (`--onefile
+--paths src --collect-submodules core --collect-submodules gui --add-data src/gui/static:gui/static`):
+eseguibile di 13,8 MB. `--help` ok; lift, tennis e stairs creati da XML con l'eseguibile = gli
+stessi file del sorgente; GUI servita dall'eseguibile con i piloti `prova_fase6` e `prova_diagnosi`
+(3/3 ciascuno). Nota: con `--specpath` il percorso di `--add-data` va scritto assoluto.
+
+### 7.4 Documentazione: fatto (2026-11-23)
+
+README, LEGGIMI e FUNZIONI aggiornati: terminale e GUI con lo stesso motore; editor e "Parti da un
+lab esistente"; modalità Modifica con annulla, copie, Policy BGP, Percorso voluto, Diagnostica;
+livelli del disegno; test (server web, risoluzione dei nomi, costi OSPF nella Verifica percorso);
+Opzioni 1-15 e menu 4 con tre voci; XML in `.labgenerator/`; `--output`; costo OSPF predefinito
+con i valori misurati; struttura del progetto e test. Etichette allineate: Opzioni 10 "Costi OSPF
+predefiniti uguali su un AS", menu principale 4 con i nomi DNS.
+
 ### Prossimo passo
 
-Fase 7 (collaudo, rifinitura e rilascio): spiegata, in attesa delle quattro decisioni dell'autore
-(esame del collaudo, Windows, sezione 8, ordine).
+Collaudo dell'autore su tennis con la scaletta `docs/COLLAUDO.md`, poi correzioni, Windows e unione.
 
 ---
 
@@ -1448,16 +1489,11 @@ Cose trovate durante il lavoro e messe da parte di proposito. Non bloccano le fa
 
 | Cosa | Dove | Note |
 |---|---|---|
-| Codice morto: `aggiungi_relazioni_bgp_menu` | `src/core/routing_ops.py` | Non è chiamata da nessun menu. Lasciata dov'è (decisione del 2026-11-22). |
-| Codice morto: `ensure_neighbor_exists` | `src/core/net_frr.py` | Non è chiamata da nessuna parte. Lasciata dov'è. |
 | La proposta delle network IGP aggrega per primo ottetto | `net_frr.default_igp_networks` | Può mettere in un'area OSPF un link dichiarato in un'altra; ora `valida_lab` lo segnala come avviso. |
 | Il resolver finale viene scritto anche sui server DNS | `generazione._scrivi_lab` | Lasciato così (decisione della fase 1.4). |
-| Riga di soli spazi prima di `redistribute bgp route-map eBGP` | `operazioni.calcola_redistribuzione_route_map` | Viene da `insert_lines_into_protocol_block` con una riga vuota. |
 | Quando le Opzioni aggiornano l'XML lo riscrivono per intero | `persistence._aggiorna_xml` | Cambia, per esempio, `&quot;` in `"` dentro `lab_conf`. Da decidere nella fase 1.7 (XML fuori dal lab, forse rigenerato dai file). |
-| `--output` (o un'opzione scritta male) viene ignorato in silenzio | `main` in [labGenerator.py](../src/labGenerator.py) (`parse_known_args`) | Visto nella prova guidata della fase 3: la GUI partiva sulla cartella corrente senza lab. Proposta: `--output` come sinonimo di `--out` e un avviso per le opzioni non riconosciute. |
 | Il Registro della GUI è solo in memoria e contiene solo le operazioni della GUI | `gui/kathara.Lavori` | Visto nella prova guidata della fase web: chiudendo la GUI si svuota, e le operazioni del terminale non ci sono. Idea: salvarlo per lab in `.labgenerator/<lab>/` e aggiungere le operazioni fatte dal terminale del generatore. Non urgente (decisione dell'autore). |
 | Zone, record e ricorsione di un lab già creato si cambiano solo con "File a righe" | GUI e terminale | Decisione della 5.4 (strada A): agli esami non servono, il wizard e l'editor li creano. Se servisse: aggiungi zona, aggiungi/togli record A e delega da qualunque zona, ricorsione, resolver per più dispositivi. |
 | Data center senza IPv4 sulle interfacce non si caricano | `persistence.modello_da_stato`, editor (5.7) | puzzle, ceci-n'est-pas-une-pipe, exapus, patchwork (spine/leaf): il modello descrive solo interfacce con un IP. L'editor lo spiega. Da valutare se servono. |
-| I dispositivi aggiunti nella bozza finiscono in cima a `lab.conf` | `core/unione.unisci` (5.7) | Il generatore li mette in ordine di nome; l'unione li inserisce dopo l'ultima riga comune che li precede. Solo estetica. |
 | Pagina personale di un utente su apache (`http://web.com/~guest/`, modulo userdir) | tennis (Esami_IDC) | Chiesta dalla traccia di tennis; il generatore non la prepara. Da valutare per la fase web. |
 | Circa 130 stampe con emoji | tutto il terminale | Protette all'avvio (`reconfigure(errors='replace')`); nessuna è più dentro una domanda. |

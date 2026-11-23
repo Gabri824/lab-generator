@@ -8,7 +8,7 @@ INDICE
   A. Menu principale
   B. Creazione di un laboratorio (domande del wizard)
   C. Dopo la creazione: controlli e menu post-creazione
-  D. Menu Opzioni Laboratorio (voci 1-10, con esempi per le policy BGP)
+  D. Menu Opzioni Laboratorio (voci 1-15, con esempi per le policy BGP)
   E. Opzioni da riga di comando
   F. GUI nel browser (--gui o voce 6)
 
@@ -17,9 +17,10 @@ A. MENU PRINCIPALE
 ---------------------------------------------------------------------
  1) Crea nuovo Laboratorio
     Wizard a domande (sezione B). Crea la cartella del lab con lab.conf,
-    i file .startup, etc/frr/ (daemons, frr.conf) per i router, i file
-    di bind per i DNS e un file <nome_lab>.xml con tutti i dati inseriti
-    (serve per reimportare il lab; VA CANCELLATO PRIMA DELLA CONSEGNA).
+    i file .startup, etc/frr/ (daemons, frr.conf) per i router e i file
+    di bind per i DNS. L'XML con i dati del lab (serve per reimportarlo)
+    va in .labgenerator/<nome_lab>/, accanto ai lab: fuori dalla cartella
+    da consegnare.
 
  2) Importa file XML/JSON
     Ricrea un lab da un file XML (salvato da questo programma) o JSON.
@@ -33,10 +34,19 @@ A. MENU PRINCIPALE
  3) Genera file XML
     Rigenera l'XML leggendo una cartella di lab esistente.
 
- 4) Testa Funzionamento (PING)
-    Legge tutti gli IP del lab e stampa un unico comando da incollare
-    nel terminale di un dispositivo (kathara connect <dispositivo>):
-    fa il ping verso tutti gli IP e dice quali rispondono.
+ 4) Testa Funzionamento (PING, pagine web e apache2, nomi DNS)
+    1) Ping: legge tutti gli IP del lab e stampa un unico comando da
+       incollare nel terminale di un dispositivo (kathara connect
+       <dispositivo>): fa il ping verso tutti gli IP e dice quali
+       rispondono.
+    2) Pagine web e apache2: stampa i comandi links da incollare e, se
+       il lab e' acceso, li esegue da un client e spiega perche' una
+       pagina non arriva (DNS, apache2 spento, gateway, router senza
+       rotta); apache2 si avvia solo se rispondi "s".
+    3) Risoluzione di un nome: segue la catena DNS dai file (resolver,
+       allow-recursion, db.root, deleghe con glue, record A) e dice il
+       primo anello che manca con il rimedio; a lab acceso puo' anche
+       interrogare con dig ogni server della catena.
 
  5) Opzioni Laboratorio
     Chiede la cartella di un lab gia' creato e apre il menu Opzioni
@@ -45,6 +55,10 @@ A. MENU PRINCIPALE
 
  6) Interfaccia grafica (browser)
     Avvia la GUI (sezione F) sui lab della cartella corrente.
+
+ 7) Crea archivio per la consegna
+    Crea l'archivio del lab (.tar.gz o .zip) senza l'XML e i file
+    nascosti.
 
  0) Esci
 
@@ -121,14 +135,22 @@ C. DOPO LA CREAZIONE
   1) Genera file XML aggiornato
   2) Testa Funzionamento (PING)   (come voce 4 del menu principale)
   3) Opzioni Laboratorio          (sezione D, sul lab appena creato)
+  4) Crea archivio per la consegna
+  5) Pagine web e apache2         (links dal client, lab acceso)
   0) Termina Programma
 
 
 D. MENU OPZIONI LABORATORIO
 ---------------------------------------------------------------------
+ Ogni voce che modifica i file mostra prima le differenze e chiede
+ conferma, fa una copia di sicurezza in .backup_labgenerator/ e si puo'
+ annullare con la voce 14 (anche le modifiche fatte dalla GUI, e
+ viceversa).
+
  1) Imposta costo OSPF
-    Scegli router e interfaccia: scrive "ip ospf cost N" nel blocco
-    interface di frr.conf. Vedi anche la voce 10.
+    Scegli router e interfaccia: scrive il costo nel blocco interface
+    di frr.conf; se c'e' gia' lo sostituisce, 0 lo toglie. Vedi anche
+    la voce 10.
 
  2) Aggiungi Policies BGP (sottomenu)
     Prima vengono fatte tutte le domande, poi si scrive. Invio a vuoto
@@ -345,20 +367,50 @@ D. MENU OPZIONI LABORATORIO
     Delega un dominio di primo livello (es. com -> dns.com) nel db.root;
     aggiunge anche il SOA se manca.
 
- 10) Costi OSPF predefiniti a 10
-    In kathara/frr il costo predefinito di un'interfaccia e' 10000
-    (non 10): un costo esplicito "alto" come 90 diventa il PIU'
-    conveniente. Questa voce aggiunge "auto-cost reference-bandwidth 100"
-    a tutti i router OSPF di un AS (si sceglie l'AS): il predefinito
-    torna 10 e i costi espliciti mantengono il loro significato.
-    Rilanciata su un AS che lo ha gia', propone di toglierlo.
+ 10) Costi OSPF predefiniti uguali su un AS
+    Il costo predefinito di un'interfaccia dipende dalla velocita' che
+    FRR legge sul link (misurato con Kathara: 10 senza auto-cost, 1 con
+    auto-cost reference-bandwidth 100). Questa voce aggiunge
+    "auto-cost reference-bandwidth 100" a tutti i router OSPF di un AS
+    (si sceglie l'AS), cosi' tutti calcolano il predefinito allo stesso
+    modo; controlla poi i costi veri con "show ip ospf interface" o con
+    la Verifica percorso. Rilanciata su un AS che lo ha gia', propone
+    di toglierlo.
+
+ 11) Modifica un dispositivo
+    IP (basta l'ultimo numero), sposta un'interfaccia su un'altra LAN,
+    rinumera una LAN, gateway, AS, aggiungi/togli protocolli, rinomina,
+    e un editor a righe dei file (startup, frr.conf, resolv.conf, bind).
+
+ 12) Default route
+    BGP (default-originate verso uno o piu' neighbor, anche "solo la
+    default"), OSPF e RIP (default-information originate).
+
+ 13) Aggiungi o togli un dispositivo
+    Router, host, server web o DNS su una LAN esistente, con le stesse
+    domande del wizard; togliendo, anche le righe neighbor che lo citano.
+
+ 14) Annulla l'ultima modifica o ripristina una copia di sicurezza
+    Annulla le modifiche una alla volta, in ordine inverso (anche quelle
+    fatte dalla GUI). Se un file e' cambiato dopo a mano non annulla e
+    rimanda alle copie di sicurezza, che riportano tutto il lab a un
+    momento preciso.
+
+ 15) Diagnostica e correggi frr.conf
+    Scegli un dispositivo: elenco numerato dei problemi (refusi nei
+    comandi, comandi fuori dal blocco giusto, reti con bit host,
+    route-map e prefix-list usate ma non definite, demoni spenti in
+    daemons, avvio di FRR o apache2 mancante, gateway) con le correzioni
+    1a, 1b, ...; ogni correzione mostra le differenze e chiede conferma.
+    La diagnostica di tutti i dispositivi compare anche nella voce 8.
 
  0) Torna indietro
 
 
 E. OPZIONI DA RIGA DI COMANDO
 ---------------------------------------------------------------------
-  --out <cartella>     dove creare/leggere i lab (default: cartella corrente)
+  --out <cartella>     dove creare/leggere i lab (default: cartella corrente);
+                       anche --output. Un'opzione sconosciuta viene segnalata
   --from-xml <file>    crea il lab da un XML senza domande
   --from-json <file>   crea il lab da un JSON senza domande
   --force              con --from-xml/--from-json sovrascrive un lab esistente
@@ -378,6 +430,14 @@ dopo l'avvio (con "Riavvia ora"); link spento (con "Riaccendi").
 Il riquadro Output in basso mostra in diretta l'ultimo comando lanciato;
 la scheda Registro li elenca tutti con il comando esatto.
 
+ NUOVO LAB (editor)
+  "+ Nuovo lab": si disegna il lab (router, host, WWW, DNS, LAN o link
+  diretti, riquadri AS, zone RIP, aree OSPF); nomi, subnet e IP
+  proposti; "Anteprima file" e "Crea laboratorio". "Parti da un lab
+  esistente": carica un lab (o una cartella, es. una soluzione) come
+  bozza; il nuovo lab, con un altro nome, tiene le righe che l'editor
+  non mostra (policy, costi, pagine) e cambia solo cio' che tocchi.
+
  TOPOLOGIA
   Disegno del lab: router colorati per AS, scritta AS con il protocollo
   interno, LAN con nome e subnet, interfacce [ethN|ultimo ottetto].
@@ -387,13 +447,25 @@ la scheda Registro li elenca tutti con il comando esatto.
   route, show ip ospf neighbor/interface, show ip rip,
   show running-config, ip route...), ping/traceroute e
   "Apri terminale" (kathara connect).
+  Livelli (interruttori sopra il disegno): indirizzi, costi OSPF,
+  sessioni BGP, policy (LP 150 in, MED 20 out, frecce
+  Customer-Provider-Peer), segni sui router (0/0, ridistribuzione,
+  loopback), DNS (deleghe, resolver), avvisi ("!").
+  MODIFICA: con il pulsante "Modifica" i clic su interfacce, LAN, scritte
+  degli AS e dispositivi aprono le loro azioni, le stesse delle Opzioni
+  del terminale, con anteprima delle righe, Applica, Annulla e copie di
+  sicurezza. In piu': Policy BGP dal router o dal link fra due AS,
+  "Percorso voluto" (si clicca il percorso del testo e il programma
+  propone le policy, una alla volta) e "Diagnostica" con un pulsante per
+  ogni correzione. Dopo l'applica l'esito propone il test adatto.
 
  RIEPILOGO E CONTROLLI
   Controlli automatici (sezione C), card "Controllo configurazione FRR":
   nomi di route-map/prefix-list/access-list (sempre) e "Controlla la
   sintassi" a lab acceso (vtysh --dryrun: righe che FRR scarterebbe,
-  con numero di riga). Poi una scheda per router con IGP, network,
-  neighbor e policy; host, server e LAN.
+  con numero di riga); card "Diagnostica di frr.conf" di tutti i
+  dispositivi. Poi una scheda per router con IGP, network, neighbor e
+  policy; host, server e LAN.
 
  INTERFACCE
   Una riga per interfaccia: IP, LAN, chi c'e' dall'altra parte, IGP e
@@ -401,7 +473,7 @@ la scheda Registro li elenca tutti con il comando esatto.
   /30 senza l'altro estremo, neighbor inesistente, remote-as errato).
   "Confronta con il lab acceso": stato UP/DOWN e IP reali.
 
- TEST (servono il lab acceso)
+ TEST (quasi tutti servono il lab acceso)
   - Raggiungibilita': ping da ogni dispositivo verso tutti gli IP,
     matrice OK/KO.
   - Sessioni BGP e OSPF: Established / Full per ogni neighbor.
@@ -420,7 +492,11 @@ la scheda Registro li elenca tutti con il comando esatto.
   - Verifica percorso: traceroute tradotto in router e LAN, evidenziato
     sulla topologia; campo "Atteso" (lettere dei link o nomi dei router,
     "deve passare per" o "sequenza esatta"), anche il ritorno; segnala
-    i routing loop.
+    i routing loop e mostra i costi OSPF delle interfacce attraversate.
+  - Server web: stato di apache2 sui server e pagine aperte da un
+    client per IP e per nome, con la spiegazione se non arrivano.
+  - Risoluzione di un nome: catena DNS dai file anche a lab spento
+    (primo anello che manca + rimedio); a lab acceso dig su ogni server.
   - Guasto di un link: spegne/riaccende una LAN (ip link set down/up,
     i file non cambiano) per vedere il percorso di riserva; se un router
     cambia Router ID OSPF riavvia da solo il suo processo OSPF.
