@@ -1379,6 +1379,111 @@ def calcola_rinomina(stato, vecchio, nuovo):
     return piano
 
 
+# ----------------------------------------------------------------------------- 15. diagnostica e correzione di frr.conf
+#
+# La diagnostica è in core/frr_autofix.py; le correzioni
+# passano da qui, quindi hanno anteprima, impronte, storia (annulla) e sono le stesse da GUI e
+# terminale. Le correzioni che erano operazioni del suo ops_api rimandano alle nostre operazioni.
+
+_RIMANDI = {'change_gateway': 'gateway', 'ibgp_full_mesh': 'ibgp', 'fix_names': 'rinomina'}
+
+
+def _rimando(stato, dispositivo, fx):
+    """Correzione che è una nostra operazione: {'operazione', 'parametri'} (None se non c'è)."""
+    op, p = fx.get('op'), fx.get('params') or {}
+    if op == 'change_gateway':
+        return {'operazione': 'gateway', 'parametri': {'dispositivo': p.get('nome') or dispositivo, 'gw': p.get('gateway')}}
+    if op == 'ibgp_full_mesh':
+        return {'operazione': 'ibgp', 'parametri': {'asn': str(p.get('asn') or '')}}
+    if op == 'fix_names':
+        from .modello import correggi_nome_kathara
+        return {'operazione': 'rinomina', 'parametri': {'vecchio': dispositivo, 'nuovo': correggi_nome_kathara(dispositivo)}}
+    return None
+
+
+def opzioni_correggi_frr(stato, dispositivo):
+    """Problemi del dispositivo (frr.conf, daemons, startup, gateway, nomi) con le correzioni:
+    [{'regola', 'gravita', 'file', 'riga', 'testo', 'messaggio',
+      'correzioni': [{'etichetta', 'confidenza', 'rimando': {operazione, parametri} | None}]}].
+    Le 'info' (bgp.missing_import_check) non ci sono."""
+    from .frr_autofix import diagnosi_dispositivo
+    if dispositivo not in stato['dispositivi']:
+        raise ErroreOperazione(f"{dispositivo} non è un dispositivo del lab.")
+    out = []
+    for i in diagnosi_dispositivo(stato['percorso'], dispositivo):
+        if i['gravita'] == 'info':
+            continue
+        corr = []
+        for fx in i.get('fixes') or []:
+            interna = fx.get('op') == 'apply_diag_fix'
+            corr.append({'etichetta': fx.get('etichetta') or (fx.get('params') or {}).get('fix', {}).get('etichetta') or 'Correggi',
+                         'confidenza': fx.get('confidenza', 'proposta'),
+                         'rimando': None if interna else _rimando(stato, dispositivo, fx)})
+        out.append({'regola': i['id_regola'], 'gravita': i['gravita'], 'file': i['file'], 'riga': i['riga'],
+                    'testo': i.get('testo'), 'messaggio': i['messaggio'], 'correzioni': corr})
+    return out
+
+
+def calcola_correggi_frr(stato, dispositivo, regola, riga, messaggio, correzione=0):
+    """Applica la correzione numero `correzione` del problema (regola, riga, messaggio) del
+    dispositivo: un piano come "File a righe". Se il problema non c'è più (file cambiato, altra
+    correzione già applicata) si ferma: rifare la diagnostica."""
+    from .frr_autofix import applica_fix_testo, diagnosi_dispositivo
+    from .file_utils import _leggi_testo, _scrivi_testo, _set_demone, insert_lines_into_protocol_block
+    from .templates import DAEMONS_TMPL
+    problema = next((i for i in diagnosi_dispositivo(stato['percorso'], dispositivo)
+                     if i['id_regola'] == regola and i['riga'] == riga and i['messaggio'] == messaggio), None)
+    if problema is None:
+        raise ErroreOperazione("Il problema non c'è più (il file è cambiato o è già stato corretto): rifai la diagnostica.")
+    fixes = problema.get('fixes') or []
+    if not 0 <= int(correzione) < len(fixes):
+        raise ErroreOperazione("Correzione non prevista per questo problema.")
+    fx = fixes[int(correzione)]
+    if fx.get('op') != 'apply_diag_fix':
+        r = _rimando(stato, dispositivo, fx)
+        raise ErroreOperazione(f"Questa correzione è l'operazione '{r['operazione']}': usala da lì." if r
+                               else "Questa correzione non si applica da qui: segui il messaggio.")
+    p = fx['params']
+    kind, nome = p.get('kind'), p.get('nome') or dispositivo
+    base = stato['percorso']
+    with _in_memoria(stato) as (fs, out):
+        if kind == 'frr_text_fix':
+            f = os.path.join(base, nome, 'etc', 'frr', 'frr.conf')
+            prima = _leggi_testo(f) or ''
+            dopo = applica_fix_testo(prima, p.get('fix') or {})
+            if dopo == prima:
+                raise ErroreOperazione("La correzione non cambia frr.conf.")
+            _scrivi_testo(f, dopo)
+        elif kind == 'enable_daemon':
+            if p.get('daemon') not in ('zebra', 'bgpd', 'ospfd', 'ripd'):
+                raise ErroreOperazione(f"Demone non previsto: {p.get('daemon')}")
+            f = os.path.join(base, nome, 'etc', 'frr', 'daemons')
+            righe = (_leggi_testo(f) or DAEMONS_TMPL.format(zebra='yes', ripd='no', ospfd='no', bgpd='no')).rstrip('\n').split('\n')
+            righe = _set_demone(_set_demone(righe, 'zebra', 'yes'), p['daemon'], 'yes')
+            _scrivi_testo(f, '\n'.join(righe) + '\n')
+        elif kind in ('add_startup_frr', 'add_startup_apache'):
+            servizio = 'frr' if kind == 'add_startup_frr' else 'apache2'
+            f = os.path.join(base, f"{nome}.startup")
+            righe = [l for l in (_leggi_testo(f) or '').split('\n')]
+            while righe and not righe[-1].strip():
+                righe.pop()
+            righe.append(f"systemctl start {servizio}")
+            _scrivi_testo(f, '\n'.join(righe) + '\n')
+        elif kind == 'add_peer_neighbor':
+            peer, ip = p.get('peer'), p.get('neighbor_ip')
+            nuove = [f"neighbor {ip} remote-as {p.get('remote_as')}"]
+            if p.get('description'):
+                nuove.append(f"neighbor {ip} description {p['description']}")
+            if p.get('update_source'):
+                nuove.append(f"neighbor {ip} update-source {p['update_source']}")
+            if not insert_lines_into_protocol_block(os.path.join(base, peer, 'etc', 'frr', 'frr.conf'), proto='bgp', asn=None, lines=nuove):
+                raise ErroreOperazione(f"Non trovo il blocco router bgp di {peer}.")
+        else:
+            raise ErroreOperazione(f"Correzione non prevista: {kind}")
+    return _piano(f"Correggi {dispositivo}: {fx.get('etichetta') or (p.get('fix') or {}).get('etichetta') or problema['messaggio'][:60]}",
+                  fs, out, [f"Problema: {problema['messaggio']}"])
+
+
 # ----------------------------------------------------------------------------- 13. aggiungi / togli un dispositivo
 
 def _modello_dello_stato(stato):
@@ -1761,6 +1866,7 @@ OPERAZIONI = {
     'aggiungi_protocollo': (opzioni_protocolli, calcola_aggiungi_protocollo),
     'togli_protocollo': (opzioni_protocolli, calcola_togli_protocollo),
     'righe': (opzioni_righe, calcola_righe),
+    'correggi_frr': (opzioni_correggi_frr, calcola_correggi_frr),
     'rinomina': (opzioni_loopback, calcola_rinomina),
     'aggiungi_dispositivo': (opzioni_aggiungi_dispositivo, calcola_aggiungi_dispositivo),
     'togli_dispositivo': (opzioni_togli_dispositivo, calcola_togli_dispositivo),

@@ -907,7 +907,8 @@ def menu_opzioni_laboratorio(base_path, routers):
             'Modifica un dispositivo (IP, LAN, gateway, protocolli, AS, righe dei file)',
             'Default route (BGP verso un neighbor, RIP, OSPF)',
             'Aggiungi o togli un dispositivo',
-            "Annulla l'ultima modifica o ripristina una copia di sicurezza"
+            "Annulla l'ultima modifica o ripristina una copia di sicurezza",
+            'Diagnostica e correggi frr.conf (refusi, blocchi, riferimenti, demoni)'
         ]
         print_menu(
             f'=== Opzioni Laboratorio ({os.path.basename(os.path.normpath(base_path))}) ===',
@@ -932,6 +933,7 @@ def menu_opzioni_laboratorio(base_path, routers):
             aggiungi_ibgp_full_mesh(base_path, routers)
         elif choice == '8':
             riepilogo_configurazione(base_path, routers)
+            diagnostica_lab(base_path)
         elif choice == '9':
             aggiungi_delega_dns(base_path)
         elif choice == '10':
@@ -944,8 +946,77 @@ def menu_opzioni_laboratorio(base_path, routers):
             menu_dispositivi(base_path, routers)
         elif choice == '14':
             menu_annulla(base_path)
+        elif choice == '15':
+            menu_diagnostica(base_path)
         else:
             print('Scelta non valida, riprova.')
+
+
+def _stampa_diagnosi(nome, problemi):
+    print(f"\n{nome}: " + (f"{len(problemi)} problemi" if len(problemi) != 1 else "1 problema") if problemi else f"\n{nome}: nessun problema.")
+    for k, x in enumerate(problemi, 1):
+        dove = f"{x['file']} riga {x['riga']}" if x.get('riga') else x['file']
+        print(f"  {k}. [{x['gravita']}] {dove}: {x['messaggio']}")
+        for j, c in enumerate(x['correzioni']):
+            extra = f"  (operazione: {c['rimando']['operazione']})" if c['rimando'] else ''
+            print(f"       {k}{'abcdefghij'[j]}) {c['etichetta']}{extra}")
+
+
+def diagnostica_lab(base_path):
+    """Riepilogo (Opzioni 8): la diagnostica di frr.conf di ogni dispositivo, solo da leggere."""
+    stato = leggi_stato(base_path)
+    trovati = 0
+    for nome in sorted(stato['dispositivi']):
+        try:
+            problemi = operazioni.opzioni_correggi_frr(stato, nome)
+        except operazioni.ErroreOperazione:
+            continue
+        if problemi:
+            _stampa_diagnosi(nome, problemi)
+            trovati += len(problemi)
+    print(f"\nDiagnostica frr.conf: {trovati} problemi in tutto." if trovati else "\nDiagnostica frr.conf: nessun problema trovato.")
+    if trovati:
+        print("Per correggerli: Opzioni 15.")
+
+
+def menu_diagnostica(base_path):
+    """Opzioni 15: diagnostica di frr.conf (core/frr_autofix.py) e
+    correzione con la stessa operazione della GUI (correggi_frr): anteprima, conferma, annulla."""
+    while True:
+        stato = leggi_stato(base_path)
+        nomi = sorted(stato['dispositivi'])
+        print_menu('Diagnostica di quale dispositivo?', nomi, extra_options=[('0', 'Torna indietro')])
+        s = input('Seleziona (numero): ').strip()
+        if s == '0' or not s:
+            return
+        if not s.isdigit() or not 1 <= int(s) <= len(nomi):
+            print('Scelta non valida.')
+            continue
+        nome = nomi[int(s) - 1]
+        while True:
+            stato = leggi_stato(base_path)
+            problemi = operazioni.opzioni_correggi_frr(stato, nome)
+            _stampa_diagnosi(nome, problemi)
+            if not problemi:
+                break
+            r = input("Correzione da applicare (es. 1a, Invio = nessuna): ").strip().lower()
+            if not r:
+                break
+            if len(r) < 2 or not r[:-1].isdigit() or not 1 <= int(r[:-1]) <= len(problemi) \
+                    or 'abcdefghij'.find(r[-1]) < 0 or 'abcdefghij'.find(r[-1]) >= len(problemi[int(r[:-1]) - 1]['correzioni']):
+                print('Scelta non valida (numero del problema + lettera della correzione).')
+                continue
+            x, j = problemi[int(r[:-1]) - 1], 'abcdefghij'.find(r[-1])
+            c = x['correzioni'][j]
+            try:
+                if c['rimando']:
+                    piano = operazioni.OPERAZIONI[c['rimando']['operazione']][1](stato, **c['rimando']['parametri'])
+                else:
+                    piano = operazioni.calcola_correggi_frr(stato, nome, x['regola'], x['riga'], x['messaggio'], j)
+            except operazioni.ErroreOperazione as e:
+                print(e)
+                continue
+            _esegui_piano(base_path, piano)
 
 
 def menu_annulla(base_path):
@@ -1016,10 +1087,7 @@ def menu_post_creazione(base_path, routers):
             'Pagine web e apache2 (links dal client, lab acceso)'
         ]
         print_menu('-------------- Menu post-creazione --------------', items, extra_options=[('0', 'Termina Programma')])
-        print('\n--------------------------------------------------')
-        print('---- Programma realizzato da sciro24 (Github) ----')
-        print('-------- versione portabile modificata -----------')
-        print('--------------------------------------------------\n')
+        print('\n--------------------------------------------------\n')
 
         choice = input('Seleziona (numero): ').strip()
         if choice == '0':

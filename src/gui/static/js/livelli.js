@@ -103,5 +103,8 @@ export function avvisiSulDisegno(lab) {
     for (const m of t.matchAll(/\bAS(\d+)\b/g)) { (as[m[1]] = as[m[1]] || []).includes(t) || (as[m[1]] = as[m[1]] || []).push(t); trovato = true; }
     if (!trovato) (dev[''] = dev[''] || []).push(t);
   }
+  // errori della diagnostica di frr.conf, se è stata eseguita (pannello o Riepilogo)
+  for (const [n, ps] of Object.entries(lab.diagnosi || {}))
+    for (const x of ps) if (x.gravita === 'errore') (dev[n] = dev[n] || []).push(`Diagnostica: ${x.file}${x.riga ? ' riga ' + x.riga : ''}: ${x.messaggio}`);
   return {dev, as};
 }

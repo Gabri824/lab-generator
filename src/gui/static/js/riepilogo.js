@@ -1,5 +1,6 @@
 // Scheda Riepilogo e controlli: avvisi automatici, controllo di frr.conf, configurazione per router.
 import { $, esc, esegui, S } from './comune.js';
+import { diagnosticaLab } from './diagnosi.js';
 
 // ---------- riepilogo e controlli ----------
 export function listaAvvisi(titolo, av, okTesto) {
@@ -44,6 +45,9 @@ export function riepilogo() {
     <div style="height:8px"></div>${listaAvvisi('Dimenticanze tipiche', config, 'Nessuna dimenticanza trovata.')}
     <div class="muted small" style="margin-top:8px">Sono suggerimenti: confrontali sempre con il testo dell'esercizio.</div></div>`;
   h += htmlControlloFrr();
+  h += `<div class="card"><h2>Diagnostica di frr.conf</h2><p class="muted small">Refusi nei comandi, comandi nel blocco sbagliato, reti scritte male,
+    route-map e prefix-list usate ma non definite, demoni non abilitati, avvio di FRR o apache2 mancante, gateway. Le correzioni si applicano dal pannello del dispositivo in modalità Modifica ("Diagnostica") o con le Opzioni 15.</p>
+    <div class="btns"><button id="bDiagnosi" type="button">Esegui la diagnostica</button></div><div id="rDiagnosi"></div></div>`;
   h += '<div class="griglia">';
   for (const d of r) { const R = d.riepilogo;
     h += `<div class="card"><div class="riga" style="margin:0 0 6px"><h3 style="margin:0">${esc(d.nome)}</h3>${d.asn ? `<span class="badge">AS${esc(d.asn)}</span>` : ''}<span class="muted small">${esc(d.demoni.join(' '))}</span></div><table>`;
@@ -69,4 +73,5 @@ export function riepilogo() {
   }
   h += `<div class="card"><h2>LAN</h2><table><tr><th>LAN</th><th>Subnet</th><th>Dispositivi</th></tr>${L.lan.map(l => `<tr><td>${esc(l.nome)}</td><td>${esc(l.subnet || '-')}</td><td>${esc(l.membri.join(', '))}</td></tr>`).join('')}</table></div>`;
   $('#t-riep').innerHTML = h;
+  $('#bDiagnosi').onclick = e => diagnosticaLab($('#rDiagnosi'), e.target);
 }

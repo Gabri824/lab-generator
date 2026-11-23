@@ -1410,9 +1410,35 @@ di un nome dai file e dal lab acceso, GUI e terminale; test suggerito dopo ogni 
   inesistente, test suggerito dopo il Resolver, costi OSPF nella Verifica percorso, terminale):
   tutto ok.
 
+## Diagnostica di frr.conf (2026-11-23)
+
+Nuovo `core/frr_autofix.py`: diagnostica di frr.conf con correzioni. Misurata sulle 39 soluzioni
+d'esame: trova errori veri (stairs: route-map `trafficOut` non definita su as1r2 e as2r1, quindi i
+MED della soluzione non funzionano; Galaxy: `netwotk`; incognita: `ripd` non abilitato; puzzle:
+rete con bit host; garden-umbrella e lift: righe `neighbor` fuori da `router bgp`). Tre regole che
+davano falsi allarmi sono state ridotte: auto-cost tolta (c'è già l'avviso dell'analyzer),
+import-check solo `info`, ebgp-requires-policy solo per neighbor eBGP senza policy (avviso).
+
+- **Motore**: operazione `correggi_frr` (Opzioni 15 / GUI): `opzioni_correggi_frr` = i problemi con
+  le correzioni; `calcola_correggi_frr` applica la correzione scelta (testo di frr.conf, demone in
+  `daemons`, avvio di frr/apache2 nello startup, neighbor speculare) come piano: anteprima,
+  impronte, storia e Annulla, copie. Le correzioni che sono altre operazioni rimandano a quelle
+  (gateway, iBGP, rinomina).
+- **GUI**: "Diagnostica" nel pannello di ogni dispositivo in modalità Modifica (problemi + un
+  pulsante per correzione; dopo l'applica la diagnostica si rifà); card nel Riepilogo; problemi del
+  file sotto "File a righe"; gli errori diventano "!" nel livello Avvisi.
+- **Terminale**: Opzioni 15 "Diagnostica e correggi frr.conf" (problemi numerati, correzioni 1a,
+  1b..., anteprima e conferma); la diagnostica anche nel Riepilogo (Opzioni 8).
+- Verifiche: `test_diagnosi` (sui lab di prova solo i problemi veri; route-map sbagliata corretta e
+  annullata; refuso; demone; problema già corretto; terminale = GUI); pilota
+  `tests/strumenti/prova_diagnosi.mjs`; Kathará: la soluzione ufficiale di stairs corretta con la
+  diagnostica (e con l'immagine kathara/frr nel lab.conf, che la soluzione non indica): as2r2 riceve
+  da as1r2 il MED 20 e sceglie l'altra strada.
+
 ### Prossimo passo
 
-Fase 7 (collaudo, rifinitura e rilascio), da spiegare prima di cominciare.
+Fase 7 (collaudo, rifinitura e rilascio): spiegata, in attesa delle quattro decisioni dell'autore
+(esame del collaudo, Windows, sezione 8, ordine).
 
 ---
 

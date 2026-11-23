@@ -91,8 +91,7 @@ def main():
     print(f"\nI lab verranno creati in: {base}")
 
     while True:
-        print("\n\n----- Katharà Lab Generator 2025 - versione portabile modificata -----")
-        print("      (basata sul lavoro di sciro24, GitHub)\n")
+        print("\n\n----- Katharà Lab Generator - versione portabile -----\n")
         print("Scegli una modalità:\n")
         print("  1) Crea nuovo Laboratorio")
         print("  2) Importa file XML/JSON")

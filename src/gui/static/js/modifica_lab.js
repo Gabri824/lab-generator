@@ -6,6 +6,7 @@ import { dispositivo, lato } from './dispositivo.js';
 import { apriMenu, apriOperazione, autoCost, costoOspf, togliCosto } from './modifica.js';
 import { assegnati, datiDispositivo, ipDelModulo, ipUsati, listaReti, nomeLibero, parametriDefaultBgp, parametriDefaultIgp,
   primoIpLibero, prossimaLoopback, reteNormalizzata, retiEbgp, stessaParteHost, subnetDellaLan, vicinatoDellaLan } from './proposte.js';
+import { diagnostica, htmlProblemi, problemiDi } from './diagnosi.js';
 import { menuPolicy, policyVersoNeighbor, vociPolicyLan } from './modifica_policy.js';
 import { htmlPulsantePercorso, iniziaPercorso, puntoPercorso } from './percorso_voluto.js';
 import { gesti } from './topologia.js';
@@ -157,7 +158,7 @@ function azioniDispositivo(d) {
   if (d.tipo === 'router' && ha('bgp')) a.push(['network', 'Network BGP'], ['policy', 'Policy BGP']);
   if (d.tipo === 'router' && (ha('bgp') || ha('ospf') || ha('rip'))) a.push(['default', 'Default route']);
   if (d.tipo === 'router' && ha('bgp') && (ha('ospf') || ha('rip'))) a.push(['ridistribuzione', 'Ridistribuzione BGP → IGP']);
-  a.push(['righe', 'File a righe'], ['togli', 'Togli il dispositivo']);
+  a.push(['diagnosi', 'Diagnostica'], ['righe', 'File a righe'], ['togli', 'Togli il dispositivo']);
   return a;
 }
 
@@ -175,6 +176,7 @@ async function azioneDispositivo(dev, az) {
     else if (az.startsWith('aggiungi:')) await aggiungiProtocollo(d, az.slice(9));
     else if (az.startsWith('togli:')) togliProtocollo(d, az.slice(6));
     else if (az === 'righe') await righe(d);
+    else if (az === 'diagnosi') await diagnostica(d.nome);
     else if (az === 'loopback') loopback(d);
     else if (az === 'resolver') await resolver(d);
     else if (az === 'delega') await delega(d);
@@ -294,14 +296,18 @@ async function righe(d) {
     spiegazione: 'Per le righe che le altre azioni non coprono. Nel passo dopo scrivi nel file; l\'anteprima mostra le differenze e dopo "Applica" il Riepilogo segnala gli avvisi nuovi.',
     schema: [{nome: 'rel', etichetta: 'File', tipo: 'scelta', obbligatorio: true, opzioni: file.map(f => f.file)}],
     valori: {rel: file[0].file},
-    avanti: v => {
+    avanti: async v => {
       const f = file.find(x => x.file === v.rel);
       const vecchie = f.testo.split('\n');
       if (vecchie.length && vecchie[vecchie.length - 1] === '') vecchie.pop();
+      // problemi della diagnostica di questo file (per riga), per correggerli mentre si scrive
+      let probl = [];
+      try { probl = (await problemiDi(d.nome)).filter(x => x.file === v.rel); } catch (e) { probl = []; }
       return {
         operazione: 'righe', titolo: v.rel,
         corpo: `<label class="small muted" for="opRighe">Contenuto del file</label>
-          <textarea id="opRighe" class="righe-mod" rows="18" spellcheck="false" autocomplete="off">${esc(vecchie.join('\n'))}</textarea>`,
+          <textarea id="opRighe" class="righe-mod" rows="18" spellcheck="false" autocomplete="off">${esc(vecchie.join('\n'))}</textarea>
+          ${probl.length ? `<div class="small"><b>Diagnostica di questo file</b> (riga di adesso):${htmlProblemi(probl, false)}</div>` : ''}`,
         leggi: () => ({testo: $('#opRighe').value}),
         prepara: x => ({rel: v.rel, nuove: x.testo.replace(/\r/g, '').replace(/\n+$/, '').split('\n'), vecchie}),
       };

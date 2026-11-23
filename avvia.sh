@@ -11,7 +11,7 @@ LABS="${LABS:-$HOME/labs}"
 ERR="$DEST/ultimo_errore.txt"
 msg() { echo "[avvia] $*"; }
 
-echo "----- Lab Generator - versione portabile modificata (basata sul lavoro di sciro24) -----"
+echo "----- Lab Generator - versione portabile -----"
 
 # 0. controlli che non dipendono da noi: Kathara usa Docker
 if command -v docker > /dev/null 2>&1; then
