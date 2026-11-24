@@ -18,7 +18,6 @@ Tolgo anche le righe 'neighbor' che puntano a as10r1 su as40r1? (S/n):
     - riga   7: debug bgp updates in
     - riga   8: debug bgp updates out
     - riga  10: router bgp 10
-    - riga  11: 
     - riga  12: no bgp ebgp-requires-policy
     - riga  13: no bgp network import-check
     - riga  14: 
@@ -29,14 +28,17 @@ Tolgo anche le righe 'neighbor' che puntano a as10r1 su as40r1? (S/n):
     - riga  19: neighbor 192.168.0.2 description Router as40r1
     - riga  20: 
     - riga  21: neighbor 192.168.0.2 prefix-list PL_as10r1_192_168_0_2_in in
+    - riga  22: ip prefix-list PL_as10r1_192_168_0_2_in deny 160.0.0.0/24
+    - riga  23: ip prefix-list PL_as10r1_192_168_0_2_in permit any
+    - riga  24: 
   as40r1/etc/frr/frr.conf
     - riga  20: neighbor 192.168.0.1 remote-as 10
     - riga  21: neighbor 192.168.0.1 description Router as10r1
-  ⚠️ Route-map e prefix-list del router restano: i controlli le segnaleranno se non sono più usate.
+  ⚠️ as10r1/etc/frr/frr.conf: tolte le liste e route-map non più usate: PL_as10r1_192_168_0_2_in.
 
 Confermi le modifiche? (s/N): s
 ✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/candy_test/AAAAMMGG-HHMMSS
-   ⚠️ nuovo: as10r1 (frr.conf riga 7): la prefix-list PL_as10r1_192_168_0_2_in è definita ma non è usata da nessuna parte (nome scritto diverso dove dovrebbe essere usata?).
+   (i controlli dell'opzione 8 danno lo stesso esito di prima)
    Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
 
 [copie di sicurezza create: 1]

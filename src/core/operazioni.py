@@ -1014,8 +1014,11 @@ def calcola_rinumera_lan(stato, lan, nuova_rete, assegnati=None):
         f"Rete della LAN {lan}: {vecchia} -> {nuova_rete}")
 
 
-def calcola_sposta_interfaccia(stato, dispositivo, dev, nuova_lan, nuovo_ip=None):
-    """Sposta un'interfaccia su un'altra LAN (lab.conf); con nuovo_ip cambia anche l'indirizzo."""
+def calcola_sposta_interfaccia(stato, dispositivo, dev, nuova_lan, nuovo_ip=None, pulisci_riferimenti=True):
+    """Sposta un'interfaccia su un'altra LAN (lab.conf); con nuovo_ip cambia anche l'indirizzo. Con
+    pulisci_riferimenti toglie i neighbor BGP della vecchia LAN (da entrambe le parti) e le route-map e
+    liste rimaste senza uso; gateway, resolver e record A che usavano l'IP cambiato sono già
+    riscritti col nuovo IP dalla sostituzione."""
     from .device_editor import _membri_lan
     disp = _dispositivi(stato)
     d, it = _interfaccia(disp, dispositivo, dev)
@@ -1042,8 +1045,37 @@ def calcola_sposta_interfaccia(stato, dispositivo, dev, nuova_lan, nuovo_ip=None
         ip_map, iface_map = {str(v.ip): str(n_ip.ip)}, {str(v): str(n_ip)}
     note = [f"Nota: la LAN {it['lan']} resterà senza dispositivi."] if len(_membri_lan(disp, it['lan'])) == 1 else []
 
+    # le sessioni BGP sulla vecchia LAN non esistono più: neighbor tolti da entrambe le parti
+    extra = {lc: (vecchie, nuove)}
+    if it['ip'] and pulisci_riferimenti:
+        from .pulizia import pulisci
+        rete = ipaddress.ip_interface(it['ip']).network
+        mio_ip = it['ip'].split('/')[0]
+        lab = stato['percorso']
+        sulla_nuova = {n for n, _ in _membri_lan(disp, nuova_lan)}
+        vecchi = {n for n, _ in _membri_lan(disp, it['lan'])} - {dispositivo} - sulla_nuova
+        for n2, d2 in disp.items():
+            if not d2['frr'] or not (n2 == dispositivo or n2 in vecchi):
+                continue
+            r2 = os.path.join(n2, 'etc', 'frr', 'frr.conf')
+            vv = _righe_file(os.path.join(lab, r2))
+
+            def da_togliere(l, n2=n2):
+                m = re.match(r'\s*neighbor\s+(\S+)\s', l)
+                if not m:
+                    return False
+                if n2 == dispositivo:
+                    try:
+                        return ipaddress.ip_address(m.group(1)) in rete and m.group(1) != mio_ip
+                    except ValueError:
+                        return False
+                return m.group(1) == mio_ip
+            nn = [l for l in vv if not da_togliere(l)]
+            if nn != vv:
+                extra[r2] = (vv, nn)
+        note += pulisci(stato, extra)
     return _calcola_sostituzione(stato, ip_map, iface_map, {}, f"{dispositivo} {dev}: LAN {it['lan']} -> {nuova_lan}",
-                                 extra={lc: (vecchie, nuove)}, note=note)
+                                 extra=extra, note=note)
 
 
 def opzioni_gateway(stato, dispositivo):
@@ -1226,7 +1258,7 @@ def calcola_aggiungi_protocollo(stato, router, proto, reti=None, redistribute_bg
     return _piano_diretto(f"Aggiungi {proto.upper()} a {router}", modifiche)
 
 
-def calcola_togli_protocollo(stato, router, proto, anche_sui_vicini=True):
+def calcola_togli_protocollo(stato, router, proto, anche_sui_vicini=True, pulisci_riferimenti=True):
     """Toglie OSPF, RIP o BGP da un router; per BGP anche i neighbor che puntano a lui (se richiesto)."""
     from .device_editor import _ip_del_router
     from .file_utils import _fine_blocco, _set_demone
@@ -1255,7 +1287,11 @@ def calcola_togli_protocollo(stato, router, proto, anche_sui_vicini=True):
     if proto == 'bgp':
         if anche_sui_vicini:
             modifiche.update(neighbor_verso(stato, router))
-        note.append("Route-map e prefix-list del router restano: i controlli le segnaleranno se non sono più usate.")
+        if pulisci_riferimenti:
+            from .pulizia import pulisci
+            note += pulisci(stato, modifiche)
+        else:
+            note.append("Route-map e prefix-list del router restano: i controlli le segnaleranno se non sono più usate.")
     return _piano_diretto(f"Togli {proto.upper()} da {router}", modifiche, note)
 
 
@@ -1664,10 +1700,13 @@ def _togli_righe_lab_conf(righe, nome):
     return out
 
 
-def calcola_togli_dispositivo(stato, nome, togli_neighbor=True):
+def calcola_togli_dispositivo(stato, nome, togli_neighbor=True, pulisci_riferimenti=True):
     """Toglie un dispositivo: righe di lab.conf, cartella e file '<nome>.*' e, se richiesto, i
-    neighbor degli altri router che puntano ai suoi IP. Gateway e resolver che lo usavano restano:
-    vengono segnalati."""
+    neighbor degli altri router che puntano ai suoi IP. Con pulisci_riferimenti toglie anche quello
+    che resterebbe orfano (gateway e rotte negli .startup, nameserver, record A, route-map e liste
+    non più usate); altrimenti gateway e resolver che lo usavano restano e vengono segnalati."""
+    from .device_editor import _ip_del_router
+    from .pulizia import pulisci
     info = opzioni_togli_dispositivo(stato, nome)
     lab = stato['percorso']
     modifiche = {}
@@ -1682,10 +1721,14 @@ def calcola_togli_dispositivo(stato, nome, togli_neighbor=True):
     if togli_neighbor:
         modifiche.update(neighbor_verso(stato, nome))
     note = []
-    if info['gateway_di']:
-        note.append(f"{', '.join(info['gateway_di'])} usava {nome} come gateway: cambialo (Modifica dispositivo).")
-    if info['resolver_di']:
-        note.append(f"{', '.join(info['resolver_di'])} usava {nome} come resolver: cambialo (Opzioni 5).")
+    if pulisci_riferimenti:
+        miei = _ip_del_router(_dispositivi(stato)[nome])
+        note += pulisci(stato, modifiche, miei)
+    else:
+        if info['gateway_di']:
+            note.append(f"{', '.join(info['gateway_di'])} usava {nome} come gateway: cambialo (Modifica dispositivo).")
+        if info['resolver_di']:
+            note.append(f"{', '.join(info['resolver_di'])} usava {nome} come resolver: cambialo (Opzioni 5).")
     return _piano_diretto(f"Togli {nome}", modifiche, note)
 
 
@@ -1737,10 +1780,12 @@ def calcola_aggiungi_interfaccia(stato, nome, lan, ip):
     return _piano_diretto(f"Aggiungi {dev} a {nome} (LAN {lan}, {nuovo})", modifiche, note)
 
 
-def calcola_togli_interfaccia(stato, nome, dev, togli_neighbor=True):
+def calcola_togli_interfaccia(stato, nome, dev, togli_neighbor=True, pulisci_riferimenti=True):
     """Toglie un'interfaccia: riga di lab.conf, IP nello startup, rotte e blocco 'interface' che la
     usano. Le interfacce dopo scalano di uno (eth2 -> eth1) in lab.conf, startup e frr.conf. Con
-    togli_neighbor tolge anche i neighbor degli altri router che puntavano al suo IP."""
+    togli_neighbor tolge anche i neighbor degli altri router che puntavano al suo IP; con
+    pulisci_riferimenti anche gateway, rotte, nameserver e record A che usavano quell'IP e le
+    route-map e liste rimaste senza uso."""
     disp = _dispositivi(stato)
     d, it = _interfaccia(disp, nome, dev)
     if len(d['interfacce']) <= 1:
@@ -1813,6 +1858,9 @@ def calcola_togli_interfaccia(stato, nome, dev, togli_neighbor=True):
             if nn != vv:
                 modifiche[r2] = (vv, nn)
     note = [f"Righe tolte perché usano {dev}: " + '; '.join(tolte)] if len(tolte) > 1 else []
+    if pulisci_riferimenti:
+        from .pulizia import pulisci
+        note += pulisci(stato, modifiche, [it['ip'].split('/')[0]] if it['ip'] else [])
     if coperta:
         note.append(f"In frr.conf di {nome} restano righe che comprendono {rete}: " + '; '.join(coperta)
                     + " (toglile se non servono più).")

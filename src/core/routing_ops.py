@@ -811,7 +811,13 @@ def _togli_dispositivo(base_path, routers):
     togli = True
     if info['neighbor']:
         togli = _si(f"Tolgo anche le righe 'neighbor' che puntano a {nome} su {', '.join(info['neighbor'])}? (S/n): ", True)
-    _esegui_piano(base_path, operazioni.calcola_togli_dispositivo(stato, nome, togli_neighbor=togli), routers)
+    pulisci = True
+    if info['gateway_di'] or info['resolver_di']:
+        chi = sorted(set(info['gateway_di']) | set(info['resolver_di']))
+        pulisci = _si(f"{', '.join(chi)} usa {nome} come gateway o resolver: tolgo anche quelle righe "
+                      f"(rotta di default, nameserver, record DNS)? (S/n): ", True)
+    _esegui_piano(base_path, operazioni.calcola_togli_dispositivo(
+        stato, nome, togli_neighbor=togli, pulisci_riferimenti=pulisci), routers)
 
 
 def menu_dispositivi(base_path, routers):

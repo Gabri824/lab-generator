@@ -20,6 +20,8 @@ Tolgo anche i neighbor BGP che passano da eth1 (192.168.0.22/30)? (S/n):
     - riga  26: neighbor 192.168.0.21 remote-as 70
     - riga  27: neighbor 192.168.0.21 description Router as70r1
     - riga  29: neighbor 192.168.0.21 route-map PREF_IN_192_168_0_21 in
+    - riga  30: route-map PREF_IN_192_168_0_21 permit 10
+    - riga  31: set local-preference 110
   as70r1/etc/frr/frr.conf
     - riga  20: neighbor 192.168.0.22 remote-as 50
     - riga  21: neighbor 192.168.0.22 description Router as50r1
@@ -29,13 +31,13 @@ Tolgo anche i neighbor BGP che passano da eth1 (192.168.0.22/30)? (S/n):
     - riga  22: as50r1[3]=D
     + riga  20: as50r1[1]=C
     + riga  21: as50r1[2]=D
+  ⚠️ as50r1/etc/frr/frr.conf: tolte le liste e route-map non più usate: PREF_IN_192_168_0_21.
   ⚠️ In frr.conf di as50r1 restano righe che comprendono 192.168.0.20/30: network 192.168.0.20/30 (toglile se non servono più).
   ⚠️ Le interfacce dopo eth1 scalano di uno: eth2 -> eth1, eth3 -> eth2.
 
 Confermi le modifiche? (s/N): s
 ✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/candy_test/AAAAMMGG-HHMMSS
    ⚠️ nuovo: LAN G: link 192.168.0.20/30 con un solo dispositivo (as70r1 eth1 192.168.0.21/30). Manca l'altro estremo o il nome della LAN è sbagliato?
-   ⚠️ nuovo: as50r1 (frr.conf riga 27): la route-map PREF_IN_192_168_0_21 è definita ma non è usata da nessuna parte (nome scritto diverso dove dovrebbe essere usata?).
    Se il lab è avviato, le modifiche valgono dal prossimo avvio (lclean e poi lstart).
 
 [copie di sicurezza create: 1]

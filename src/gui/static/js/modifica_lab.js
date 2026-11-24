@@ -84,10 +84,11 @@ function togliInterfaccia(d, it) {
     operazione: 'togli_interfaccia', titolo: `Togli ${d.nome} ${it.dev}`,
     spiegazione: `Toglie la riga di lab.conf, l'IP nello startup, le rotte e il blocco interface di ${it.dev}; le interfacce dopo vengono rinumerate.`,
     fissi: {nome: d.nome, dev: it.dev},
-    schema: d.demoni.includes('bgpd') || d.tipo !== 'router'
-      ? [{nome: 'togli_neighbor', etichetta: 'Togli anche i neighbor degli altri router che puntano a questo IP', tipo: 'si_no'}] : [],
-    valori: {togli_neighbor: true},
-    prepara: v => ({togli_neighbor: v.togli_neighbor !== false}),
+    schema: (d.demoni.includes('bgpd') || d.tipo !== 'router'
+      ? [{nome: 'togli_neighbor', etichetta: 'Togli anche i neighbor degli altri router che puntano a questo IP', tipo: 'si_no'}] : [])
+      .concat([{nome: 'pulisci_riferimenti', etichetta: 'Togli anche quello che resta senza uso: gateway, rotte, resolver e record DNS che usavano questo IP, route-map e liste', tipo: 'si_no'}]),
+    valori: {togli_neighbor: true, pulisci_riferimenti: true},
+    prepara: v => ({togli_neighbor: v.togli_neighbor !== false, pulisci_riferimenti: v.pulisci_riferimenti !== false}),
   });
 }
 
@@ -265,9 +266,10 @@ function togliProtocollo(d, proto) {
     operazione: 'togli_protocollo', titolo: `Togli ${P} da ${d.nome}`,
     spiegazione: `Toglie il blocco router ${proto}, le righe redistribute ${proto} e spegne il demone.`,
     fissi: {router: d.nome, proto},
-    schema: proto === 'bgp' ? [{nome: 'anche_sui_vicini', etichetta: `Togli anche i neighbor degli altri router verso ${d.nome}`, tipo: 'si_no'}] : [],
-    valori: {anche_sui_vicini: true},
-    prepara: v => (proto === 'bgp' ? {anche_sui_vicini: v.anche_sui_vicini !== false} : {}),
+    schema: proto === 'bgp' ? [{nome: 'anche_sui_vicini', etichetta: `Togli anche i neighbor degli altri router verso ${d.nome}`, tipo: 'si_no'},
+      {nome: 'pulisci_riferimenti', etichetta: 'Togli anche le route-map e le liste che restano senza uso', tipo: 'si_no'}] : [],
+    valori: {anche_sui_vicini: true, pulisci_riferimenti: true},
+    prepara: v => (proto === 'bgp' ? {anche_sui_vicini: v.anche_sui_vicini !== false, pulisci_riferimenti: v.pulisci_riferimenti !== false} : {}),
     subito: proto !== 'bgp',
   });
 }
@@ -278,11 +280,12 @@ async function togliDispositivo(d) {
     .filter(Boolean).join('; ');
   apriOperazione({
     operazione: 'togli_dispositivo', titolo: `Togli ${d.nome}`,
-    spiegazione: `Toglie le righe di lab.conf, la cartella e i file di ${d.nome}.` + (note ? ` Attenzione: ${note} (restano da sistemare).` : ''),
+    spiegazione: `Toglie le righe di lab.conf, la cartella e i file di ${d.nome}.` + (note ? ` Attenzione: ${note}.` : ''),
     fissi: {nome: d.nome},
-    schema: o.neighbor.length ? [{nome: 'togli_neighbor', etichetta: `Togli anche i neighbor verso ${d.nome} su ${o.neighbor.join(', ')}`, tipo: 'si_no'}] : [],
-    valori: {togli_neighbor: true},
-    prepara: v => ({togli_neighbor: v.togli_neighbor !== false}),
+    schema: (o.neighbor.length ? [{nome: 'togli_neighbor', etichetta: `Togli anche i neighbor verso ${d.nome} su ${o.neighbor.join(', ')}`, tipo: 'si_no'}] : [])
+      .concat([{nome: 'pulisci_riferimenti', etichetta: 'Togli anche quello che resta senza uso: gateway, rotte, resolver e record DNS che usavano i suoi IP, route-map e liste', tipo: 'si_no'}]),
+    valori: {togli_neighbor: true, pulisci_riferimenti: true},
+    prepara: v => ({togli_neighbor: v.togli_neighbor !== false, pulisci_riferimenti: v.pulisci_riferimenti !== false}),
   });
 }
 

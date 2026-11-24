@@ -11,7 +11,7 @@
  ripngd=no
 --- prima/as10r1/etc/frr/frr.conf
 +++ dopo/as10r1/etc/frr/frr.conf
-@@ -3,22 +3,7 @@
+@@ -3,22 +3,5 @@
  
  log file /var/log/frr/frr.log
  
@@ -20,7 +20,7 @@
 -debug bgp updates out
  
 -router bgp 10
--
+ 
 -    no bgp ebgp-requires-policy
 -    no bgp network import-check
 -
@@ -31,9 +31,9 @@
 -    neighbor 192.168.0.2 description Router as40r1
 -
 -    neighbor 192.168.0.2 prefix-list PL_as10r1_192_168_0_2_in in
- ip prefix-list PL_as10r1_192_168_0_2_in deny 160.0.0.0/24
- ip prefix-list PL_as10r1_192_168_0_2_in permit any
- 
+-ip prefix-list PL_as10r1_192_168_0_2_in deny 160.0.0.0/24
+-ip prefix-list PL_as10r1_192_168_0_2_in permit any
+-
 --- prima/as40r1/etc/frr/frr.conf
 +++ dopo/as40r1/etc/frr/frr.conf
 @@ -17,8 +17,6 @@

@@ -11,7 +11,7 @@
  systemctl start frr
 --- prima/as50r1/etc/frr/frr.conf
 +++ dopo/as50r1/etc/frr/frr.conf
-@@ -23,10 +23,7 @@
+@@ -23,10 +23,5 @@
      neighbor 192.168.0.13 description Router as30r1
      neighbor 192.168.0.17 remote-as 60
      neighbor 192.168.0.17 description Router as60r1
@@ -19,8 +19,8 @@
 -    neighbor 192.168.0.21 description Router as70r1
  
 -    neighbor 192.168.0.21 route-map PREF_IN_192_168_0_21 in
- route-map PREF_IN_192_168_0_21 permit 10
-     set local-preference 110
+-route-map PREF_IN_192_168_0_21 permit 10
+-    set local-preference 110
  
 --- prima/as70r1/etc/frr/frr.conf
 +++ dopo/as70r1/etc/frr/frr.conf
