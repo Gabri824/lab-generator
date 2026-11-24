@@ -1667,6 +1667,116 @@ def calcola_correggi_frr(stato, dispositivo, regola, riga, messaggio, correzione
                   fs, out, [f"Problema: {problema['messaggio']}"])
 
 
+def opzioni_correggi_frr_sicuri(stato, dispositivo):
+    """Correzioni 'sicure' di frr.conf del dispositivo che si applicano in blocco:
+    [{'riga', 'messaggio', 'etichetta'}]. Niente 'info' (bgp.missing_import_check) e niente proposte."""
+    from .frr_autofix import analizza_frr_avanzato
+    if dispositivo not in stato['dispositivi']:
+        raise ErroreOperazione(f"{dispositivo} non è un dispositivo del lab.")
+    f = _frr(stato, dispositivo)
+    if not os.path.isfile(f):
+        return []
+    out = []
+    for i in analizza_frr_avanzato(_leggi_testo(f) or '', lab_path=stato['percorso'], dev=dispositivo):
+        if i['gravita'] == 'info':
+            continue
+        fx = next((x for x in i.get('fixes') or []
+                   if x.get('confidenza') == 'sicuro' and x.get('tipo') in ('replace_line', 'insert_after', 'delete_line')), None)
+        if fx:
+            out.append({'riga': i['riga'], 'messaggio': i['messaggio'], 'etichetta': fx.get('etichetta') or 'Correggi'})
+    return out
+
+
+def calcola_correggi_frr_sicuri(stato, dispositivo):
+    """Applica in un solo piano tutte le correzioni sicure di frr.conf del dispositivo (sempre con
+    anteprima e Annulla, come le altre operazioni). Le proposte e le 'info' non si toccano."""
+    from .frr_autofix import analizza_frr_avanzato, applica_fix_sicuri_testo
+    sicuri = opzioni_correggi_frr_sicuri(stato, dispositivo)
+    rel = os.path.join(dispositivo, 'etc', 'frr', 'frr.conf')
+    f = os.path.join(stato['percorso'], rel)
+    prima = _leggi_testo(f) or ''
+    problemi = [i for i in analizza_frr_avanzato(prima, lab_path=stato['percorso'], dev=dispositivo) if i['gravita'] != 'info']
+    dopo = applica_fix_sicuri_testo(prima, problemi) if sicuri else prima
+    if dopo == prima:
+        return _piano_diretto(f"Fix sicuri di {dispositivo}", {}, vuoto=f"{dispositivo}: nessuna correzione sicura da applicare.")
+    note = [f"riga {s['riga']}: {s['etichetta']}" if s['riga'] else s['etichetta'] for s in sicuri]
+    return _piano_diretto(f"Applica i fix sicuri a {dispositivo}", {rel: (prima.split('\n')[:-1] if prima.endswith('\n') else prima.split('\n'),
+                                                                            dopo.split('\n')[:-1] if dopo.endswith('\n') else dopo.split('\n'))}, note)
+
+
+# ----------------------------------------------------------------------------- reset del routing
+
+_RE_TESTA_FRR = re.compile(r'(?:password|enable\s+password|log|hostname|service|line|debug)\b')
+_RE_BASE_BGP = re.compile(r'\s*no\s+bgp\s+(?:ebgp-requires-policy|network\s+import-check)\s*$')
+
+
+def _frr_azzerato(righe):
+    """frr.conf senza configurazione di routing: restano l'intestazione, i 'debug', i blocchi
+    router ospf / router rip vuoti e router bgp <asn> con le sole direttive 'no bgp ...' di base."""
+    segmenti, cur = [], None
+    for l in righe:
+        if l.strip() and not l[:1].isspace() and not l.strip().startswith('!'):
+            cur = [l, []]
+            segmenti.append(cur)
+        elif cur is not None:
+            cur[1].append(l)
+    testa, blocchi = [], []
+    for intest, corpo in segmenti:
+        s = intest.strip()
+        if _RE_TESTA_FRR.match(s):
+            testa.append(intest)
+        elif re.match(r'router\s+(?:ospf|rip)\b', s):
+            blocchi.append([intest])
+        elif re.match(r'router\s+bgp\b', s):
+            blocchi.append([intest, *[l for l in corpo if _RE_BASE_BGP.match(l)]])
+    # righe vuote dell'originale fra le righe di intestazione: una sola
+    out, prima_riga = [], None
+    for intest in testa:
+        if prima_riga is not None:
+            ia, ib = righe.index(prima_riga), righe.index(intest)
+            if any(not x.strip() for x in righe[ia + 1:ib]):
+                out.append('')
+        out.append(intest)
+        prima_riga = intest
+    for b in blocchi:
+        if out:
+            out.append('')
+        out += b
+    return out
+
+
+def opzioni_reset_routing(stato):
+    """Router con frr.conf e le rotte statiche dei loro startup: {'router': [..], 'statiche': {router: [righe]}}."""
+    router = sorted(n for n, d in stato['dispositivi'].items() if d['tipo'] == 'router' and os.path.isfile(_frr(stato, n)))
+    statiche = {}
+    for n in router:
+        righe = [l.strip() for l in _righe_file(os.path.join(stato['percorso'], f"{n}.startup")) if re.match(r'\s*ip\s+route\s+add\b', l)]
+        if righe:
+            statiche[n] = righe
+    return {'router': router, 'statiche': statiche}
+
+
+def calcola_reset_routing(stato, router=None):
+    """Azzera il routing di tutti i router (o solo di `router`): frr.conf ridotto a intestazione, debug e
+    blocchi router vuoti, rotte statiche tolte dagli .startup. Restano lab.conf, IP, loopback, i demoni
+    abilitati (daemons) e tutti i pc, server WWW e DNS."""
+    info = opzioni_reset_routing(stato)
+    nomi = [router] if router else info['router']
+    if router and router not in info['router']:
+        raise ErroreOperazione(f"{router} non è un router del lab.")
+    modifiche = {}
+    for n in nomi:
+        rel = os.path.join(n, 'etc', 'frr', 'frr.conf')
+        v = _righe_file(os.path.join(stato['percorso'], rel))
+        modifiche[rel] = (v, _frr_azzerato(v))
+        rs = f"{n}.startup"
+        v = _righe_file(os.path.join(stato['percorso'], rs))
+        modifiche[rs] = (v, [l for l in v if not re.match(r'\s*ip\s+route\s+add\b', l)])
+    note = ["I demoni (daemons), lab.conf, gli IP e le loopback restano; da rifare: network, neighbor, policy, costi, ridistribuzione."]
+    return _piano_diretto(f"Azzera il routing di {router or 'tutti i router'}", modifiche, note,
+                          vuoto='Il routing è già azzerato.')
+
+
 # ----------------------------------------------------------------------------- 13. aggiungi / togli un dispositivo
 
 def _modello_dello_stato(stato):
@@ -2062,6 +2172,8 @@ OPERAZIONI = {
     'togli_protocollo': (opzioni_protocolli, calcola_togli_protocollo),
     'righe': (opzioni_righe, calcola_righe),
     'correggi_frr': (opzioni_correggi_frr, calcola_correggi_frr),
+    'correggi_frr_sicuri': (opzioni_correggi_frr_sicuri, calcola_correggi_frr_sicuri),
+    'reset_routing': (opzioni_reset_routing, calcola_reset_routing),
     'rinomina': (opzioni_loopback, calcola_rinomina),
     'aggiungi_dispositivo': (opzioni_aggiungi_dispositivo, calcola_aggiungi_dispositivo),
     'togli_dispositivo': (opzioni_togli_dispositivo, calcola_togli_dispositivo),

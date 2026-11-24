@@ -26,7 +26,13 @@ export function htmlProblemi(problemi, conCorrezioni = true) {
 export async function passoDiagnosi(nome) {
   const problemi = await problemiDi(nome);
   ridisegna();
+  const sicuri = (await azione({azione: 'opzioni', lab: S.nome, operazione: 'correggi_frr_sicuri', parametri: {dispositivo: nome}})).opzioni || [];
   const voci = [];
+  if (sicuri.length) voci.push({
+    testo: `Applica i ${sicuri.length} fix sicuri di frr.conf`, aiuto: sicuri.map(s => (s.riga ? `riga ${s.riga}: ` : '') + s.etichetta).join(' · '),
+    fai: () => apriOperazione({operazione: 'correggi_frr_sicuri', titolo: `Fix sicuri di ${nome}`, subito: true, poi: () => passoDiagnosi(nome),
+      fissi: {dispositivo: nome}, spiegazione: 'Solo le correzioni di cui il programma è sicuro (non le proposte, non le "info"); l\'anteprima mostra ogni riga.'}),
+  });
   problemi.forEach((x, k) => x.correzioni.forEach((c, j) => voci.push({
     testo: `${k + 1}${LETTERE[j]}) ${c.etichetta}`, aiuto: x.messaggio, fai: () => correggi(nome, x, c, j)})));
   return {menu: {

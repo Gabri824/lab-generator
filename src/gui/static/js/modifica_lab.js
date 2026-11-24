@@ -510,6 +510,21 @@ async function delega(d) {
   });
 }
 
+// ---------- azzerare il routing ----------
+async function azzeraRouting() {
+  const o = await opzioni('reset_routing', {});
+  if (!o.router.length) throw new Error('Il lab non ha router.');
+  const nStat = Object.values(o.statiche).reduce((a, x) => a + x.length, 0);
+  apriOperazione({
+    operazione: 'reset_routing', titolo: 'Azzera il routing',
+    spiegazione: `Toglie da frr.conf di ${o.router.length} router network, neighbor, redistribute, policy e costi OSPF` + (nStat ? ` e ${nStat} rotte statiche dagli .startup` : '')
+      + `. Restano lab.conf, IP, loopback, demoni e tutti i pc, server WWW e DNS. L'anteprima mostra ogni riga; si annulla con "Annulla modifica".`,
+    schema: [{nome: 'router', etichetta: 'Router', tipo: 'scelta', opzioni: [['', 'tutti'], ...o.router.map(r => [r, r])]}],
+    valori: {router: ''},
+    prepara: v => (v.router ? {router: v.router} : {}),
+  });
+}
+
 // ---------- aggiungere un dispositivo ----------
 function aggiungi(tipo, lan) {
   const lans = S.lab.lan.filter(l => l.subnet);
@@ -563,7 +578,8 @@ function confAggiungi(tipo, lan) {
 
 S.htmlCasaModifica = () => `<div class="btns">${Object.entries(TIPI).map(([t, n]) =>
   `<button type="button" class="ghost small" data-gesto="aggiungi" data-tipo="${t}">+ ${esc(n[0].toUpperCase() + n.slice(1))}</button>`).join('')}</div>`
-  + htmlPulsantePercorso();
+  + htmlPulsantePercorso()
+  + `<div class="btns"><button type="button" class="ghost small danger" data-gesto="reset" title="Toglie network, neighbor, policy, costi e rotte statiche dai router; restano topologia, IP, demoni e pc/WWW/DNS">Azzera il routing</button></div>`;
 
 // ---------- smistamento dei gesti (disegno e pulsanti dei pannelli) ----------
 gesti.su = m => {
@@ -576,5 +592,6 @@ gesti.su = m => {
   else if (m.mod === 'lan') menuLan(m.lan);
   else if (m.mod === 'disp') azioneDispositivo(m.dev, m.azione);
   else if (m.mod === 'aggiungi') aggiungi(m.tipo, m.lan);
+  else if (m.mod === 'reset') azzeraRouting().catch(e => avviso(e.message));
 };
 gesti.punto = puntoPercorso;

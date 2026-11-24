@@ -895,7 +895,8 @@ def menu_opzioni_laboratorio(base_path, routers):
             'Default route (BGP verso un neighbor, RIP, OSPF)',
             'Aggiungi o togli un dispositivo',
             "Annulla l'ultima modifica o ripristina una copia di sicurezza",
-            'Diagnostica e correggi frr.conf (refusi, blocchi, riferimenti, demoni)'
+            'Diagnostica e correggi frr.conf (refusi, blocchi, riferimenti, demoni)',
+            'Azzera il routing (tiene topologia, IP, demoni, pc/WWW/DNS)'
         ]
         print_menu(
             f'=== Opzioni Laboratorio ({os.path.basename(os.path.normpath(base_path))}) ===',
@@ -935,6 +936,8 @@ def menu_opzioni_laboratorio(base_path, routers):
             menu_annulla(base_path)
         elif choice == '15':
             menu_diagnostica(base_path)
+        elif choice == '16':
+            azzera_routing(base_path)
         else:
             print('Scelta non valida, riprova.')
 
@@ -986,9 +989,20 @@ def menu_diagnostica(base_path):
             _stampa_diagnosi(nome, problemi)
             if not problemi:
                 break
-            r = input("Correzione da applicare (es. 1a, Invio = nessuna): ").strip().lower()
+            sicuri = operazioni.opzioni_correggi_frr_sicuri(stato, nome)
+            r = input("Correzione da applicare (es. 1a"
+                      + (f", S = tutti i {len(sicuri)} fix sicuri di frr.conf" if sicuri else '')
+                      + ", Invio = nessuna): ").strip().lower()
             if not r:
                 break
+            if r == 's' and sicuri:
+                try:
+                    piano = operazioni.calcola_correggi_frr_sicuri(stato, nome)
+                except operazioni.ErroreOperazione as e:
+                    print(e)
+                    continue
+                _esegui_piano(base_path, piano)
+                continue
             if len(r) < 2 or not r[:-1].isdigit() or not 1 <= int(r[:-1]) <= len(problemi) \
                     or 'abcdefghij'.find(r[-1]) < 0 or 'abcdefghij'.find(r[-1]) >= len(problemi[int(r[:-1]) - 1]['correzioni']):
                 print('Scelta non valida (numero del problema + lettera della correzione).')
@@ -1004,6 +1018,31 @@ def menu_diagnostica(base_path):
                 print(e)
                 continue
             _esegui_piano(base_path, piano)
+
+
+def azzera_routing(base_path):
+    """Opzioni 16: reset del routing di tutti i router o di uno (stessa operazione della GUI)."""
+    stato = leggi_stato(base_path)
+    info = operazioni.opzioni_reset_routing(stato)
+    if not info['router']:
+        print('Il lab non ha router.')
+        return
+    print("\nL'operazione toglie da frr.conf network, neighbor, redistribute, policy e costi, e le rotte statiche degli .startup dei router.")
+    print("Restano lab.conf, IP, loopback, demoni abilitati e tutti i pc, server WWW e DNS.")
+    print_menu('Su quale router?', ['Tutti i router'] + info['router'], extra_options=[('0', 'Torna indietro')])
+    s = input('Seleziona (numero): ').strip()
+    if s == '0' or not s:
+        return
+    if not s.isdigit() or not 1 <= int(s) <= len(info['router']) + 1:
+        print('Scelta non valida.')
+        return
+    r = None if s == '1' else info['router'][int(s) - 2]
+    try:
+        piano = operazioni.calcola_reset_routing(stato, r)
+    except operazioni.ErroreOperazione as e:
+        print(e)
+        return
+    _esegui_piano(base_path, piano)
 
 
 def menu_annulla(base_path):

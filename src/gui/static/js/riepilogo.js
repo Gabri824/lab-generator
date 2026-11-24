@@ -28,7 +28,7 @@ export function htmlControlloFrr() {
   if (!righe.length) h += `<div class="okline">✔ Nessun problema${S.sintassi ? '' : ' nei nomi'}.</div>`;
   else h += `<table><tr><th>Router</th><th>Riga</th><th>Testo</th><th>Problema</th></tr>${righe.map(x =>
     `<tr class="${x.gravita === 'errore' ? 'sosp' : ''}"><td>${esc(x.router)}</td><td>${esc(x.riga)}</td><td><code>${esc(x.testo)}</code></td>
-     <td class="small ${x.gravita === 'errore' ? 'koline' : 'warnline'}">${x.gravita === 'errore' ? '✘ ' : '⚠ '}${esc(x.messaggio)}</td></tr>`).join('')}</table>
+     <td class="small ${x.gravita === 'errore' ? 'koline' : 'warnline'}">${x.gravita === 'errore' ? '✘ ' : '⚠ '}${esc(x.messaggio)}${x.suggerimento && x.suggerimento !== x.messaggio ? `<div class="muted">${esc(x.suggerimento)}</div>` : ''}</td></tr>`).join('')}</table>
     <div class="muted small">✘ = da correggere; ⚠ = da controllare (una lista definita e mai usata è spesso lo stesso nome scritto in due modi).</div>`;
   return h + '</div>';
 }

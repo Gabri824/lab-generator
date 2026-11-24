@@ -21,6 +21,7 @@ import threading
 import time
 
 from core import web
+from core.frr_autofix import suggerisci_per_riga_vtysh
 
 from . import dati
 
@@ -872,10 +873,16 @@ def sintassi_frr(kathara, lab_path, lab, lav):
         if '@@RC=' not in out:
             return {'errore': out.strip()[-300:]}
         righe = []
+        with open(os.path.join(lab_path, r, 'etc', 'frr', 'frr.conf'), encoding='utf-8', errors='replace') as f:
+            testo_frr = f.read()
         for m in re.finditer(r'^line (\d+): % ([^\[:\n]+)(?:\[\d+\])?:\s*(.*)$', out, re.M):
             tipo = m.group(2).strip()
-            righe.append({'riga': int(m.group(1)), 'testo': ' '.join(m.group(3).split()), 'gravita': 'errore',
-                          'messaggio': TRADUZIONI_VTYSH.get(tipo, tipo)})
+            voce = {'riga': int(m.group(1)), 'testo': ' '.join(m.group(3).split()), 'gravita': 'errore',
+                    'messaggio': TRADUZIONI_VTYSH.get(tipo, tipo)}
+            suggerimento = suggerisci_per_riga_vtysh(testo_frr, voce['riga'], voce['testo'], lab_path=lab_path, dev=r)
+            if suggerimento:
+                voce['suggerimento'] = suggerimento
+            righe.append(voce)
         return {'righe': righe}
 
     lav.scrivi(f"Controllo della sintassi di frr.conf su {len(router)} router (vtysh --dryrun)...")
@@ -887,6 +894,8 @@ def sintassi_frr(kathara, lab_path, lab, lav):
             lav.scrivi(f"  {r}: non controllato ({x['errore'][-120:]})")
         for e in x.get('righe', []):
             lav.scrivi(f"  {r} riga {e['riga']}: {e['testo']}  ->  {e['messaggio']}")
+            if e.get('suggerimento'):
+                lav.scrivi(f"      suggerimento: {e['suggerimento']}")
     lav.scrivi(f"Fatto: {n} righe che FRR scarterebbe." if n else "✔ Nessuna riga scartata da FRR.")
     return 0
 
