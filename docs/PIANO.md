@@ -1479,7 +1479,22 @@ predefiniti uguali su un AS", menu principale 4 con i nomi DNS.
 
 ### Prossimo passo
 
-Collaudo dell'autore su tennis con la scaletta `docs/COLLAUDO.md`, poi correzioni, Windows e unione.
+Collaudo dell'autore su tennis con la scaletta `docs/COLLAUDO.md` (parti 1-4 e, per la fase 8, la parte 5), poi correzioni, Windows e unione.
+
+---
+
+## Fase 8: pulizia, reset e checklist di consegna (da una roadmap esterna, scelte dell'autore)
+
+Dalla roadmap `Roadmap Integrazione Branch Lab Generator.pdf` si è fatto solo quello che l'autore ha scelto (niente editor unico del router, niente drag and drop delle interfacce, niente menu a clic destro, niente as-path prepend: non compare in Esami_IDC). Un commit per sotto-fase, un solo collaudo alla fine.
+
+| Sotto-fase | Cosa | Dove |
+|---|---|---|
+| 8.1 | Pulizia a cascata: togliendo dispositivo, interfaccia, BGP o spostando un'interfaccia si tolgono neighbor, gateway e rotte negli .startup, nameserver (resolv.conf vuoto eliminato), record A, route-map e liste rimaste senza uso. Casella `pulisci_riferimenti` (attiva) | `core/pulizia.py`, `operazioni.calcola_togli_*`, `calcola_sposta_interfaccia` |
+| 8.2 | `calcola_cpp` idempotente (anche cambiando relazione); network BGP `rimuovi`/`modifica` con propagazione alle liste; resolver e gateway vuoti li tolgono; IP di un'interfaccia che nello startup non ne ha; `crea_dns_host` senza zona "." con root `None`/`none` | `operazioni.py`, `generators.py` |
+| 8.3 | Azzera il routing (Opzioni 16, GUI), "Applica i fix sicuri" (Opzioni 15 `S`, Diagnostica), suggerimenti di `vtysh --dryrun` | `operazioni.py`, `routing_ops.py`, `gui/kathara.py`, `diagnosi.js` |
+| 8.4 | Checklist "Pronto per la consegna" a semaforo in Riepilogo e Archivio; IP di un'interfaccia senza IP dalla GUI (gli IP liberi e il gateway nei form c'erano già) | `consegna_controlli.js`, `consegna.js` |
+
+Verifiche: `test_pulizia.py`, `test_operazioni_82.py`, `test_operazioni_83.py`, `tests/js/consegna.test.mjs`, pilota `prova_fase8.mjs`.
 
 ---
 

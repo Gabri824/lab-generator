@@ -33,7 +33,17 @@ function menuInterfaccia(dev, iface) {
 }
 
 function cambiaIp(d, it) {
-  if (!it.ip) return avviso(`${d.nome} ${it.dev} non ha un IP nello startup: aggiungilo con "File a righe".`);
+  if (!it.ip) {
+    const subnet = subnetDellaLan(S.lab, it.lan);
+    return apriOperazione({
+      operazione: 'ip_interfaccia', titolo: `IP di ${d.nome} ${it.dev}`,
+      spiegazione: `${it.dev} è sulla LAN ${it.lan} ma lo startup non le dà un IP: viene aggiunta la riga "ip address add".` + (subnet ? ` L'IP proposto è il primo libero di ${subnet}.` : ' La LAN non ha una subnet: scrivi l\'IP con la maschera.'),
+      fissi: {dispositivo: d.nome, dev: it.dev},
+      schema: [{nome: 'nuovo', etichetta: 'IP', obbligatorio: true, segnaposto: 'es. 5 oppure 10.0.0.5/24'}],
+      valori: {nuovo: subnet ? primoIpLibero(subnet, ipUsati(S.lab)) : ''},
+      prepara: v => ({nuovo: subnet ? ipDelModulo(v.nuovo, subnet) : String(v.nuovo).trim()}),
+    });
+  }
   apriOperazione({
     operazione: 'ip_interfaccia', titolo: `IP di ${d.nome} ${it.dev}`,
     spiegazione: `Adesso ${it.ip} (LAN ${it.lan}). Basta l'ultimo numero: il resto viene dalla subnet. Il nuovo IP prende il posto del vecchio ovunque compare (gateway, neighbor BGP, ...).`,

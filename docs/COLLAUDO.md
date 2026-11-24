@@ -89,6 +89,26 @@ Nomi: `ns-local`, `ns-root`, `ns-com` e `web-srv` della figura non sono validi p
     Atteso: controlli base OK; le policy sono elencate per confronto (i nomi possono differire).
 19. Scheda **Archivio** su `tennis_gui`: archivio creato senza XML, nome uguale alla cartella.
 
+## Parte 5: novità della fase 8
+
+20. **Pulizia** (copia del lab, non quello da consegnare): Modifica, togli `ns_local`. Atteso:
+    l'anteprima toglie anche `nameserver` da `pc/etc/resolv.conf` (file eliminato) e il record A del
+    suo glue; con la casella tolta restano. Annulla ripristina tutto.
+21. **Policy orfane**: in un lab con policy (copia di candy), togli una interfaccia o BGP da un router:
+    spariscono le route-map e le prefix-list che nessuno usa più (nell'anteprima e nelle note).
+22. **Customer-Provider-Peer ripetuto**: applica Provider e poi Peer sullo stesso neighbor: un solo
+    binding in e out, nessuna prefix-list `provider_*` rimasta.
+23. **Network BGP**: sul router, "Togli network" e "Cambia network"; cambiando, la rete si aggiorna
+    anche in prefix-list e access-list se nessun altro router la annuncia.
+24. **Gateway / Resolver "nessuno"** su un pc: tolgono la route di default / il resolv.conf.
+25. **Azzera il routing** (pannello iniziale della Modifica, oppure Opzioni 16): anteprima, Applica;
+    topologia, IP, demoni e pc restano; Annulla rimette tutto.
+26. **Fix sicuri**: rovina un comando in un frr.conf (`neigbor`), Diagnostica → "Applica i fix sicuri"
+    (terminale: Opzioni 15, `S`); le proposte e le "info" non vengono toccate.
+27. **Pronto per la consegna**: il semaforo in Riepilogo e Archivio segna giallo con costi OSPF senza
+    auto-cost, rosso con un errore di frr.conf, e "·" per la ridistribuzione a lab spento.
+28. **Controllo della sintassi** (lab acceso): le righe scartate da vtysh hanno il suggerimento.
+
 ## Esito
 
 Scrivi i numeri dei passi che non tornano (o "tutto ok"). R11 KO è atteso.

@@ -207,7 +207,8 @@ annullare (voce 14).
 | 12 | Default route | BGP (`default-originate`), RIP e OSPF (`default-information originate`). |
 | 13 | Aggiungi o togli un dispositivo | Router, host, server web o DNS su una LAN esistente, con le stesse domande della procedura guidata. |
 | 14 | Annulla / copie di sicurezza | Annulla l'ultima modifica (anche fatta dalla GUI) o ripristina una copia di sicurezza. |
-| 15 | Diagnostica e correggi `frr.conf` | Problemi numerati con le correzioni (1a, 1b, ...): refusi, comandi fuori blocco, reti con bit host, route-map e prefix-list non definite, demoni spenti, avvio di FRR o Apache2 mancante. |
+| 15 | Diagnostica e correggi `frr.conf` | Problemi numerati con le correzioni (1a, 1b, ...): refusi, comandi fuori blocco, reti con bit host, route-map e prefix-list non definite, demoni spenti, avvio di FRR o Apache2 mancante. `S` applica in blocco i fix sicuri. |
+| 16 | Azzera il routing | `frr.conf` ridotto a intestazione e blocchi vuoti, rotte statiche dei router tolte; restano topologia, IP, demoni e host/WWW/DNS. |
 
 Il menu **4 Testa Funzionamento** ha tre voci: comando ping da incollare,
 pagine web e Apache2 dai client (con la spiegazione se non arrivano) e
@@ -267,7 +268,10 @@ adatto. Ci sono anche:
     il programma propone local preference, MED o filtri, uno alla volta;
     a laboratorio acceso propone solo dove serve;
 -   **Diagnostica** di ogni dispositivo, con un pulsante per ogni
-    correzione;
+    correzione e «Applica i fix sicuri»;
+-   **Azzera il routing**, network BGP da togliere o cambiare, e la pulizia
+    di quello che resta senza uso quando si toglie un dispositivo;
+-   scheda **Pronto per la consegna** a semaforo in Riepilogo e Archivio;
 -   **Annulla modifica** e le **copie di sicurezza** con il ripristino.
 
 Il programma propone dove può (IP liberi, nomi, valori come 150 e 20),

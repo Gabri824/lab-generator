@@ -94,6 +94,8 @@ SE NON PARTE
      - "Diagnostica di frr.conf": nessun errore (correzioni: Opzioni 15
        o GUI, Modifica -> pannello del router -> Diagnostica)
      - "Dimenticanze tipiche": confronta ogni avviso con il testo
+     - scheda "Pronto per la consegna" (Riepilogo e Archivio): semaforo
+       dei controlli principali
  [ ] Lab acceso, GUI -> Test -> "Attendi convergenza":
      BGP tutte Established, OSPF tutte Full.
      Tabella "Ridistribuzione BGP -> IGP": se "non attiva" -> Riapplica.

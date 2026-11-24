@@ -1,5 +1,6 @@
 // Scheda Riepilogo e controlli: avvisi automatici, controllo di frr.conf, configurazione per router.
 import { $, esc, esegui, S } from './comune.js';
+import { aggiornaConsegna } from './consegna.js';
 import { diagnosticaLab } from './diagnosi.js';
 
 // ---------- riepilogo e controlli ----------
@@ -41,7 +42,8 @@ export function riepilogo() {
   const L = S.lab, r = L.dispositivi.filter(d => d.riepilogo), altri = L.dispositivi.filter(d => !d.riepilogo);
   // gli avvisi sui nomi di frr.conf sono nella card "Controllo configurazione FRR"
   const config = L.avvisi_config.filter(a => !/\(frr\.conf riga \d+\)/.test(a));
-  let h = `<div class="card"><h2>Controlli automatici</h2>${listaAvvisi('Topologia (LAN e subnet)', L.avvisi_topologia, 'LAN e subnet coerenti.')}
+  let h = '<div class="card consegna-card"></div>';
+  h += `<div class="card"><h2>Controlli automatici</h2>${listaAvvisi('Topologia (LAN e subnet)', L.avvisi_topologia, 'LAN e subnet coerenti.')}
     <div style="height:8px"></div>${listaAvvisi('Dimenticanze tipiche', config, 'Nessuna dimenticanza trovata.')}
     <div class="muted small" style="margin-top:8px">Sono suggerimenti: confrontali sempre con il testo dell'esercizio.</div></div>`;
   h += htmlControlloFrr();
@@ -74,4 +76,5 @@ export function riepilogo() {
   h += `<div class="card"><h2>LAN</h2><table><tr><th>LAN</th><th>Subnet</th><th>Dispositivi</th></tr>${L.lan.map(l => `<tr><td>${esc(l.nome)}</td><td>${esc(l.subnet || '-')}</td><td>${esc(l.membri.join(', '))}</td></tr>`).join('')}</table></div>`;
   $('#t-riep').innerHTML = h;
   $('#bDiagnosi').onclick = e => diagnosticaLab($('#rDiagnosi'), e.target);
+  aggiornaConsegna();
 }

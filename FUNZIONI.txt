@@ -388,7 +388,12 @@ D. MENU OPZIONI LABORATORIO
 
  13) Aggiungi o togli un dispositivo
     Router, host, server web o DNS su una LAN esistente, con le stesse
-    domande del wizard; togliendo, anche le righe neighbor che lo citano.
+    domande del wizard; togliendo, anche le righe neighbor che lo citano e,
+    se si vuole (di default si', e' una domanda), quello che resterebbe
+    senza uso: gateway e rotte statiche, nameserver (resolv.conf vuoto
+    eliminato), record A nelle zone DNS, route-map e liste non piu' usate.
+    La stessa pulizia vale togliendo un'interfaccia o BGP e, per i
+    neighbor e le liste della vecchia LAN, spostando un'interfaccia.
 
  14) Annulla l'ultima modifica o ripristina una copia di sicurezza
     Annulla le modifiche una alla volta, in ordine inverso (anche quelle
@@ -403,6 +408,14 @@ D. MENU OPZIONI LABORATORIO
     daemons, avvio di FRR o apache2 mancante, gateway) con le correzioni
     1a, 1b, ...; ogni correzione mostra le differenze e chiede conferma.
     La diagnostica di tutti i dispositivi compare anche nella voce 8.
+    "S" applica in un colpo solo tutti i fix sicuri di frr.conf (mai le
+    proposte ne' le note "info"), sempre con anteprima e Annulla.
+
+ 16) Azzera il routing
+    Tutti i router o uno solo: frr.conf resta con intestazione, debug e
+    blocchi router vuoti (router bgp con le sole righe "no bgp ..."),
+    rotte statiche tolte dagli .startup dei router. Restano lab.conf, IP,
+    loopback, demoni e tutti i pc, server WWW e DNS. Si annulla.
 
  0) Torna indietro
 
@@ -457,14 +470,19 @@ la scheda Registro li elenca tutti con il comando esatto.
   sicurezza. In piu': Policy BGP dal router o dal link fra due AS,
   "Percorso voluto" (si clicca il percorso del testo e il programma
   propone le policy, una alla volta) e "Diagnostica" con un pulsante per
-  ogni correzione. Dopo l'applica l'esito propone il test adatto.
+  ogni correzione e "Applica i fix sicuri". "Azzera il routing" (pannello
+  iniziale della Modifica); Network BGP: aggiungi, togli, cambia (la
+  modifica passa anche in prefix-list e access-list); Gateway e Resolver
+  "nessuno" per toglierli. Dopo l'applica l'esito propone il test adatto.
 
  RIEPILOGO E CONTROLLI
   Controlli automatici (sezione C), card "Controllo configurazione FRR":
   nomi di route-map/prefix-list/access-list (sempre) e "Controlla la
   sintassi" a lab acceso (vtysh --dryrun: righe che FRR scarterebbe,
-  con numero di riga); card "Diagnostica di frr.conf" di tutti i
-  dispositivi. Poi una scheda per router con IGP, network, neighbor e
+  con numero di riga e suggerimento della diagnostica); card "Pronto per
+  la consegna" a semaforo (default route, errori di frr.conf, auto-cost,
+  ridistribuzione a lab acceso, XML, nome archivio; la stessa nella scheda
+  Archivio); card "Diagnostica di frr.conf" di tutti i dispositivi. Poi una scheda per router con IGP, network, neighbor e
   policy; host, server e LAN.
 
  INTERFACCE
