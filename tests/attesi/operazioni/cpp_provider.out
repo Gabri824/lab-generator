@@ -72,13 +72,13 @@ Inserisci le reti dei tuoi CLIENTI da annunciare al provider (separate da virgol
 
 --- Provider as40r1 su as10r1: anteprima (1 file) ---
   as10r1/etc/frr/frr.conf
-    + riga  22: 
-    + riga  23: neighbor 192.168.0.2 prefix-list provider_as40r1_in in
-    + riga  24: neighbor 192.168.0.2 prefix-list provider_as40r1_out out
-    + riga  28: 
-    + riga  29: ip prefix-list provider_as40r1_in permit any
-    + riga  30: ip prefix-list provider_as40r1_out permit 110.0.0.0/24
-    + riga  31: 
+    - riga  21: neighbor 192.168.0.2 prefix-list PL_as10r1_192_168_0_2_in in
+    - riga  22: ip prefix-list PL_as10r1_192_168_0_2_in deny 160.0.0.0/24
+    - riga  23: ip prefix-list PL_as10r1_192_168_0_2_in permit any
+    + riga  21: neighbor 192.168.0.2 prefix-list provider_as40r1_in in
+    + riga  22: neighbor 192.168.0.2 prefix-list provider_as40r1_out out
+    + riga  24: ip prefix-list provider_as40r1_in permit any
+    + riga  25: ip prefix-list provider_as40r1_out permit 110.0.0.0/24
 
 Confermi le modifiche? (s/N): s
 ✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/candy_test/AAAAMMGG-HHMMSS

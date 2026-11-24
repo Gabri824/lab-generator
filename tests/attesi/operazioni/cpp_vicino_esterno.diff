@@ -1,18 +1,16 @@
 --- prima/as30r1/etc/frr/frr.conf
 +++ dopo/as30r1/etc/frr/frr.conf
-@@ -19,6 +19,15 @@
+@@ -19,6 +19,13 @@
      neighbor 192.168.0.14 description Router as50r1
  
      neighbor 192.168.0.14 prefix-list PL_as30r1_192_168_0_14_in in
 +    neighbor 9.9.9.9 remote-as 999
 +    neighbor 9.9.9.9 description esterno
-+    
++
 +    neighbor 9.9.9.9 prefix-list customer_esterno_in in
 +    neighbor 9.9.9.9 prefix-list customer_esterno_out out
  ip prefix-list PL_as30r1_192_168_0_14_in deny 180.0.0.0/24
  ip prefix-list PL_as30r1_192_168_0_14_in permit any
  
-+
 +ip prefix-list customer_esterno_in permit any
 +ip prefix-list customer_esterno_out permit any
-+

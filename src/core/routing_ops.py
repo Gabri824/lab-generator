@@ -106,10 +106,20 @@ def aggiungi_network_bgp(base_path, routers):
     stato = leggi_stato(base_path)
     info = operazioni.opzioni_network_bgp(stato, target)[target]
     proposta = info['proposta']
-    reti = input_reti(
-        f"Reti da annunciare in BGP, separate da virgola (invio = {', '.join(proposta)}): ",
-        default=proposta
-    )
+    reti = None
+    while reti is None:
+        s = input(f"Reti da annunciare in BGP, separate da virgola (invio = {', '.join(proposta)}"
+                  + ("; T = togli una network, C = cambia una network" if info['presenti'] else '') + "): ").strip()
+        if s.lower() in ('t', 'c') and info['presenti']:
+            _cambia_network_bgp(base_path, stato, target, info['presenti'], togli=s.lower() == 't')
+            return
+        if not s:
+            reti = list(proposta)
+            continue
+        try:
+            reti = parse_reti(s)
+        except ValueError as e:
+            print(f"❌ Rete non valida: {e}")
     if not [r for r in reti if r not in info['presenti']]:
         print('Tutte le reti indicate sono già annunciate.')
         return
@@ -122,6 +132,30 @@ def aggiungi_network_bgp(base_path, routers):
         ).strip().lower()
         togli = ans.startswith('s')
     _esegui_piano(base_path, operazioni.calcola_network_bgp(stato, target, reti, togli_coperte=togli))
+
+
+def _cambia_network_bgp(base_path, stato, router, presenti, togli):
+    """Toglie o cambia una network già annunciata in BGP (la modifica passa anche in prefix-list e
+    access-list se nessun altro router la annuncia)."""
+    presenti = sorted(presenti)
+    print_menu(f"Network BGP annunciate da {router}:", presenti)
+    s = input(f"Quale {'togliere' if togli else 'cambiare'} (numero o rete, Invio = annulla): ").strip()
+    if not s:
+        print('Annullato.')
+        return
+    rete = presenti[int(s) - 1] if s.isdigit() and 1 <= int(s) <= len(presenti) else s
+    nuova = None
+    if not togli:
+        nuova = input(f"Nuova rete al posto di {rete} (Invio = annulla): ").strip()
+        if not nuova:
+            print('Annullato.')
+            return
+    try:
+        piano = operazioni.calcola_network_bgp(stato, router, [rete], azione='rimuovi' if togli else 'modifica', nuova_rete=nuova)
+    except operazioni.ErroreOperazione as e:
+        print(e)
+        return
+    _esegui_piano(base_path, piano)
 
 
 def aggiungi_delega_dns(base_path):
@@ -447,11 +481,14 @@ def assegna_resolv_conf(base_path):
         print_menu(
             'Dispositivi candidati come nameserver:',
             [f"{d} - {ip}" for (d, ip) in candidate_ns],
-            extra_options=[('M', 'Inserisci manualmente un IP')]
+            extra_options=[('M', 'Inserisci manualmente un IP'), ('N', 'Togli il resolver (nessun nameserver)')]
         )
-        selns = input('Seleziona il nameserver (numero) o M per manuale, INVIO per annullare: ').strip()
+        selns = input('Seleziona il nameserver (numero), M per manuale, N per toglierlo, INVIO per annullare: ').strip()
         if not selns:
             print('Operazione annullata.')
+            return
+        if selns.lower() == 'n':
+            _esegui_piano(base_path, operazioni.calcola_resolver(stato, target, ''))
             return
         if selns.lower() == 'm':
             ns_ip = _ip_manuale()

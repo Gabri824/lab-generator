@@ -282,6 +282,9 @@ def crea_dns_host(
         return f"{name_field}\t{cls}\t{rtype}\t{value}"
 
     host_ip = ip_cidr.split('/')[0] if ip_cidr else '127.0.0.1'
+    # root_type None / 'none': server autoritativo solo per le sue zone, senza zona "." (né db.root
+    # che punterebbe al server stesso)
+    senza_root = root_type is None or str(root_type).lower() == 'none'
     if root_type == 'master':
         ip_root = host_ip
     elif root_type == 'hint' and root_server_ip:
@@ -290,29 +293,31 @@ def crea_dns_host(
         ip_root = host_ip
 
     serial = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d') + '01'
-    db_root_lines = [
-        format_dns_record('@', 'NS', 'ROOT-SERVER.'),
-        format_dns_record('ROOT-SERVER.', 'A', ip_root),
-        '',
-    ]
-    if root_type == 'master':
-        db_root_lines = _soa_root(serial) + db_root_lines
-        for d in (delegations or []):
-            db_root_lines += _righe_delega(d.get('zone'), d.get('ns'), d.get('ip'))
-        db_root_lines.append('')
-    with open(os.path.join(bind_dir, 'db.root'), 'w', encoding='utf-8', newline='\n') as f:
-        f.write('\n'.join(db_root_lines))
+    if not senza_root:
+        db_root_lines = [
+            format_dns_record('@', 'NS', 'ROOT-SERVER.'),
+            format_dns_record('ROOT-SERVER.', 'A', ip_root),
+            '',
+        ]
+        if root_type == 'master':
+            db_root_lines = _soa_root(serial) + db_root_lines
+            for d in (delegations or []):
+                db_root_lines += _righe_delega(d.get('zone'), d.get('ns'), d.get('ip'))
+            db_root_lines.append('')
+        with open(os.path.join(bind_dir, 'db.root'), 'w', encoding='utf-8', newline='\n') as f:
+            f.write('\n'.join(db_root_lines))
 
     named_lines = [
         'include "/etc/bind/named.conf.options";',
         '',
     ]
-    zone_type = 'hint' if root_type != 'master' else 'master'
-    named_lines.append('zone "." {')
-    named_lines.append(f'    type {zone_type};')
-    named_lines.append('    file "/etc/bind/db.root";')
-    named_lines.append('};')
-    named_lines.append('')
+    if not senza_root:
+        zone_type = 'hint' if root_type != 'master' else 'master'
+        named_lines.append('zone "." {')
+        named_lines.append(f'    type {zone_type};')
+        named_lines.append('    file "/etc/bind/db.root";')
+        named_lines.append('};')
+        named_lines.append('')
 
     if zones:
         for zname in zones.keys():

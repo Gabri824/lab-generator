@@ -50,8 +50,8 @@ class TestLivelli(unittest.TestCase):
             scrivi_piano(p, op.calcola_cpp(c.core.leggi_stato(p), 'as10r1', 'as40r1', '192.168.0.2', '40', 'provider', ['110.0.0.0/24']))
             s = _segni(p)
             self.assertIn({'customer': 'as10r1', 'provider': 'as40r1', 'lan': 'A'}, s['cpp'])
-            self.assertEqual('filtro in · solo out', next(x['testo'] for x in s['policy'] if x['router'] == 'as10r1'),
-                          'la prefix-list verso il provider lascia passare solo le reti scelte')
+            self.assertEqual('solo out', next(x['testo'] for x in s['policy'] if x['router'] == 'as10r1'),
+                          'la prefix-list verso il provider sostituisce il filtro in che c\'era e lascia passare solo le reti scelte')
 
     def test_default_ridistribuzione_e_sessione_sbagliata(self):
         s = _segni(_lab('galaxy_mio'))

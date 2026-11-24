@@ -314,8 +314,43 @@ def reti_coperte(stato, router, reti):
     )
 
 
-def calcola_network_bgp(stato, router, reti, togli_coperte=False):
-    """Aggiunge `reti` al blocco router bgp; con togli_coperte toglie le reti contenute negli aggregati."""
+def _togli_network_bgp(righe, reti):
+    """Righe senza le 'network' del blocco router bgp elencate in `reti` (già normalizzate)."""
+    out, in_bgp = [], False
+    for l in righe:
+        s = l.strip()
+        if s.startswith('router '):
+            in_bgp = s.startswith('router bgp')
+        elif l and not l[0].isspace():
+            in_bgp = False
+        elif in_bgp and s.startswith('network ') and len(s.split()) == 2 and _norm_net(s.split()[1]) in reti:
+            continue
+        out.append(l)
+    return out
+
+
+def _cambia_rete_nelle_liste(righe, vecchia, nuova):
+    """Righe con la rete cambiata dentro prefix-list e access-list; (righe, quante)."""
+    rx = re.compile(r'^(\s*(?:ip\s+|ipv6\s+)?(?:prefix-list|access-list)\s+\S+\s.*?\b(?:permit|deny)\s+)(\S+)(.*)$')
+    out, n = [], 0
+    for l in righe:
+        m = rx.match(l)
+        if m and _norm_net(m.group(2)) == vecchia:
+            l, n = f"{m.group(1)}{nuova}{m.group(3)}", n + 1
+        out.append(l)
+    return out, n
+
+
+def calcola_network_bgp(stato, router, reti, togli_coperte=False, azione='aggiungi', nuova_rete=None):
+    """Network del blocco router bgp. azione:
+    - 'aggiungi' (predefinita): aggiunge `reti`; con togli_coperte toglie quelle contenute negli aggregati;
+    - 'rimuovi': toglie `reti`;
+    - 'modifica': cambia la rete `reti[0]` in `nuova_rete`, e la cambia anche dentro prefix-list e
+      access-list dei router del lab se nessun altro router la annuncia più."""
+    if azione not in ('aggiungi', 'rimuovi', 'modifica'):
+        raise ErroreOperazione(f"Azione non prevista: {azione}")
+    if azione != 'aggiungi':
+        return _calcola_network_bgp_cambia(stato, router, reti, azione, nuova_rete)
     fpath = _frr(stato, router)
     presenti = _network_bgp(_righe_file(fpath))
     nuove = [r for r in reti if r not in presenti]
@@ -341,6 +376,65 @@ def calcola_network_bgp(stato, router, reti, togli_coperte=False):
                    vuoto='Tutte le reti indicate sono già annunciate.')
     piano['aggiunte'] = nuove
     return piano
+
+
+def _calcola_network_bgp_cambia(stato, router, reti, azione, nuova_rete):
+    try:
+        reti = [str(ipaddress.ip_network(str(r).strip(), strict=False)) for r in (reti or [])]
+        if azione == 'modifica':
+            nuova = str(ipaddress.ip_network(str(nuova_rete or '').strip(), strict=False))
+    except ValueError:
+        raise ErroreOperazione('Rete non valida: scrivila come 20.20.0.0/16.')
+    if not reti:
+        raise ErroreOperazione('Indica la rete.')
+    fpath = _frr(stato, router)
+    righe = _righe_file(fpath)
+    presenti = _network_bgp(righe)
+    mancanti = [r for r in reti if r not in presenti]
+    if mancanti:
+        raise ErroreOperazione(f"{router} non annuncia {', '.join(mancanti)} in BGP.")
+    if azione == 'rimuovi':
+        modifiche = {os.path.relpath(fpath, stato['percorso']): (righe, _togli_network_bgp(righe, set(reti)))}
+        return _piano_diretto(f"Togli da BGP su {router}: {', '.join(reti)}", modifiche)
+    vecchia = reti[0]
+    if len(reti) != 1:
+        raise ErroreOperazione('Si cambia una rete alla volta.')
+    if nuova == vecchia:
+        return _piano_diretto(f"Network BGP su {router}", {}, vuoto='È la stessa rete: nessuna modifica.')
+    if nuova in presenti:
+        raise ErroreOperazione(f"{router} annuncia già {nuova}.")
+    out, in_bgp = [], False
+    for l in righe:
+        s = l.strip()
+        if s.startswith('router '):
+            in_bgp = s.startswith('router bgp')
+        elif l and not l[0].isspace():
+            in_bgp = False
+        elif in_bgp and s.startswith('network ') and len(s.split()) == 2 and _norm_net(s.split()[1]) == vecchia:
+            l = l.replace(s.split()[1], nuova, 1)
+        out.append(l)
+    rel0 = os.path.relpath(fpath, stato['percorso'])
+    modifiche = {rel0: (righe, out)}
+    # la vecchia rete è annunciata da qualcun altro? allora le liste non si toccano
+    ancora = [n for n, d in stato['dispositivi'].items()
+              if n != router and d['frr'] and d['frr']['bgp'] and vecchia in _network_bgp(_righe_file(_frr(stato, n)))]
+    note = []
+    if ancora:
+        note.append(f"{vecchia} è annunciata anche da {', '.join(sorted(ancora))}: prefix-list e access-list restano come sono.")
+    else:
+        cambiate = []
+        for n, d in stato['dispositivi'].items():
+            if not (d['frr'] and d['frr']['bgp']):
+                continue
+            rel = os.path.relpath(_frr(stato, n), stato['percorso'])
+            base = modifiche[rel][1] if rel in modifiche else _righe_file(_frr(stato, n))
+            nuove, quante = _cambia_rete_nelle_liste(base, vecchia, nuova)
+            if quante:
+                modifiche[rel] = (modifiche[rel][0] if rel in modifiche else base, nuove)
+                cambiate.append(n)
+        if cambiate:
+            note.append(f"{vecchia} -> {nuova} cambiata anche in prefix-list e access-list di {', '.join(sorted(cambiate))}.")
+    return _piano_diretto(f"Network BGP su {router}: {vecchia} -> {nuova}", modifiche, note)
 
 
 # ----------------------------------------------------------------------------- 7. iBGP full-mesh
@@ -606,12 +700,21 @@ def opzioni_resolver(stato):
 
 
 def calcola_resolver(stato, dispositivo, ip):
-    """etc/resolv.conf del dispositivo con 'nameserver <ip>'."""
+    """etc/resolv.conf del dispositivo con 'nameserver <ip>'. Con ip vuoto toglie il resolver: il
+    file resta senza nameserver e viene eliminato."""
+    dest = os.path.join(stato['percorso'], dispositivo, 'etc', 'resolv.conf')
+    if ip is None or not str(ip).strip():
+        rel = os.path.join(dispositivo, 'etc', 'resolv.conf')
+        if not os.path.isfile(dest):
+            return _piano_diretto(f"Resolver di {dispositivo}", {}, vuoto=f"{dispositivo} non ha un resolver da togliere.")
+        righe = _righe_file(dest)
+        resto = [l for l in righe if not re.match(r'\s*nameserver\b', l)]
+        modifiche = {rel: (righe, resto if any(l.strip() for l in resto) else None)}
+        return _piano_diretto(f"Togli il resolver di {dispositivo}", modifiche)
     try:
         ipaddress.ip_address(ip)
     except ValueError:
         raise ErroreOperazione('IP non valido. Nessuna modifica effettuata.')
-    dest = os.path.join(stato['percorso'], dispositivo, 'etc', 'resolv.conf')
     with _in_memoria(stato) as (fs, out):
         _scrivi_testo(dest, f"nameserver {ip}\n")
         print(f"✅ Wrote {dest} with nameserver {ip}")
@@ -847,6 +950,12 @@ def calcola_cpp(stato, router, vicino, ip, asn, relazione, reti_out=()):
             if not insert_lines_into_protocol_block(fpath, proto='bgp', asn=None, lines=[
                     f"neighbor {ip} remote-as {asn}", f"neighbor {ip} description {vicino}"]):
                 raise ErroreOperazione("❌ Errore nell'inserimento del neighbor.")
+        # idempotente: via i vecchi binding prefix-list in/out di questo neighbor (anche di un'altra
+        # relazione, es. provider -> peer) e le vecchie righe omonime; le liste che restano senza
+        # uso vengono tolte alla fine
+        originale = _righe_file(fpath)
+        _rimuovi_righe(fpath, lambda l: bool(re.match(rf'\s*neighbor\s+{re.escape(ip)}\s+prefix-list\s+\S+\s+(?:in|out)\b', l))
+                       or l.strip().startswith((f"ip prefix-list {pl_in} ", f"ip prefix-list {pl_out} ")))
         lines_to_append = [f"ip prefix-list {pl_in} permit any"]
         if relazione == 'customer':
             lines_to_append.append(f"ip prefix-list {pl_out} permit any")
@@ -857,6 +966,9 @@ def calcola_cpp(stato, router, vicino, ip, asn, relazione, reti_out=()):
         neigh_lines = ["", f"neighbor {ip} prefix-list {pl_in} in", f"neighbor {ip} prefix-list {pl_out} out"]
         if insert_lines_into_protocol_block(fpath, proto='bgp', asn=None, lines=neigh_lines):
             _scrivi_testo(fpath, (_leggi_testo(fpath) or '') + '\n' + ''.join(l + '\n' for l in lines_to_append) + '\n')
+            from .pulizia import _togli_orfane
+            nuove, _ = _togli_orfane(_righe_file(fpath), originale)
+            _scrivi_righe(fpath, nuove)
             print(f"✅ Configurazione {relazione.upper()} applicata su {router} verso {vicino}.")
         else:
             print(f"❌ Errore applicando la configurazione neighbor su {router}.")
@@ -940,6 +1052,36 @@ def opzioni_ip_interfaccia(stato, dispositivo):
             for it in disp[dispositivo]['interfacce']}
 
 
+def _aggiungi_ip_interfaccia(stato, disp, dispositivo, dev, it, nuovo):
+    """L'interfaccia è in lab.conf ma lo startup non le dà un IP: aggiunge 'ip address add'."""
+    from .device_editor import _proprietari, _rete_lan
+    from .templates import _RE_IP_ADD
+    rete = _rete_lan(disp, it['lan'])
+    try:
+        if '/' not in nuovo:
+            if rete is None:
+                raise ErroreOperazione("Scrivi l'IP con la maschera: x.x.x.x/yy (es. 10.0.0.5/24).")
+            nuovo = f"{nuovo}/{rete.prefixlen}"
+        ni = ipaddress.ip_interface(nuovo)
+    except ValueError:
+        raise ErroreOperazione("Formato non valido: x.x.x.x/yy (es. 10.0.0.5/24).")
+    _controlla_ip(ni, _proprietari(disp), dentro=rete)
+    rel = f"{dispositivo}.startup"
+    righe = _righe_file(os.path.join(stato['percorso'], rel))
+    dopo = max((k for k, l in enumerate(righe) if _RE_IP_ADD.match(l)), default=None)
+    if dopo is None:      # nessun IP: prima delle rotte e dell'avvio di frr
+        dopo = next((k - 1 for k, l in enumerate(righe) if re.match(r'\s*(?:ip\s+route|route\s+add|systemctl)\b', l)), len(righe) - 1)
+    nuove = righe[:dopo + 1] + [f"ip address add {ni} dev {dev}"] + righe[dopo + 1:]
+    note = []
+    if d_tipo_router(disp, dispositivo):
+        note.append(f"La rete {ni.network} non è annunciata da nessun protocollo: se serve, aggiungila in BGP (Opzioni 6).")
+    return _piano_diretto(f"IP di {dispositivo} {dev}: {ni}", {rel: (righe, nuove)}, note)
+
+
+def d_tipo_router(disp, nome):
+    return disp[nome]['tipo'] == 'router'
+
+
 def calcola_ip_interfaccia(stato, dispositivo, dev, nuovo, solo_questo=False):
     """Nuovo IP di un'interfaccia, sostituito ovunque compare. Se esce dalla rete della LAN e la LAN
     ha altri dispositivi: con solo_questo=False si rinumera tutta la LAN (calcola_rinumera_lan)."""
@@ -947,7 +1089,7 @@ def calcola_ip_interfaccia(stato, dispositivo, dev, nuovo, solo_questo=False):
     disp = _dispositivi(stato)
     d, it = _interfaccia(disp, dispositivo, dev)
     if not it['ip']:
-        raise ErroreOperazione(f"{dev} non ha un IP nello startup: aggiungilo con la modifica a righe.")
+        return _aggiungi_ip_interfaccia(stato, disp, dispositivo, dev, it, str(nuovo))
     vecchio = ipaddress.ip_interface(it['ip'])
     nuovo = str(nuovo)
     try:
@@ -1098,6 +1240,11 @@ def calcola_gateway(stato, dispositivo, gw, forza=False):
     d = disp[dispositivo]
     if d['tipo'] == 'router':
         raise ErroreOperazione("Il default gateway si cambia su pc, www e dns.")
+    if gw is None or not str(gw).strip():
+        rel = f"{dispositivo}.startup"
+        vecchie = _righe_file(os.path.join(stato['percorso'], rel))
+        return _piano_diretto(f"Togli il gateway di {dispositivo}", {rel: (vecchie, [l for l in vecchie if not _RE_GW.match(l)])},
+                              vuoto=f"{dispositivo} non ha un gateway da togliere.")
     try:
         gw = str(ipaddress.ip_address(str(gw).split('/')[0]))
     except ValueError:

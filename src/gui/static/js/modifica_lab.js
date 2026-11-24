@@ -156,7 +156,7 @@ function azioniDispositivo(d) {
   if (d.tipo === 'router') for (const p of ['ospf', 'rip', 'bgp'])
     a.push(ha(p) ? [`togli:${p}`, `Togli ${p.toUpperCase()}`] : [`aggiungi:${p}`, `Aggiungi ${p.toUpperCase()}`]);
   a.push(['loopback', 'Aggiungi loopback']);
-  if (d.tipo === 'router' && ha('bgp')) a.push(['network', 'Network BGP'], ['policy', 'Policy BGP']);
+  if (d.tipo === 'router' && ha('bgp')) a.push(['network', 'Network BGP'], ['network_togli', 'Togli network'], ['network_cambia', 'Cambia network'], ['policy', 'Policy BGP']);
   if (d.tipo === 'router' && (ha('bgp') || ha('ospf') || ha('rip'))) a.push(['default', 'Default route']);
   if (d.tipo === 'router' && ha('bgp') && (ha('ospf') || ha('rip'))) a.push(['ridistribuzione', 'Ridistribuzione BGP → IGP']);
   a.push(['diagnosi', 'Diagnostica'], ['righe', 'File a righe'], ['togli', 'Togli il dispositivo']);
@@ -182,6 +182,8 @@ async function azioneDispositivo(dev, az) {
     else if (az === 'resolver') await resolver(d);
     else if (az === 'delega') await delega(d);
     else if (az === 'network') await networkBgp(d.nome);
+    else if (az === 'network_togli') await cambiaNetwork(d, true);
+    else if (az === 'network_cambia') await cambiaNetwork(d, false);
     else if (az === 'policy') await menuPolicy(d.nome);
     else if (az === 'default') menuDefault(d);
     else if (az === 'ridistribuzione') await ridistribuzione(d);
@@ -206,11 +208,12 @@ async function gateway(d) {
     operazione: 'gateway', titolo: `Gateway di ${d.nome}`,
     spiegazione: `Adesso: ${o.attuale || 'nessuno'}.`,
     fissi: {dispositivo: d.nome},
-    schema: [{nome: 'scelto', etichetta: 'Gateway', tipo: 'scelta', obbligatorio: true, opzioni: [...cand, ['__altro', 'un altro IP']]},
+    schema: [{nome: 'scelto', etichetta: 'Gateway', tipo: 'scelta', obbligatorio: true, opzioni: [...cand, ['__altro', 'un altro IP'], ['__nessuno', 'nessuno (togli il gateway)']]},
              {nome: 'altro', etichetta: 'Altro IP', segnaposto: 'es. 10.0.0.254', aiuto: 'Solo se hai scelto "un altro IP".'},
              {nome: 'forza', etichetta: 'Anche se è fuori dalla rete delle sue interfacce', tipo: 'si_no'}],
     valori: {scelto: (cand.find(c => c[0] === o.attuale) || cand[0] || ['__altro'])[0], forza: false},
     prepara: v => {
+      if (v.scelto === '__nessuno') return {gw: ''};
       const gw = v.scelto === '__altro' ? String(v.altro || '').trim() : v.scelto;
       if (!gw) throw new Error('Scrivi l\'IP del gateway.');
       return {gw, forza: !!v.forza};
@@ -369,6 +372,21 @@ async function confNetwork(router, titolo) {
   };
 }
 
+async function cambiaNetwork(d, togli) {
+  const info = (await opzioni('network_bgp', {router: d.nome}))[d.nome];
+  if (!info.presenti.length) throw new Error(`${d.nome} non annuncia ancora nessuna network in BGP.`);
+  apriOperazione({
+    operazione: 'network_bgp', titolo: `${togli ? 'Togli' : 'Cambia'} una network BGP di ${d.nome}`,
+    spiegazione: togli ? 'Toglie la riga network dal blocco router bgp.'
+      : 'Cambia la riga network e, se nessun altro router annuncia la vecchia rete, anche prefix-list e access-list dei router del lab che la citano.',
+    fissi: {router: d.nome, azione: togli ? 'rimuovi' : 'modifica'},
+    schema: [{nome: 'rete', etichetta: 'Network annunciata', tipo: 'scelta', obbligatorio: true, opzioni: info.presenti},
+             ...(togli ? [] : [{nome: 'nuova', etichetta: 'Nuova rete', obbligatorio: true, segnaposto: 'es. 20.20.0.0/16'}])],
+    valori: {rete: info.presenti[0]},
+    prepara: v => ({reti: [v.rete], ...(togli ? {} : {nuova_rete: String(v.nuova || '').trim()})}),
+  });
+}
+
 function loopback(d) {
   const proposta = prossimaLoopback(S.lab);
   apriOperazione({
@@ -454,10 +472,11 @@ async function resolver(d) {
     operazione: 'resolver', titolo: `Resolver di ${d.nome}`,
     spiegazione: `Adesso: ${attuale || 'nessuno'}. Scrive "nameserver <IP>" in ${d.nome}/etc/resolv.conf.`,
     fissi: {dispositivo: d.nome},
-    schema: [{nome: 'scelto', etichetta: 'Server DNS', tipo: 'scelta', obbligatorio: true, opzioni: [...cand, ['__altro', 'un altro IP']]},
+    schema: [{nome: 'scelto', etichetta: 'Server DNS', tipo: 'scelta', obbligatorio: true, opzioni: [...cand, ['__altro', 'un altro IP'], ['__nessuno', 'nessuno (togli il resolver)']]},
              {nome: 'altro', etichetta: 'Altro IP', segnaposto: 'es. 9.9.9.9', aiuto: 'Solo se hai scelto "un altro IP".'}],
     valori: {scelto: (cand.find(c => c[0] === attuale) || cand[0] || ['__altro'])[0]},
     prepara: v => {
+      if (v.scelto === '__nessuno') return {ip: ''};
       const ip = v.scelto === '__altro' ? String(v.altro || '').trim() : v.scelto;
       if (!ip) throw new Error('Scrivi l\'IP del server DNS.');
       return {ip};

@@ -513,9 +513,12 @@ def cambia_gateway(lab_path, routers, nome):
     print(f"\nGateway attuale di {nome}: {info['attuale'] or 'nessuno'}")
     if cand:
         print_menu('Router sulle sue LAN:', [f"{ip}  ({n})" for ip, n, _ in cand])
-    s = input("Nuovo gateway (numero dell'elenco o IP, Invio = annulla): ").strip()
+    s = input("Nuovo gateway (numero dell'elenco o IP, N = nessuno, Invio = annulla): ").strip()
     if not s:
         print('Annullato.')
+        return
+    if s.lower() == 'n':
+        _esegui_piano(lab_path, operazioni.calcola_gateway(stato, nome, ''), routers)
         return
     if s.isdigit() and 1 <= int(s) <= len(cand):
         gw = cand[int(s) - 1][0]

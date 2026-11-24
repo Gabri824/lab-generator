@@ -78,7 +78,6 @@ Inserisci le reti dei tuoi CLIENTI da annunciare al peer (separate da virgola, o
     + riga  25: 
     + riga  26: ip prefix-list peer_as50r1_in permit any
     + riga  27: ip prefix-list peer_as50r1_out permit 20.0.0.0/8
-    + riga  28: 
 
 Confermi le modifiche? (s/N): s
 ✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/candy_test/AAAAMMGG-HHMMSS

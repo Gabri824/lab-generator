@@ -58,10 +58,8 @@ Scelta (1-3): 2
     + riga  24: 
     + riga  25: neighbor 9.9.9.9 prefix-list customer_esterno_in in
     + riga  26: neighbor 9.9.9.9 prefix-list customer_esterno_out out
-    + riga  30: 
-    + riga  31: ip prefix-list customer_esterno_in permit any
-    + riga  32: ip prefix-list customer_esterno_out permit any
-    + riga  33: 
+    + riga  30: ip prefix-list customer_esterno_in permit any
+    + riga  31: ip prefix-list customer_esterno_out permit any
   ⚠️ Neighbor 9.9.9.9 non presente su as30r1: lo aggiungo (AS 999).
 
 Confermi le modifiche? (s/N): s

@@ -64,7 +64,6 @@ Scelta (1-3): 2
     + riga  31: 
     + riga  32: ip prefix-list customer_as10r1_in permit any
     + riga  33: ip prefix-list customer_as10r1_out permit any
-    + riga  34: 
 
 Confermi le modifiche? (s/N): s
 ✅ Modifiche scritte. Copia del lab com'era prima: <BASE>/.backup_labgenerator/candy_test/AAAAMMGG-HHMMSS

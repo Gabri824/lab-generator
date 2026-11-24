@@ -13,7 +13,7 @@ Seleziona il router BGP:
   8) as80r1 (ASN: 80)
 
 Numero router (o nome, vuoto per annullare): as10r1
-Reti da annunciare in BGP, separate da virgola (invio = 110.0.0.0/8): 110.0.0.0/16
+Reti da annunciare in BGP, separate da virgola (invio = 110.0.0.0/8; T = togli una network, C = cambia una network): 110.0.0.0/16
 Le reti 110.0.0.0/24 sono già contenute nell'aggregato. Toglierle da BGP e annunciare solo l'aggregato? (s/N): s
 
 --- Network BGP su as10r1: 110.0.0.0/16: anteprima (1 file) ---

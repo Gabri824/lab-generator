@@ -25,8 +25,9 @@ Dispositivi candidati come nameserver:
   2) ns_local - 1.0.0.2
   3) root - 20.3.0.2
   M) Inserisci manualmente un IP
+  N) Togli il resolver (nessun nameserver)
 
-Seleziona il nameserver (numero) o M per manuale, INVIO per annullare: M
+Seleziona il nameserver (numero), M per manuale, N per toglierlo, INVIO per annullare: M
 Inserisci l'IP del nameserver (es. 10.0.0.1): 9.9.9.9
 
 --- Resolver di pc: 9.9.9.9: anteprima (1 file) ---

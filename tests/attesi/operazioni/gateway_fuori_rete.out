@@ -5,7 +5,7 @@ Router sulle sue LAN:
 
   1) 20.20.1.1  (r1)
 
-Nuovo gateway (numero dell'elenco o IP, Invio = annulla): 10.9.9.9
+Nuovo gateway (numero dell'elenco o IP, N = nessuno, Invio = annulla): 10.9.9.9
 ⚠️ 10.9.9.9 non è nella rete di nessuna interfaccia di client. Lo metto comunque? (s/N): s
 
 --- Gateway di client: 20.20.1.1 -> 10.9.9.9: anteprima (1 file) ---
