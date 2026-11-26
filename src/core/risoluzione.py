@@ -157,6 +157,14 @@ def controlla_nome(stato, client, nome):
                   f"Delega o zona per {nome} su {server}.")
             return out
         zona = _nome(z['zona'])
+        # BIND non carica una zona il cui nameserver sta dentro la zona ma non ha un record A
+        senza_a = [n for n in (_nome(r['valore']) for r in _record(z, zona, 'NS'))
+                   if _dentro(n, zona) and not _record(z, n, 'A')]
+        if senza_a:
+            passo('zona', False, f"{server} non carica la zona {zona}: il nameserver {senza_a[0]} è dentro la zona "
+                                 f"ma non ha il record A (BIND: 'NS has no address records').",
+                  f"Record A di {senza_a[0]} con l'IP di {server} nella zona {zona} (Record A, o Opzioni 9).")
+            return out
         # delega a una zona figlia che contiene il nome
         deleghe = sorted({_nome(r['nome']) for r in z['record'] if r['tipo'] == 'NS'
                           and _nome(r['nome']) != zona and _dentro(nome, _nome(r['nome']))}, key=len, reverse=True)

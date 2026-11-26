@@ -354,6 +354,12 @@ def crea_dns_host(
                 format_dns_record('@', 'NS', f'dns.{zname}.'),
                 '',
             ]
+            # il nameserver della zona (dns.<zona>) sta dentro la zona: senza il suo record A BIND non
+            # carica la zona ("NS has no address records"); se non è fra i record, è questo server
+            nomi_a = {str(h).rstrip('.').lower() for h, v in (records or {}).items()
+                      if isinstance(v, str) or (isinstance(v, dict) and str(v.get('type', 'A')).upper() == 'A')}
+            if not ({'dns', f"dns.{zname}".lower()} & nomi_a):
+                zone_lines.append(format_dns_record(f"dns.{zname}", 'A', host_ip))
             if isinstance(records, dict):
                 for h, ipval in records.items():
                     if isinstance(ipval, str):

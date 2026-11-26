@@ -133,6 +133,36 @@ class TestOperazioni(unittest.TestCase):
             self.assertEqual(prima, c.leggi_albero(p))
 
 
+class TestNameserverDellaZona(unittest.TestCase):
+    """Collaudo di tennis: zona com con il solo record web.com; BIND non la carica ('NS has no
+    address records') perché dns.com, il nameserver della zona, non ha il record A."""
+
+    def test_il_generatore_aggiunge_il_record_del_nameserver(self):
+        from core.generators import crea_dns_host
+        with tempfile.TemporaryDirectory() as tmp:
+            crea_dns_host(tmp, 'ns_com', '20.1.0.3/24', '20.1.0.1/24', 'G', zones={'com': {'web.com': '2.2.0.2'}}, root_type='hint',
+                          root_server_ip='20.3.0.1')
+            db = open(os.path.join(tmp, 'ns_com/etc/bind/db.com'), encoding='utf-8').read()
+            self.assertRegex(db, r'dns\.com\.\s+IN\s+A\s+20\.1\.0\.3')
+            # se l'utente lo scrive lui, non viene raddoppiato
+            crea_dns_host(tmp, 'ns_x', '20.1.0.9/24', '20.1.0.1/24', 'G', zones={'com': {'dns.com': '20.1.0.9'}}, root_type='hint')
+            db = open(os.path.join(tmp, 'ns_x/etc/bind/db.com'), encoding='utf-8').read()
+            self.assertEqual(1, len(re.findall(r'^dns\.com\.', db, re.M)))
+
+    def test_la_verifica_dai_file_lo_segnala(self):
+        tmp, p = _lab('tennis_test')
+        with tmp:
+            db = os.path.join(p, 'ns_com/etc/bind/db.com')
+            _metti(db, '\n'.join(l for l in _leggi(p, 'ns_com/etc/bind/db.com').split('\n') if not l.startswith('dns.com.')) + '\n')
+            r = risoluzione.controlla_nome(c.core.leggi_stato(p), 'pc', 'web.com')
+            self.assertFalse(r['ok'])
+            ultimo = r['passi'][-1]
+            self.assertIn('non carica la zona com', ultimo['testo'])
+            self.assertIn('dns.com', ultimo['rimedio'])
+            _scrivi(p, op.calcola_record_dns(c.core.leggi_stato(p), 'ns_com', 'com', 'dns', '20.1.0.3'))
+            self.assertTrue(risoluzione.controlla_nome(c.core.leggi_stato(p), 'pc', 'web.com')['ok'])
+
+
 class TestTerminale(unittest.TestCase):
 
     def test_stessi_file_della_gui(self):

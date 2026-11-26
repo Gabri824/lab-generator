@@ -9,6 +9,7 @@ $TTL 60000
 
 @               	IN	NS	dns.com.
 
+dns.com.        	IN	A	10.0.2.3
 www             	IN	A	10.0.1.80
 web             	IN	CNAME	www
 @               	IN	NS	dns.com.
