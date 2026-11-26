@@ -521,7 +521,10 @@ la scheda Registro li elenca tutti con il comando esatto.
     "deve passare per" o "sequenza esatta"), anche il ritorno; segnala
     i routing loop e mostra i costi OSPF delle interfacce attraversate.
   - Server web: stato di apache2 sui server e pagine aperte da un
-    client per IP e per nome, con la spiegazione se non arrivano.
+    client per IP e per nome, con la spiegazione se non arrivano; in
+    "Pagina in piu'" anche un URL con il percorso (es.
+    http://web.com/~guest/): un 404 viene spiegato (per ~utente serve
+    il modulo userdir).
   - Risoluzione di un nome: catena DNS dai file anche a lab spento
     (primo anello che manca + rimedio); a lab acceso dig su ogni server.
   - Guasto di un link: spegne/riaccende una LAN (ip link set down/up,

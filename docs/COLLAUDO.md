@@ -71,8 +71,9 @@ Nomi: `ns-local`, `ns-root`, `ns-com` e `web-srv` della figura non sono validi p
 14. **Verifica percorso** G1 (da pc verso 2.2.0.2, Atteso `P M K G F E C A`, "deve passare per")
     e G2 (spunta "anche il ritorno", Atteso al ritorno `A B D F H L P`). Guarda i costi OSPF
     mostrati sotto.
-15. **Server web** da pc: pagina di 2.2.0.2 e di web.com ricevute. `http://web.com/~guest/`
-    (campo links nel pannello di pc): atteso "Not Found" (R11).
+15. **Server web** da pc: pagina di 2.2.0.2 e di web.com ricevute. `http://web.com/~guest/` nel campo
+    "Pagina in più" della card (o nel campo links del pannello di pc): atteso esito "404" con la
+    spiegazione di userdir (R11; anche la soluzione ufficiale non prepara la pagina).
 16. **Risoluzione di un nome** da pc, web.com, a lab acceso: dig ok sul resolver, rinvio dal root,
     risposta da ns_com.
 17. **Ferma**.

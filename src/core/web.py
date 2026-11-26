@@ -30,11 +30,32 @@ def indirizzo_valido(x):
         return bool(_RE_NOME.match(x)) and not x.replace('.', '').isdigit()
 
 
+_RE_PERCORSO = re.compile(r'^/[A-Za-z0-9._~/%-]*$')
+
+
+def dividi_url(x):
+    """'web.com', 'web.com/~guest/' o 'http://web.com/~guest/' -> ('web.com', '/~guest/'); None se non
+    è un indirizzo sicuro (IP o nome, e un percorso con soli lettere, cifre e . _ ~ / % -)."""
+    s = str(x or '').strip()
+    if s.lower().startswith('http://'):
+        s = s[7:]
+    host, barra, resto = s.partition('/')
+    percorso = '/' + resto if barra else '/'
+    if not indirizzo_valido(host) or not _RE_PERCORSO.match(percorso):
+        return None
+    return host, percorso
+
+
+def url_valido(x):
+    return dividi_url(x) is not None
+
+
 def comando_links(indirizzo):
-    """Argomenti del comando da eseguire sul client."""
-    if not indirizzo_valido(indirizzo):
+    """Argomenti del comando da eseguire sul client (indirizzo: IP, nome o URL con il percorso)."""
+    parti = dividi_url(indirizzo)
+    if not parti:
         raise ValueError(f"Indirizzo non valido: {indirizzo}")
-    return ['timeout', str(ATTESA), 'links', '-dump', f"http://{indirizzo.strip()}/"]
+    return ['timeout', str(ATTESA), 'links', '-dump', f"http://{parti[0]}{parti[1]}"]
 
 
 def server_web(stato):
@@ -81,7 +102,7 @@ def bersagli_web(stato):
 
 def ip_del_bersaglio(stato, indirizzo):
     """IP da usare per la diagnosi: l'indirizzo stesso, o il record A di un nome noto (None se no)."""
-    x = str(indirizzo or '').strip()
+    x = (dividi_url(indirizzo) or (str(indirizzo or '').strip(), ''))[0]
     try:
         return str(ipaddress.ip_address(x))
     except ValueError:
@@ -103,6 +124,11 @@ def spiega_links(codice, testo, indirizzo=''):
     """(esito, spiegazione) dalla sola uscita di links. esito: 'ok', 'dns', 'apache', 'rete', 'vuota',
     'errore'; per 'rete' la diagnosi (gateway o router) la danno ip route get e spiega_traceroute."""
     t = testo or ''
+    if codice == 0 and re.search(r'\bNot Found\b', t) and 'requested URL' in t:
+        utente = re.search(r'/~([A-Za-z0-9_.-]+)', indirizzo or '')
+        return 'non_trovata', ("apache2 risponde ma la pagina non c'è (404 Not Found)" + (
+            f": per /~{utente.group(1)}/ servono il modulo userdir (a2enmod userdir), l'utente {utente.group(1)} e "
+            f"/home/{utente.group(1)}/public_html/index.html sul server" if utente else ": controlla il percorso e i file in /var/www/html"))
     if codice == 0 and t.strip():
         return 'ok', 'pagina ricevuta'
     if codice == 0:

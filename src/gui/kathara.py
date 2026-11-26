@@ -1124,9 +1124,14 @@ def apache_attivi(kathara, lab_path, nomi):
     return _parallelo(chiedi, nomi) if nomi else {}
 
 
-def verifica_web(kathara, lab_path, stato, client, lav):
-    """Scheda Test: stato di apache2 su ogni server, poi links da `client` verso ogni IP e nome."""
+def verifica_web(kathara, lab_path, stato, client, lav, extra=None):
+    """Scheda Test: stato di apache2 su ogni server, poi links da `client` verso ogni IP e nome e, se
+    data, la pagina `extra` (anche un URL con il percorso, es. http://web.com/~guest/)."""
     server, bersagli = web.server_web(stato), web.bersagli_web(stato)
+    if extra:
+        ip = web.ip_del_bersaglio(stato, extra)
+        chi = next((s['nome'] for s in server if ip in s['ip']), '') if ip else ''
+        bersagli = bersagli + [{'indirizzo': extra, 'server': chi, 'ip': ip, 'tipo': 'url', 'via': ''}]
     attivi = apache_attivi(kathara, lab_path, [x['nome'] for x in server])
     for x in server:
         a = attivi.get(x['nome'])

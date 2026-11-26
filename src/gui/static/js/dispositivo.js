@@ -54,7 +54,7 @@ export function lato() {
     ${d.demoni.length ? `<div class="small">Demoni FRR: ${esc(d.demoni.join(', '))}</div>` : ''}
     <div class="btns">${cmd.map(c => `<button class="small ghost" data-cmd="${c}">${esc(ETICHETTE[c])}</button>`).join('')}</div>
     <div class="riga"><input id="sIp" list="ipList" placeholder="IP" size="15"><button class="small" data-cmd="ping">ping</button><button class="small" data-cmd="traceroute">traceroute</button><button class="small ghost" id="sPerc">percorso sulla mappa</button></div>
-    ${web.client.includes(d.nome) ? `<div class="riga"><input id="sWeb" list="webList" placeholder="${esc(web.bersagli.length ? 'IP o nome del server web' : 'nessun server web nel lab')}" size="20" aria-label="Pagina web da aprire con links"><button class="small" id="sLinks" title="links -dump http://…/ (lab acceso)">links</button></div>` : ''}
+    ${web.client.includes(d.nome) ? `<div class="riga"><input id="sWeb" list="webList" placeholder="${esc(web.bersagli.length ? 'IP, nome o URL (es. web.com/~guest/)' : 'nessun server web nel lab')}" size="24" aria-label="Pagina web da aprire con links"><button class="small" id="sLinks" title="links -dump http://…/ (lab acceso)">links</button></div>` : ''}
     <div class="btns"><button class="small" id="sTerm">Apri terminale (kathara connect)</button></div>
     <div id="sTermMsg" class="small"></div>
     ${S.modifica && S.htmlModificaDispositivo ? S.htmlModificaDispositivo(d) : ''}

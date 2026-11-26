@@ -224,8 +224,8 @@ def azione(st, dati_rich):
     if tipo == 'pagina_web':
         dev = _dispositivo(lab, dati_rich.get('dev'))['nome']
         indirizzo = str(dati_rich.get('indirizzo') or '').strip()
-        if not web.indirizzo_valido(indirizzo):
-            raise Errore(f"Indirizzo non valido: {indirizzo or '(vuoto)'} (un IP o un nome come www.com)")
+        if not web.url_valido(indirizzo):
+            raise Errore(f"Indirizzo non valido: {indirizzo or '(vuoto)'} (un IP, un nome come www.com o un URL come http://web.com/~guest/)")
         cmd = web.comando_links(indirizzo)
         stato = st.gen.leggi_stato(lab_path)
         lid = st.lavori.avvia(f"{dev}: links {indirizzo}", kathara.testo_exec(lab_path, dev, cmd),
@@ -239,8 +239,11 @@ def azione(st, dati_rich):
             raise Errore(f"{dev} non può aprire pagine web (i router non hanno links): scegli un host o un server")
         if not web.server_web(stato):
             raise Errore('Nessun server web nel lab (dispositivi con apache2)')
+        extra = str(dati_rich.get('extra') or '').strip()
+        if extra and not web.url_valido(extra):
+            raise Errore(f"Pagina in più non valida: {extra} (un IP, un nome o un URL come http://web.com/~guest/)")
         lid = st.lavori.avvia(f"pagine web da {dev}", f"systemctl is-active apache2 sui server, poi links -dump da {dev}",
-                              lambda lav: kathara.verifica_web(k, lab_path, stato, dev, lav))
+                              lambda lav: kathara.verifica_web(k, lab_path, stato, dev, lav, extra or None))
         return {'lavoro': lid}
 
     if tipo == 'terminale':

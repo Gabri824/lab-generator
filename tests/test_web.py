@@ -72,6 +72,24 @@ class TestIndirizzi(unittest.TestCase):
     def test_comando(self):
         self.assertEqual(['timeout', '8', 'links', '-dump', 'http://www.com/'], web.comando_links(' www.com '))
 
+    def test_url_con_percorso(self):
+        for x, atteso in (('http://web.com/~guest/', ('web.com', '/~guest/')), ('web.com/~guest/', ('web.com', '/~guest/')),
+                          ('2.2.0.2', ('2.2.0.2', '/')), ('HTTP://web.com', ('web.com', '/')), ('web.com/a/b.html', ('web.com', '/a/b.html'))):
+            self.assertEqual(atteso, web.dividi_url(x), x)
+        self.assertEqual(['timeout', '8', 'links', '-dump', 'http://web.com/~guest/'], web.comando_links('http://web.com/~guest/'))
+        for x in ('http://web.com/$(id)', 'web.com/a b', "web.com/'x", 'https://web.com/', 'web.com/;reboot', 'http:///x', ''):
+            self.assertIsNone(web.dividi_url(x), repr(x))
+            self.assertFalse(web.url_valido(x), repr(x))
+
+    def test_404_della_pagina_di_un_utente(self):
+        pagina = '                                   Not Found\n\n   The requested URL was not found on this server.\n'
+        esito, spiegazione = web.spiega_links(0, pagina, 'http://web.com/~guest/')
+        self.assertEqual('non_trovata', esito)
+        self.assertIn('userdir', spiegazione)
+        self.assertIn('/home/guest/public_html', spiegazione)
+        self.assertEqual('non_trovata', web.spiega_links(0, pagina, 'web.com/x.html')[0])
+        self.assertEqual('ok', web.spiega_links(0, 'Pagina di web_srv', 'web.com')[0])
+
 
 class TestDalLab(unittest.TestCase):
 

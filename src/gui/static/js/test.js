@@ -84,11 +84,12 @@ export function preparaWeb() {
 }
 async function provaWeb(bottone) {
   const dev = $('#wSrc').value; if (!dev) return;
-  const r = await esegui({azione: 'verifica_web', dev}, 'Pagine web da ' + dev, bottone);
+  const extra = $('#wExtra').value.trim();
+  const r = await esegui({azione: 'verifica_web', dev, ...(extra ? {extra} : {})}, 'Pagine web da ' + dev, bottone);
   if (r && r.risultato) mostraWeb(r.risultato);
 }
 $('#bWeb').onclick = e => provaWeb(e.target);
-const ESITO = {ok: 'ok', dns: 'DNS', apache: 'apache2', gateway: 'gateway', rete: 'routing', vuota: 'vuota', errore: 'errore'};
+const ESITO = {ok: 'ok', dns: 'DNS', apache: 'apache2', gateway: 'gateway', rete: 'routing', vuota: 'vuota', non_trovata: '404', errore: 'errore'};
 export function mostraWeb(r) {
   let h = `<table><tr><th>Server</th><th>IP</th><th>apache2</th><th></th></tr>${r.server.map(x => `<tr><td>${esc(x.nome)}</td><td><code>${esc(x.ip.join(', '))}</code></td>
     <td>${x.attivo == null ? '<span class="badge">non letto</span>' : `<span class="badge ${x.attivo ? 'ok' : 'ko'}">${x.attivo ? 'attivo' : 'spento'}</span>`}</td>
