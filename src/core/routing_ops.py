@@ -158,6 +158,79 @@ def _cambia_network_bgp(base_path, stato, router, presenti, togli):
     _esegui_piano(base_path, piano)
 
 
+def menu_dns(base_path):
+    """Opzioni 9: delega sul root e, su un server DNS già creato, zona nuova, record A, ricorsione."""
+    while True:
+        print_menu('=== DNS ===', ['Delega una zona sul root (es. com -> dns.com)', 'Aggiungi una zona a un server DNS',
+                                   'Aggiungi, cambia o togli un record A', 'Ricorsione (resolver) e dnssec-validation no'],
+                   extra_options=[('0', 'Torna indietro')])
+        c = input('Seleziona (numero): ').strip()
+        if c == '0' or not c:
+            return
+        if c == '1':
+            aggiungi_delega_dns(base_path)
+        elif c in ('2', '3', '4'):
+            _dns_server(base_path, c)
+        else:
+            print('Scelta non valida.')
+
+
+def _dns_server(base_path, c):
+    stato = leggi_stato(base_path)
+    server = sorted(n for n, d in stato['dispositivi'].items() if d.get('dns'))
+    if not server:
+        print('Il lab non ha server DNS.')
+        return
+    print_menu('Server DNS:', server)
+    s = input('Seleziona (numero o nome, Invio = annulla): ').strip()
+    nome = server[int(s) - 1] if s.isdigit() and 1 <= int(s) <= len(server) else (s if s in server else None)
+    if not nome:
+        print('Annullato.')
+        return
+    info = operazioni.opzioni_dns(stato, nome)
+    print(f"{nome} ({info['ip'] or 'senza IP'}): zone " + (', '.join(f"{z['zona']} ({z['tipo']})" for z in info['zone']) or 'nessuna'))
+    try:
+        if c == '2':
+            zona = input('Zona da aggiungere (es. com; Invio = annulla): ').strip()
+            if not zona:
+                print('Annullato.')
+                return
+            rec = {}
+            while True:
+                h = input('Record A da mettere subito, nome (es. web; Invio = nessun altro): ').strip()
+                if not h:
+                    break
+                rec[h] = input(f'IP di {h}: ').strip()
+            piano = operazioni.calcola_zona_dns(stato, nome, zona, rec)
+        elif c == '3':
+            master = [z['zona'] for z in info['zone'] if z['tipo'] == 'master' and z['zona'] != '.']
+            if not master:
+                print(f"{nome} non è master di nessuna zona: prima aggiungila (voce 2).")
+                return
+            for z in info['zone']:
+                if z['zona'] in master:
+                    print(f"  {z['zona']}: " + (', '.join(f"{r[0]} -> {r[2]}" for r in z['record'] if r[1] == 'A') or 'nessun record A'))
+            zona = master[0] if len(master) == 1 else input(f"Zona ({', '.join(master)}): ").strip()
+            host = input('Nome (es. web; Invio = annulla): ').strip()
+            if not host:
+                print('Annullato.')
+                return
+            ip = input(f'IP di {host} (T = togli i suoi record A): ').strip()
+            piano = (operazioni.calcola_record_dns(stato, nome, zona, host, togli=True) if ip.lower() == 't'
+                     else operazioni.calcola_record_dns(stato, nome, zona, host, ip))
+        else:
+            print(f"Adesso: allow-recursion {', '.join(info['ricorsione']) if info['ricorsione'] else 'non scritta'}, "
+                  f"dnssec-validation {info['dnssec'] or 'non scritta'}.")
+            ric = _si('Fa da resolver (allow-recursion)? (S/n): ', True)
+            reti = input('Reti ammesse (es. 10.0.0.0/24; Invio = any): ').strip() if ric else ''
+            dn = _si('dnssec-validation no? (S/n): ', True)
+            piano = operazioni.calcola_ricorsione_dns(stato, nome, ric, reti, dn)
+    except operazioni.ErroreOperazione as e:
+        print(e)
+        return
+    _esegui_piano(base_path, piano)
+
+
 def aggiungi_delega_dns(base_path):
     """Aggiunge al server root (master per '.') la delega di una zona."""
     print('\n--- Aggiungi delega DNS sul root ---')
@@ -889,7 +962,7 @@ def menu_opzioni_laboratorio(base_path, routers):
             "Aggiungi network BGP (aggregato dell'AS, reti interne, 0.0.0.0/0)",
             'Aggiungi sessioni iBGP (full mesh tra i router BGP dello stesso AS)',
             "Riepilogo configurazione (per controllare il testo dell'esercizio)",
-            'Aggiungi delega DNS sul root (es. com -> dns.com)',
+            'DNS: delega sul root, zona nuova, record A, ricorsione e DNSSEC',
             'Costi OSPF predefiniti uguali su un AS (auto-cost reference-bandwidth 100)',
             'Modifica un dispositivo (IP, LAN, gateway, protocolli, AS, righe dei file)',
             'Default route (BGP verso un neighbor, RIP, OSPF)',
@@ -923,7 +996,7 @@ def menu_opzioni_laboratorio(base_path, routers):
             riepilogo_configurazione(base_path, routers)
             diagnostica_lab(base_path)
         elif choice == '9':
-            aggiungi_delega_dns(base_path)
+            menu_dns(base_path)
         elif choice == '10':
             imposta_auto_cost(base_path)
         elif choice == '11':

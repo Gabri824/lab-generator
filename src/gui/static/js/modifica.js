@@ -152,7 +152,7 @@ const TEST = {
   percorso: ['policy', 'cpp', 'costo_ospf', 'togli_costo_ospf', 'auto_cost'],
   sessioni: ['network_bgp', 'ibgp', 'default_originate', 'default_igp', 'loopback', 'redistribuzione', 'redistribuzione_route_map', 'aggiungi_protocollo', 'togli_protocollo', 'as'],
   ping: ['gateway', 'ip_interfaccia', 'sposta_interfaccia', 'rinumera_lan', 'aggiungi_dispositivo', 'aggiungi_interfaccia', 'togli_interfaccia', 'togli_dispositivo'],
-  risoluzione: ['resolver', 'delega_dns'],
+  risoluzione: ['resolver', 'delega_dns', 'zona_dns', 'record_dns', 'ricorsione_dns'],
 };
 const NOME_TEST = {percorso: 'Verifica percorso', sessioni: 'Sessioni BGP e OSPF', ping: 'Raggiungibilità', risoluzione: 'Risoluzione di un nome'};
 export const testDopo = operazione => Object.keys(TEST).find(k => TEST[k].includes(operazione)) || null;

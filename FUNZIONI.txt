@@ -363,9 +363,18 @@ D. MENU OPZIONI LABORATORIO
     policy in chiaro, piu' tutti i controlli della sezione C. Serve a
     spuntare il testo dell'esercizio frase per frase.
 
- 9) Aggiungi delega DNS sul root
-    Delega un dominio di primo livello (es. com -> dns.com) nel db.root;
-    aggiunge anche il SOA se manca.
+ 9) DNS
+    1. Delega sul root: un dominio di primo livello (es. com -> dns.com)
+       nel db.root; aggiunge anche il SOA se manca.
+    2. Aggiungi una zona a un server DNS gia' creato: db.<zona> (SOA, NS
+       dns.<zona>, A di dns.<zona> col suo IP, i record A che scrivi) e il
+       blocco zone in named.conf. La delega dal padre va fatta a parte.
+    3. Record A: aggiunge, sostituisce (stesso nome, altro IP) o toglie
+       (T). Basta il nome corto: web -> web.<zona>.
+    4. Ricorsione e DNSSEC: allow-recursion { reti; } (Invio = any) e
+       dnssec-validation no in named.conf.options.
+    Le stesse voci nella GUI, pannello del server DNS in modalita'
+    Modifica: Aggiungi zona, Record A, Ricorsione e DNSSEC.
 
  10) Costi OSPF predefiniti uguali su un AS
     Il costo predefinito di un'interfaccia dipende dalla velocita' che

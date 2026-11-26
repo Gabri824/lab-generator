@@ -766,6 +766,167 @@ def calcola_delega_dns(stato, server, zona, ns, ip):
                   vuoto=gia_msg if gia else None)
 
 
+# ----------------------------------------------------------------------------- 9b. zone, record e ricorsione DNS
+#
+# Su un server DNS già creato: zona nuova (file db.<zona> come quelli del generatore e blocco in
+# named.conf), record A, ricorsione e DNSSEC in named.conf.options.
+
+def _dns(stato, server):
+    d = stato['dispositivi'].get(server)
+    if not d or not d.get('dns'):
+        raise ErroreOperazione(f"{server} non è un server DNS (manca etc/bind/named.conf).")
+    return d
+
+
+def _ip_server(stato, server):
+    from .templates import _RE_IP_ADD
+    for l in _righe_file(os.path.join(stato['percorso'], f"{server}.startup")):
+        m = _RE_IP_ADD.match(l)
+        if m and m.group(2) != 'lo':
+            return m.group(1).split('/')[0]
+    return None
+
+
+def _zona_norm(zona):
+    z = str(zona or '').strip().strip('.').lower()
+    if not z or not re.fullmatch(r'[a-z0-9-]+(\.[a-z0-9-]+)*', z):
+        raise ErroreOperazione("Nome di zona non valido (es. com oppure uniroma3.it).")
+    return z
+
+
+def _file_zona(stato, server, zona):
+    """Percorso relativo del file della zona master `zona` del server (da named.conf)."""
+    z = next((x for x in _dns(stato, server)['dns']['zone'] if x['zona'].strip('.').lower() == zona and x['tipo'] == 'master'), None)
+    if not z or not z['file']:
+        raise ErroreOperazione(f"{server} non è master della zona {zona}: aggiungila prima (Aggiungi zona).")
+    return z['file'].replace('/', os.sep)          # già relativo al lab
+
+
+def opzioni_dns(stato, server):
+    """Server DNS: IP, zone [{'zona', 'tipo', 'record': [(nome, tipo, valore)]}], ricorsione, DNSSEC."""
+    from .stato import record_dns
+    d = _dns(stato, server)
+    zone = []
+    for z in d['dns']['zone']:
+        rec = []
+        if z['tipo'] == 'master' and z['file']:
+            f = os.path.join(stato['percorso'], *z['file'].split('/'))
+            rec = record_dns('\n'.join(_righe_file(f)) if os.path.isfile(f) else None, z['zona'])
+        zone.append({'zona': z['zona'], 'tipo': z['tipo'], 'record': rec})
+    return {'ip': _ip_server(stato, server), 'zone': zone,
+            'ricorsione': d['dns'].get('allow_recursion'), 'dnssec': d['dns'].get('dnssec_validation')}
+
+
+def calcola_zona_dns(stato, server, zona, record=None):
+    """Zona master nuova sul server: db.<zona> (SOA, NS dns.<zona>, A di dns.<zona> col suo IP,
+    i record A dati {nome: ip}) e il blocco 'zone' in named.conf. La delega dal padre (root o altra
+    zona) resta da fare sul padre."""
+    import datetime
+    from .generators import _rec_dns
+    _dns(stato, server)
+    zona = _zona_norm(zona)
+    if any(z['zona'].strip('.').lower() == zona for z in _dns(stato, server)['dns']['zone']):
+        return _piano_diretto(f"Zona {zona} su {server}", {}, vuoto=f"{server} ha già la zona {zona}.")
+    ip = _ip_server(stato, server)
+    rev = '.'.join(zona.split('.')[::-1])
+    rel_db = os.path.join(server, 'etc', 'bind', f"db.{rev}")
+    if os.path.exists(os.path.join(stato['percorso'], rel_db)):
+        raise ErroreOperazione(f"{rel_db.replace(os.sep, '/')} esiste già: aggiungi la zona a mano (File a righe).")
+    serial = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d') + '01'
+    righe = ['$TTL 60000', f"@ IN SOA dns.{zona}. root.dns.{zona}. (", f"    {serial} ; serial", '    28800 ;  refresh',
+             '    14400 ; retry', '    3600000 ; expire', '    0 ; negative cache ttl', ')', '',
+             _rec_dns('@', 'NS', f'dns.{zona}.'), '']
+    if ip:
+        righe.append(_rec_dns(f'dns.{zona}', 'A', ip))
+    for nome, ipr in (record or {}).items():
+        righe.append(_rec_dns(_nome_nella_zona(nome, zona), 'A', _ip_valido(ipr)))
+    rel_nc = os.path.join(server, 'etc', 'bind', 'named.conf')
+    nc = _righe_file(os.path.join(stato['percorso'], rel_nc))
+    nuovo_nc = list(nc)
+    while nuovo_nc and not nuovo_nc[-1].strip():
+        nuovo_nc.pop()
+    nuovo_nc += ['', f'zone "{zona}" {{', '    type master;', f'    file "/etc/bind/db.{rev}";', '};']
+    note = [f"Ricorda la delega di {zona} sul server padre (sul root: Delega una zona, nameserver dns.{zona}, IP {ip or '?'})."]
+    return _piano_diretto(f"Zona {zona} su {server}", {rel_db: (None, righe), rel_nc: (nc, nuovo_nc)}, note)
+
+
+def _ip_valido(ip):
+    try:
+        return str(ipaddress.ip_address(str(ip).strip().split('/')[0]))
+    except ValueError:
+        raise ErroreOperazione(f"IP non valido: '{ip}'.")
+
+
+def _nome_nella_zona(nome, zona):
+    """'web' -> 'web.com'; 'web.com' e 'web.com.' restano; '@' resta."""
+    n = str(nome or '').strip().rstrip('.').lower()
+    if n in ('', '@'):
+        return '@'
+    if not re.fullmatch(r'[a-z0-9_-]+(\.[a-z0-9_-]+)*', n):
+        raise ErroreOperazione(f"Nome non valido: '{nome}' (es. web oppure web.{zona}).")
+    return n if n == zona or n.endswith('.' + zona) else f"{n}.{zona}"
+
+
+def calcola_record_dns(stato, server, zona, host, ip=None, togli=False):
+    """Record A nella zona master del server: aggiunge '<host> A <ip>' (se il nome ha già un A con un
+    altro IP lo sostituisce) o, con togli, toglie gli A del nome."""
+    from .generators import _rec_dns
+    zona = _zona_norm(zona)
+    rel = _file_zona(stato, server, zona)
+    nome = _nome_nella_zona(host, zona)
+    assoluto = '@' if nome == '@' else nome + '.'
+    righe = _righe_file(os.path.join(stato['percorso'], rel))
+
+    def e_suo(l):
+        p = l.split()
+        if len(p) < 3 or p[0].startswith(';'):
+            return False
+        n = p[0].lower()
+        n = n if n.endswith('.') or n == '@' else f"{n}.{zona}."
+        return n == assoluto and 'A' in p[1:3] + p[2:4]
+    if togli:
+        nuove = [l for l in righe if not e_suo(l)]
+        return _piano_diretto(f"Togli {nome} da {zona} su {server}", {rel: (righe, nuove)},
+                              vuoto=f"{nome} non ha record A nella zona {zona}.")
+    ip = _ip_valido(ip)
+    riga = _rec_dns(nome, 'A', ip)
+    if any(e_suo(l) and l.split()[-1] == ip for l in righe):
+        return _piano_diretto(f"{nome} in {zona}", {}, vuoto=f"{nome} A {ip} c'è già.")
+    nuove = [l for l in righe if not e_suo(l)]
+    while nuove and not nuove[-1].strip():
+        nuove.pop()
+    nuove.append(riga)
+    note = [f"{nome} aveva già un record A: sostituito."] if any(e_suo(l) for l in righe) else []
+    return _piano_diretto(f"{nome} A {ip} nella zona {zona} su {server}", {rel: (righe, nuove)}, note)
+
+
+def calcola_ricorsione_dns(stato, server, ricorsione=True, reti='', dnssec_no=False):
+    """named.conf.options: allow-recursion { reti; } (vuoto = any) o tolta; dnssec-validation no o tolta."""
+    _dns(stato, server)
+    rel = os.path.join(server, 'etc', 'bind', 'named.conf.options')
+    righe = _righe_file(os.path.join(stato['percorso'], rel))
+    if not righe:
+        righe = ['options {', '    directory "/var/cache/bind";', '};']
+    lista = [x for x in re.split(r'[\s,;]+', str(reti or '')) if x]
+    for x in lista:
+        if x != 'any':
+            try:
+                ipaddress.ip_network(x, strict=False)
+            except ValueError:
+                raise ErroreOperazione(f"Rete non valida: '{x}' (es. 10.0.0.0/24).")
+    nuove = [l for l in righe if not re.match(r'\s*(allow-recursion|dnssec-validation)\b', l)]
+    fine = max((k for k, l in enumerate(nuove) if l.strip().startswith('};')), default=None)
+    if fine is None:
+        raise ErroreOperazione(f"{rel.replace(os.sep, '/')}: non trovo la fine del blocco options.")
+    agg = []
+    if ricorsione:
+        agg.append('    allow-recursion { ' + '; '.join(lista or ['any']) + '; };')
+    if dnssec_no:
+        agg.append('    dnssec-validation no;')
+    nuove = nuove[:fine] + agg + nuove[fine:]
+    return _piano_diretto(f"Ricorsione e DNSSEC su {server}", {rel: (righe, nuove)}, vuoto='Già così: nessuna modifica.')
+
+
 # ----------------------------------------------------------------------------- 2. policy BGP
 
 def opzioni_policy(stato, router):
@@ -2161,6 +2322,9 @@ OPERAZIONI = {
     'redistribuzione_route_map': (opzioni_redistribuzione, calcola_redistribuzione_route_map),
     'resolver': (opzioni_resolver, calcola_resolver),
     'delega_dns': (opzioni_delega_dns, calcola_delega_dns),
+    'zona_dns': (opzioni_dns, calcola_zona_dns),
+    'record_dns': (opzioni_dns, calcola_record_dns),
+    'ricorsione_dns': (opzioni_dns, calcola_ricorsione_dns),
     'policy': (opzioni_policy_bgp, calcola_policy),
     'cpp': (opzioni_policy_bgp, calcola_cpp),
     'ip_interfaccia': (opzioni_ip_interfaccia, calcola_ip_interfaccia),

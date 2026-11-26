@@ -201,7 +201,7 @@ annullare (voce 14).
 | 6 | Network BGP | Aggregato dell'AS, reti interne o `0.0.0.0/0`; propone di togliere le subnet già contenute nell'aggregato. |
 | 7 | Sessioni iBGP | Le sessioni mancanti fra i router BGP dello stesso AS (full mesh). |
 | 8 | Riepilogo | Controlli statici, configurazione di ogni router e diagnostica di `frr.conf`. |
-| 9 | Delega DNS sul root | Delega di un dominio di primo livello in `db.root`, con NS e glue. |
+| 9 | DNS | Delega sul root (NS e glue in `db.root`); su un server già creato: zona nuova, record A, ricorsione e `dnssec-validation no`. |
 | 10 | Costi OSPF predefiniti uguali | `auto-cost reference-bandwidth 100` su tutti i router OSPF di un AS (vedi [Problemi comuni](#costo-ospf-predefinito)). |
 | 11 | Modifica un dispositivo | IP (anche solo l'ultimo numero), LAN (anche rinumerata), gateway, AS, protocolli, rinomina, editor a righe dei file. |
 | 12 | Default route | BGP (`default-originate`), RIP e OSPF (`default-information originate`). |

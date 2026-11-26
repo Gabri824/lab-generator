@@ -162,6 +162,7 @@ function azioniDispositivo(d) {
   const ha = p => d.demoni.includes(p + 'd');
   if (d.tipo !== 'router') a.push(['gateway', 'Gateway'], ['resolver', 'Resolver']);
   if (d.tipo === 'dns' && (d.zone || []).some(z => z[0] === '.' && z[1] === 'master')) a.push(['delega', 'Delega una zona']);
+  if (d.tipo === 'dns') a.push(['zona_dns', 'Aggiungi zona'], ['record_dns', 'Record A'], ['ricorsione_dns', 'Ricorsione e DNSSEC']);
   if (d.tipo === 'router' && d.asn) a.push(['as', 'Cambia AS']);
   if (d.tipo === 'router') for (const p of ['ospf', 'rip', 'bgp'])
     a.push(ha(p) ? [`togli:${p}`, `Togli ${p.toUpperCase()}`] : [`aggiungi:${p}`, `Aggiungi ${p.toUpperCase()}`]);
@@ -191,6 +192,9 @@ async function azioneDispositivo(dev, az) {
     else if (az === 'loopback') loopback(d);
     else if (az === 'resolver') await resolver(d);
     else if (az === 'delega') await delega(d);
+    else if (az === 'zona_dns') await zonaDns(d);
+    else if (az === 'record_dns') await recordDns(d);
+    else if (az === 'ricorsione_dns') await ricorsioneDns(d);
     else if (az === 'network') await networkBgp(d.nome);
     else if (az === 'network_togli') await cambiaNetwork(d, true);
     else if (az === 'network_cambia') await cambiaNetwork(d, false);
@@ -491,6 +495,62 @@ async function resolver(d) {
       if (!ip) throw new Error('Scrivi l\'IP del server DNS.');
       return {ip};
     },
+  });
+}
+
+// ---------- zone, record e ricorsione di un server DNS ----------
+async function zonaDns(d) {
+  const o = await opzioni('zona_dns', {server: d.nome});
+  apriOperazione({
+    operazione: 'zona_dns', titolo: `Aggiungi una zona a ${d.nome}`,
+    spiegazione: `Crea db.<zona> (SOA, NS dns.<zona>, A di dns.<zona> = ${o.ip || 'IP del server'}) e il blocco zone in named.conf. `
+      + `Zone di adesso: ${o.zone.map(z => `${z.zona} (${z.tipo})`).join(', ') || 'nessuna'}. La delega dal padre (es. sul root) va fatta lì.`,
+    fissi: {server: d.nome},
+    schema: [{nome: 'zona', etichetta: 'Zona', obbligatorio: true, segnaposto: 'es. com'},
+             {nome: 'nome', etichetta: 'Record A (facoltativo): nome', segnaposto: 'es. web'},
+             {nome: 'ip', etichetta: 'Record A: IP', segnaposto: 'es. 2.2.0.2'}],
+    valori: {},
+    prepara: v => {
+      const nome = String(v.nome || '').trim(), ip = String(v.ip || '').trim();
+      if (!!nome !== !!ip) throw new Error('Per il record A servono nome e IP (oppure lasciali vuoti tutti e due).');
+      return {zona: String(v.zona).trim(), ...(nome ? {record: {[nome]: ip}} : {})};
+    },
+  });
+}
+
+async function recordDns(d) {
+  const o = await opzioni('record_dns', {server: d.nome});
+  const master = o.zone.filter(z => z.tipo === 'master' && z.zona !== '.');
+  if (!master.length) throw new Error(`${d.nome} non è master di nessuna zona (tranne forse "."): prima "Aggiungi zona".`);
+  const elenco = master.map(z => `${z.zona}: ` + (z.record.filter(r => r[1] === 'A').map(r => `${r[0]} → ${r[2]}`).join(', ') || 'nessun A')).join(' · ');
+  apriOperazione({
+    operazione: 'record_dns', titolo: `Record A su ${d.nome}`,
+    spiegazione: `Adesso: ${elenco}. Se il nome ha già un A con un altro IP viene sostituito. Basta il nome corto (web diventa web.<zona>).`,
+    fissi: {server: d.nome},
+    schema: [{nome: 'zona', etichetta: 'Zona', tipo: 'scelta', obbligatorio: true, opzioni: master.map(z => z.zona)},
+             {nome: 'nome', etichetta: 'Nome', obbligatorio: true, segnaposto: 'es. web'},
+             {nome: 'ip', etichetta: 'IP', segnaposto: 'es. 2.2.0.2', aiuto: 'Vuoto se togli.'},
+             {nome: 'togli', etichetta: 'Togli i record A di questo nome', tipo: 'si_no'}],
+    valori: {zona: master[0].zona, togli: false},
+    prepara: v => {
+      if (!v.togli && !String(v.ip || '').trim()) throw new Error("Scrivi l'IP del record.");
+      return {zona: v.zona, host: String(v.nome).trim(), ...(v.togli ? {togli: true} : {ip: String(v.ip).trim()})};
+    },
+  });
+}
+
+async function ricorsioneDns(d) {
+  const o = await opzioni('ricorsione_dns', {server: d.nome});
+  apriOperazione({
+    operazione: 'ricorsione_dns', titolo: `Ricorsione e DNSSEC su ${d.nome}`,
+    spiegazione: `named.conf.options. Adesso: allow-recursion ${o.ricorsione ? o.ricorsione.join(', ') : 'non scritta'}, dnssec-validation ${o.dnssec || 'non scritta'}. `
+      + 'Un resolver locale (quello nei resolv.conf) deve fare ricorsione; nei lab di Kathará serve anche dnssec-validation no.',
+    fissi: {server: d.nome},
+    schema: [{nome: 'ricorsione', etichetta: 'Fa da resolver (allow-recursion)', tipo: 'si_no'},
+             {nome: 'reti', etichetta: 'Reti ammesse', segnaposto: 'any (tutte)', aiuto: 'Vuoto = any. Più reti separate da virgola, es. 10.0.0.0/24.'},
+             {nome: 'dnssec_no', etichetta: 'dnssec-validation no', tipo: 'si_no'}],
+    valori: {ricorsione: true, reti: o.ricorsione && !o.ricorsione.includes('any') ? o.ricorsione.join(', ') : '', dnssec_no: true},
+    prepara: v => ({ricorsione: !!v.ricorsione, reti: String(v.reti || '').trim(), dnssec_no: !!v.dnssec_no}),
   });
 }
 

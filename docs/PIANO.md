@@ -1494,7 +1494,9 @@ Dalla roadmap `Roadmap Integrazione Branch Lab Generator.pdf` si è fatto solo q
 | 8.3 | Azzera il routing (Opzioni 16, GUI), "Applica i fix sicuri" (Opzioni 15 `S`, Diagnostica), suggerimenti di `vtysh --dryrun` | `operazioni.py`, `routing_ops.py`, `gui/kathara.py`, `diagnosi.js` |
 | 8.4 | Checklist "Pronto per la consegna" a semaforo in Riepilogo e Archivio; IP di un'interfaccia senza IP dalla GUI (gli IP liberi e il gateway nei form c'erano già) | `consegna_controlli.js`, `consegna.js` |
 
-Verifiche: `test_pulizia.py`, `test_operazioni_82.py`, `test_operazioni_83.py`, `tests/js/consegna.test.mjs`, pilota `prova_fase8.mjs`.
+| 8.5 | Dal collaudo di tennis: DNS di un lab già creato da Modifica e dal terminale (Opzioni 9): zona nuova, record A, ricorsione e DNSSEC (prima solo con "File a righe", che non crea file nuovi). Editor: IP fuori dalla subnet della LAN con il rimedio nel messaggio | `operazioni.calcola_zona_dns`, `calcola_record_dns`, `calcola_ricorsione_dns`, `routing_ops.menu_dns`, `modifica_lab.js`, `editor/bozza.js` |
+
+Verifiche: `test_pulizia.py`, `test_operazioni_82.py`, `test_operazioni_83.py`, `test_dns_modifica.py`, `tests/js/consegna.test.mjs`, pilota `prova_fase8.mjs` (con `--lab-dns`).
 
 ---
 
@@ -1508,7 +1510,7 @@ Cose trovate durante il lavoro e messe da parte di proposito. Non bloccano le fa
 | Il resolver finale viene scritto anche sui server DNS | `generazione._scrivi_lab` | Lasciato così (decisione della fase 1.4). |
 | Quando le Opzioni aggiornano l'XML lo riscrivono per intero | `persistence._aggiorna_xml` | Cambia, per esempio, `&quot;` in `"` dentro `lab_conf`. Da decidere nella fase 1.7 (XML fuori dal lab, forse rigenerato dai file). |
 | Il Registro della GUI è solo in memoria e contiene solo le operazioni della GUI | `gui/kathara.Lavori` | Visto nella prova guidata della fase web: chiudendo la GUI si svuota, e le operazioni del terminale non ci sono. Idea: salvarlo per lab in `.labgenerator/<lab>/` e aggiungere le operazioni fatte dal terminale del generatore. Non urgente (decisione dell'autore). |
-| Zone, record e ricorsione di un lab già creato si cambiano solo con "File a righe" | GUI e terminale | Decisione della 5.4 (strada A): agli esami non servono, il wizard e l'editor li creano. Se servisse: aggiungi zona, aggiungi/togli record A e delega da qualunque zona, ricorsione, resolver per più dispositivi. |
+| Deleghe da una zona che non sia il root, record diversi da A (CNAME, NS), forwarders su un lab già creato | GUI e terminale | Zone, record A e ricorsione ora si fanno da Modifica (8.5); il resto ancora con "File a righe". |
 | Data center senza IPv4 sulle interfacce non si caricano | `persistence.modello_da_stato`, editor (5.7) | puzzle, ceci-n'est-pas-une-pipe, exapus, patchwork (spine/leaf): il modello descrive solo interfacce con un IP. L'editor lo spiega. Da valutare se servono. |
 | Pagina personale di un utente su apache (`http://web.com/~guest/`, modulo userdir) | tennis (Esami_IDC) | Chiesta dalla traccia di tennis; il generatore non la prepara. Da valutare per la fase web. |
 | Circa 130 stampe con emoji | tutto il terminale | Protette all'avvio (`reconfigure(errors='replace')`); nessuna è più dentro una domanda. |

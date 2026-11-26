@@ -1,13 +1,15 @@
 // Pilota della fase 8 in Chromium senza finestra: checklist "Pronto per la consegna" (Riepilogo e
 // Archivio), "Azzera il routing" con anteprima, Applica e Annulla, casella di pulizia in "Togli il
 // dispositivo", "Applica i fix sicuri" nella Diagnostica, Togli network BGP.
-// Usa COPIE dei lab (candy per il routing, lift per i fix sicuri): --lab candy --lab-fix lift.
+// Usa COPIE dei lab (candy per il routing, lift per i fix sicuri): --lab candy --lab-fix lift; con
+// --lab-dns una copia di tennis senza zona com, delega, ricorsione e resolver di pc: zona, record,
+// ricorsione e resolver dalla modalità Modifica, poi la Risoluzione di web.com da pc è ok.
 //
 //   node tests/strumenti/prova_fase8.mjs --url http://127.0.0.1:8795/ --lab candy --lab-fix lift [--shots cartella]
 import { apriBrowser, pausa, trovaChrome } from './cdp.mjs';
 
 const arg = (n, d) => { const i = process.argv.indexOf('--' + n); return i > 0 ? process.argv[i + 1] : d; };
-const URL_GUI = arg('url', 'http://127.0.0.1:8795/'), LAB = arg('lab', 'candy'), FIX = arg('lab-fix', 'lift'), SHOTS = arg('shots');
+const URL_GUI = arg('url', 'http://127.0.0.1:8795/'), LAB = arg('lab', 'candy'), FIX = arg('lab-fix', 'lift'), DNS = arg('lab-dns'), SHOTS = arg('shots');
 const B = await apriBrowser(trovaChrome(arg('chrome')));
 const passi = [];
 async function passo(nome, f) {
@@ -106,6 +108,50 @@ await passo('Diagnostica: "Applica i fix sicuri" corregge il refuso in blocco', 
   await clicSu('#side [data-mod-azione="applica"]');
   await B.aspetta(`/Annullato/.test(document.querySelector('#side').innerText)`, 10000, 'annullato');
 });
+
+async function operazioneDns(dev, azione, valori, attesoAnteprima) {
+  await apri(DNS, 'topo');
+  await clicSu('#bModifica');
+  await clicSu(`#svg g[data-id="d:${dev}"] ${dev.startsWith("as") ? "circle" : "rect"}`);
+  await clicSu(`#side [data-gesto="disp"][data-azione="${azione}"]`);
+  await B.aspetta(`!!document.querySelector('#side [data-mod-azione="anteprima"]')`, 10000, 'form ' + azione);
+  for (const [nome, v] of Object.entries(valori)) {
+    await B.js(`(() => { const e = document.querySelector('#opForm [name="${nome}"]'); if (!e) throw new Error('campo ${nome}');
+      if (e.type === 'checkbox') e.checked = ${JSON.stringify(v)}; else e.value = ${JSON.stringify(v)};
+      e.dispatchEvent(new Event('input', {bubbles: true})); e.dispatchEvent(new Event('change', {bubbles: true})); })()`);
+  }
+  await clicSu('#side [data-mod-azione="anteprima"]');
+  // moduli in due passi (delega: prima la zona, poi nameserver e glue): si va avanti fino all'anteprima
+  await B.aspetta(`!!document.querySelector('#side [data-mod-azione="applica"]') || /Delega di /.test(document.querySelector('#side').innerText)`, 15000, 'passo dopo ' + azione);
+  if (!(await B.js(`!!document.querySelector('#side [data-mod-azione="applica"]')`))) {
+    await B.aspetta(`!!document.querySelector('#side [data-mod-azione="anteprima"]')`, 10000, 'secondo passo ' + azione);
+    await clicSu('#side [data-mod-azione="anteprima"]');
+  }
+  await B.aspetta(`!!document.querySelector('#side [data-mod-azione="applica"]')`, 15000, 'anteprima ' + azione);
+  const ant = await B.testo('#opRis');
+  if (!attesoAnteprima.test(ant)) throw new Error('anteprima: ' + ant.slice(0, 300));
+  await clicSu('#side [data-mod-azione="applica"]');
+  await B.aspetta(`!document.querySelector('#side [data-mod-azione="applica"]')`, 15000, 'applicato ' + azione);
+}
+
+if (DNS) {
+  await passo('DNS da Modifica: zona com con web.com su ns_com', () => operazioneDns('ns_com', 'zona_dns', {zona: 'com', nome: 'web', ip: '2.2.0.2'}, /db\.com[\s\S]*web\.com\.\s+IN\s+A\s+2\.2\.0\.2/));
+  await passo('DNS da Modifica: record A www.com', () => operazioneDns('ns_com', 'record_dns', {nome: 'www', ip: '2.2.0.3'}, /www\.com\.\s+IN\s+A\s+2\.2\.0\.3/));
+  await passo('DNS da Modifica: ricorsione e dnssec su ns_local', () => operazioneDns('ns_local', 'ricorsione_dns', {reti: '10.0.0.0/24'}, /allow-recursion \{ 10\.0\.0\.0\/24; \};[\s\S]*dnssec-validation no/));
+  await passo('DNS da Modifica: delega di com sul root e resolver di pc', async () => {
+    await operazioneDns('root', 'delega', {zona: 'com', server: 'ns_com'}, /com\.\s+IN\s+NS\s+dns\.com\./);
+    await operazioneDns('pc', 'resolver', {scelto: '1.0.0.2'}, /nameserver 1\.0\.0\.2/);
+  });
+  await passo('Test: Risoluzione di web.com da pc ok, catena ns_local, root, ns_com', async () => {
+    await apri(DNS, 'test');
+    await B.js(`(() => { const s = document.querySelector('#dnSrc'); s.value = 'pc'; s.dispatchEvent(new Event('change', {bubbles: true}));
+      const n = document.querySelector('#dnNome'); if (n) { n.value = 'web.com'; n.dispatchEvent(new Event('input', {bubbles: true})); } })()`);
+    await clicSu('#bRisolvi');
+    await B.aspetta(`/2\.2\.0\.2/.test(document.querySelector('#rRisolvi') ? document.querySelector('#rRisolvi').innerText : '')`, 20000, 'esito');
+    const t = await B.testo('#rRisolvi');
+    if (!/ns_local/.test(t) || !/ns_com/.test(t) || /✘/.test(t)) throw new Error(t.slice(0, 400));
+  });
+}
 
 if (B.errori.length) passi.push({nome: 'errori nella pagina', ok: false, errore: B.errori.join(' | ')});
 await B.chiudi();
