@@ -277,15 +277,19 @@ def aggiungi_ibgp_full_mesh(base_path, routers):
         return
     elenco = sorted(candidati, key=lambda a: int(a) if a.isdigit() else 0)
     print_menu('AS con più router BGP:', [f"AS{a}: {', '.join(candidati[a])}" for a in elenco])
-    sel = input("Seleziona l'AS (numero nella lista o numero AS, vuoto per annullare): ").strip()
+    sel = input("Seleziona l'AS (numero nella lista, oppure AS e il numero, es. AS20; vuoto per annullare): ").strip()
     if not sel:
         print('Operazione annullata.')
         return
-    if sel.isdigit() and 1 <= int(sel) <= len(elenco) and sel not in candidati:
+    # prima il numero della lista: con AS2 e AS20, "2" è la voce 2 (AS20), non l'AS 2 (per quello: AS2)
+    if sel.upper().startswith('AS') and sel[2:].strip().isdigit():
+        sel = sel[2:].strip()
+    elif sel.isdigit() and 1 <= int(sel) <= len(elenco):
         sel = elenco[int(sel) - 1]
     if sel not in candidati:
         print('Selezione non valida.')
         return
+    print(f"AS{sel}: {', '.join(candidati[sel])}")
     print("⚠️ Controlla il testo: alcuni esercizi vietano l'iBGP (es. butterfly).")
     _esegui_piano(base_path, operazioni.calcola_ibgp(stato, sel))
 

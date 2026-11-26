@@ -169,6 +169,32 @@ class TestFixSicuri(unittest.TestCase):
             self.assertEqual(c.leggi_albero(pg), c.leggi_albero(pt))
 
 
+class TestMenuIbgp(unittest.TestCase):
+    """Collaudo di tennis: con AS2 e AS20 nella lista, "2" è la voce 2 (AS20), non l'AS 2."""
+
+    def _scegli(self, risposta):
+        tmp, p = _lab('tennis_test')
+        with tmp:
+            for r in ('as20r1', 'as20r2', 'as20r3', 'as20r4', 'as2r1', 'as2r2'):
+                f = os.path.join(p, r, 'etc', 'frr', 'frr.conf')
+                t = _leggi(p, f'{r}/etc/frr/frr.conf')
+                with open(f, 'w', encoding='utf-8') as fh:
+                    fh.write('\n'.join(l for l in t.split('\n') if not re.search(r'neighbor \S+ (remote-as (2|20)$|description iBGP)', l)) + '\n')
+            prima = c.leggi_albero(p)
+            risposte = iter([risposta, 's'])
+            with c.silenzio(), mock.patch.object(builtins, 'input', lambda *a: next(risposte)):
+                routing_ops.aggiungi_ibgp_full_mesh(p, None)
+            dopo = c.leggi_albero(p)
+            return {k.split('/')[0] for k in dopo if dopo[k] != prima.get(k) and k.endswith('frr.conf')}
+
+    def test_voce_della_lista(self):
+        self.assertEqual({'as20r1', 'as20r2', 'as20r3', 'as20r4'}, self._scegli('2'))
+
+    def test_as_scritto(self):
+        self.assertEqual({'as2r1', 'as2r2'}, self._scegli('AS2'))
+        self.assertEqual({'as20r1', 'as20r2', 'as20r3', 'as20r4'}, self._scegli('as20'))
+
+
 class TestSuggerimentoVtysh(unittest.TestCase):
 
     def test_riga_con_refuso_ha_il_suggerimento(self):

@@ -5,7 +5,8 @@ AS con più router BGP:
 
   1) AS2: as2r1, as2r5
 
-Seleziona l'AS (numero nella lista o numero AS, vuoto per annullare): 2
+Seleziona l'AS (numero nella lista, oppure AS e il numero, es. AS20; vuoto per annullare): 2
+AS2: as2r1, as2r5
 ⚠️ Controlla il testo: alcuni esercizi vietano l'iBGP (es. butterfly).
 
 --- Sessioni iBGP nell'AS 2: anteprima (2 file) ---
