@@ -230,7 +230,7 @@ export function converti(bozza) {
     if (!String(c.ip || '').trim()) continue;
     const r = reti[c.lan], x = leggiRete(c.ip) || (ipInt(c.ip) !== null && r ? {ip: ipInt(c.ip), prefisso: r.prefisso} : null);
     if (!x) { segnala(c.id, 'ip', 'errore', `IP non valido: '${c.ip}' (es. 10.0.0.1/30).`); continue; }
-    if (r && (!dentro(r, x.ip) || x.prefisso !== r.prefisso)) { segnala(c.id, 'ip', 'errore', `${c.ip} non è nella subnet ${testoRete(r)} della LAN ${nomiLan[c.lan]}.`); continue; }
+    if (r && (!dentro(r, x.ip) || x.prefisso !== r.prefisso)) { segnala(c.id, 'ip', 'errore', `${c.ip} non è nella subnet ${testoRete(r)} della LAN ${nomiLan[c.lan]}. Se è la subnet a essere sbagliata, cambiala prima nel pannello della LAN ${nomiLan[c.lan]} (campo Subnet): gli IP si rinumerano da soli e poi basta l'ultimo numero.`); continue; }
     if (r && !utilizzabile(r, x.ip)) { segnala(c.id, 'ip', 'errore', `${intIp(x.ip)} è l'indirizzo di rete o di broadcast di ${testoRete(r)}.`); continue; }
     if (ipUsati.has(x.ip)) { segnala(c.id, 'ip', 'errore', `${intIp(x.ip)} è già usato da un altro collegamento.`); continue; }
     ipUsati.set(x.ip, c.id);

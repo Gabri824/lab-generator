@@ -94,10 +94,14 @@ function chiaveDelCampo(campo, el) {
   return null;
 }
 function mappaMotore() {
+  const conv = E.conv || converti(E.bozza);
+  // un IP che l'editor ha già scartato (fuori subnet, doppio...) arriva al motore vuoto: il suo
+  // "manca l'IP" ripeterebbe l'errore con un messaggio fuorviante, resta solo quello dell'editor
+  const scartati = new Set(conv.problemi.filter(p => p.campo === 'ip' && p.gravita === 'errore').map(p => p.id));
   E.motoreMappati = ((E.motore && E.motore.problemi) || []).map(p => {
-    const el = elementoDelCampo(E.conv || converti(E.bozza), p.campo);
-    return Object.assign({}, p, {id: el ? el.id : null, chiave: chiaveDelCampo(p.campo, el)});
-  });
+    const el = elementoDelCampo(conv, p.campo);
+    return Object.assign({}, p, {id: el ? el.id : null, chiave: chiaveDelCampo(p.campo, el), coll: el && el.collegamento});
+  }).filter(p => !(p.coll && scartati.has(p.coll) && /\.ip$/.test(p.campo)));
 }
 function segnaCampi() {
   const pan = $('#edPannello');
