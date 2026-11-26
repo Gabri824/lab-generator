@@ -1479,7 +1479,14 @@ predefiniti uguali su un AS", menu principale 4 con i nomi DNS.
 
 ### Prossimo passo
 
-Collaudo dell'autore su tennis con la scaletta `docs/COLLAUDO.md` (parti 1-4 e, per la fase 8, la parte 5), poi correzioni, Windows e unione.
+Collaudo dell'autore su tennis (2026-11-26): parti 1-5 completate, tutto ok dopo le correzioni trovate durante la prova:
+- editor: IP fuori dalla subnet della LAN, messaggio con il rimedio (il PDF di tennis dà la LAN E come 2.20.4.0/30 con host .5 e .6);
+- DNS di un lab già creato da Modifica e dal terminale (zona, record A, ricorsione e DNSSEC);
+- pagine web: URL con il percorso (`http://web.com/~guest/`) e 404 spiegato;
+- Opzioni 7: con AS2 e AS20 nella lista, "2" era preso come AS 2;
+- DNS: il nameserver `dns.<zona>` senza record A faceva rifiutare la zona a BIND (wizard); ora il record c'è sempre e la verifica dai file lo segnala.
+
+Restano: eseguibile da ricostruire, Windows, unione del branch.
 
 ---
 
